@@ -34,8 +34,8 @@ export function useConfirm() {
         <h3 id="cf-t">{opts.title || 'Yakin?'}</h3>
         {opts.message ? <p id="cf-m">{opts.message}</p> : null}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn ghost sm" type="button" ref={cancelRef} onClick={() => close(false)}>Batal</button>
           <button className="btn danger solid sm" type="button" onClick={() => close(true)}>{opts.okLabel || 'Hapus'}</button>
+          <button className="btn ghost sm" type="button" ref={cancelRef} onClick={() => close(false)}>Batal</button>
         </div>
       </div>
     </div>
