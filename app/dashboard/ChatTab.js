@@ -42,7 +42,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
       <div>
         {!convs && <SkConvRows rows={guess === null ? 4 : Math.min(guess, 6)} />}
         {convs && !convs.length && (
-          <p className="hint">Belum ada percakapan. Coba chat lewat halaman Pasang untuk melihat hasilnya di sini.</p>
+          <p className="hint">Belum ada percakapan. Coba chat lewat halaman Coba bot untuk melihat hasilnya di sini.</p>
         )}
         {(convs || []).map((c) => (
           <button key={c.id} className="li" type="button" onClick={() => onOpen(c)}>

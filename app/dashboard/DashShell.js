@@ -18,6 +18,7 @@ const TABS = [
   ['/dashboard/faq', 'FAQ', 'faq'],
   ['/dashboard/toko', 'Toko', 'toko'],
   ['/dashboard/bot', 'Bot', 'bot'],
+  ['/dashboard/coba', 'Coba bot', 'coba'],
   ['/dashboard/pasang', 'Pasang', 'pasang']
 ];
 
@@ -28,6 +29,7 @@ const ICON = {
   faq: 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z',
   toko: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M9 20v-6h6v6',
   bot: 'M12 8V4m-4 4h8a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3ZM9.5 13h.01M14.5 13h.01',
+  coba: 'M6 4l14 8-14 8V4Z',
   pasang: 'm8 8-4 4 4 4m8-8 4 4-4 4m-2.5-11-3 14'
 };
 const Icon = ({ k }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[k]} /></svg>;
@@ -42,6 +44,14 @@ function PageSkeleton({ href }) {
     return (
       <div className="card">
         <SkItems rows={2} variant={href === '/dashboard/faq' ? 'faq' : 'produk'} />
+      </div>
+    );
+  }
+  if (href === '/dashboard/coba') {
+    return (
+      <div className="card">
+        <Sk w={140} h={20} />
+        <Sk h={420} r={12} style={{ marginTop: 14 }} />
       </div>
     );
   }
