@@ -1,6 +1,6 @@
 'use client';
 /* Isi halaman-halaman admin layanan. Data & aksi datang dari AdminShell lewat context. */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Busy, rp, dayTime } from '../dashboard/helpers';
 import { useAdmin } from './context';
@@ -165,5 +165,72 @@ export function PembayaranView() {
     <div className="card">
       <PaymentRows payments={data.payments} />
     </div>
+  );
+}
+
+function Steps({ items }) {
+  return <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>{items.map((x, i) => <li key={i} style={{ margin: '0 0 8px' }}>{x}</li>)}</ol>;
+}
+function Code({ children }) {
+  return <code style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '1px 6px', wordBreak: 'break-all' }}>{children}</code>;
+}
+
+export function PengaturanView() {
+  const { data } = useAdmin();
+  const [origin, setOrigin] = useState('');
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+  const gw = {}; (data.gateways || []).forEach((g) => { gw[g.id] = g; });
+  const base = origin || 'https://DOMAINMU';
+  const state = (g) => (g && g.ready
+    ? <span className="tag a">{'Terhubung · ' + (g.production ? 'production' : 'sandbox')}</span>
+    : <span className="tag w">Belum diisi</span>);
+
+  return (
+    <>
+      <div className="card">
+        <h2>Cara kerja</h2>
+        <p className="hint">Key pembayaran disimpan sebagai Environment Variable di Vercel (bukan di database), jadi tidak pernah tampil di browser. Setelah mengubah variabel, <b>deploy ulang</b> supaya terbaca. Pakai salah satu provider, atau keduanya: pemilik toko memilih metode saat membayar.</p>
+        <p className="hint">Status di bawah membaca server langsung, jadi kalau sudah berubah jadi “Terhubung” berarti key sudah terbaca.</p>
+      </div>
+
+      <div className="card">
+        <div className="li" style={{ border: 0, padding: 0 }}>
+          <div className="t"><b>Midtrans</b><small>Kartu, e-wallet, transfer bank, QRIS</small></div>
+          {state(gw.midtrans)}
+        </div>
+        <Steps items={[
+          <>Buka <b>dashboard.midtrans.com</b> dan masuk. Untuk uji coba, ganti mode ke <b>Sandbox</b> (pojok kiri atas).</>,
+          <>Masuk ke <b>Settings → Access Keys</b>, salin <b>Server Key</b> (sandbox diawali <Code>SB-Mid-server-</Code>).</>,
+          <>Di <b>Settings → Configuration</b>, isi <b>Payment Notification URL</b> dengan <Code>{base + '/api/midtrans'}</Code>, lalu simpan.</>,
+          <>Di Vercel: <b>Project → Settings → Environment Variables</b>, tambahkan <Code>MIDTRANS_SERVER_KEY</Code> berisi Server Key tadi.</>,
+          <>Tambahkan <Code>MIDTRANS_IS_PRODUCTION</Code> = <Code>false</Code> untuk sandbox. Ganti ke <Code>true</Code> hanya setelah akun lolos verifikasi dan Server Key diganti yang production.</>,
+          <>Buka tab <b>Deployments</b> di Vercel, <b>Redeploy</b>, lalu muat ulang halaman ini sampai statusnya “Terhubung”.</>
+        ]} />
+      </div>
+
+      <div className="card">
+        <div className="li" style={{ border: 0, padding: 0 }}>
+          <div className="t"><b>DOKU</b><small>DOKU Checkout (VA, e-wallet, QRIS, kartu)</small></div>
+          {state(gw.doku)}
+        </div>
+        <Steps items={[
+          <>Buka <b>dashboard.doku.com</b> dan masuk. Pilih lingkungan <b>Sandbox</b> untuk uji coba.</>,
+          <>Masuk ke <b>Integration → API Keys</b>, salin <b>Client ID</b> dan <b>Secret Key</b>.</>,
+          <>Di DOKU Back Office (<b>Settings → Payment Channels</b>), isi <b>Notification URL</b> dengan <Code>{base + '/api/doku'}</Code> untuk setiap channel yang dipakai.</>,
+          <>Di Vercel: <b>Settings → Environment Variables</b>, tambahkan <Code>DOKU_CLIENT_ID</Code> dan <Code>DOKU_SECRET_KEY</Code>.</>,
+          <>Tambahkan <Code>DOKU_IS_PRODUCTION</Code> = <Code>false</Code> untuk sandbox, <Code>true</Code> hanya untuk key production.</>,
+          <><b>Redeploy</b> di Vercel, lalu muat ulang halaman ini sampai statusnya “Terhubung”.</>
+        ]} />
+      </div>
+
+      <div className="card">
+        <h2>Cek hasilnya</h2>
+        <Steps items={[
+          <>Buka <b>Dashboard toko → Langganan</b> dengan akun pemilik toko, pilih paket, lalu bayar memakai akun uji coba (sandbox).</>,
+          <>Kembali ke <Link href="/admin/pembayaran">Pembayaran</Link>: pembayaran muncul sebagai “Menunggu”, lalu berubah “Lunas” setelah notifikasi masuk.</>,
+          <>Kalau tetap “Menunggu”, periksa lagi Notification URL di dashboard provider dan pastikan sudah redeploy.</>
+        ]} />
+      </div>
+    </>
   );
 }

@@ -70,7 +70,12 @@ export async function GET(request) {
       },
       shops: rows,
       payments: (pays || []).map((p) => Object.assign({}, p, { shop_name: nameBy[p.shop_id] || '' })),
-      plans: Object.values(plans.PLANS).map((p) => ({ id: p.id, name: p.name }))
+      plans: Object.values(plans.PLANS).map((p) => ({ id: p.id, name: p.name })),
+      // Hanya status (terisi atau belum), isi key tidak pernah dikirim ke browser.
+      gateways: [
+        { id: 'midtrans', ready: !!process.env.MIDTRANS_SERVER_KEY, production: String(process.env.MIDTRANS_IS_PRODUCTION || '').toLowerCase() === 'true' },
+        { id: 'doku', ready: !!(process.env.DOKU_CLIENT_ID && process.env.DOKU_SECRET_KEY), production: String(process.env.DOKU_IS_PRODUCTION || '').toLowerCase() === 'true' }
+      ]
     });
   } catch (e) { return fail(e); }
 }
