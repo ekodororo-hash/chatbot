@@ -71,7 +71,10 @@ export default function LanggananTab({ sb, shop, fail, toast }) {
         </div>
         <div className="use">
           <span>Balasan bot bulan ini</span>
-          <b>{st.used.toLocaleString('id-ID') + ' / ' + st.quota.toLocaleString('id-ID')}</b>
+          <span>
+            <b>{st.used.toLocaleString('id-ID') + ' / ' + st.quota.toLocaleString('id-ID')}</b>
+            {' '}<span className={'pct' + (pct > 80 ? ' hot' : '')}>{'(' + pct + '%)'}</span>
+          </span>
         </div>
         <div className={'bar' + (pct > 80 ? ' hot' : '')}><i style={{ width: pct + '%' }} /></div>
         <p className="hint">Kuota dihitung per bulan kalender (WIB) untuk toko ini. Setelah habis, pesan baru diteruskan ke admin sampai bulan berikutnya atau sampai paket dinaikkan.</p>
@@ -99,8 +102,8 @@ export default function LanggananTab({ sb, shop, fail, toast }) {
             <div key={p.id} className={'pcard' + (mine ? ' cur' : '')}>
               <div className="ph">
                 <b>{p.name}</b>
-                {mine ? <span className="tag">Paket kamu</span> : null}
-                {p.promo ? <span className="tag a">{'Diskon ' + p.promo + '%'}</span> : null}
+                {mine ? <span className="tag ok">Paket kamu</span> : null}
+                {p.promo ? <span className="tag w">{'Diskon ' + p.promo + '%'}</span> : null}
               </div>
               <div className="price">{rp(term.prices[p.id])}<small>{' / ' + months + ' bulan'}</small></div>
               {was ? <div className="was"><s>{rp(term.listPrices[p.id])}</s></div> : null}
