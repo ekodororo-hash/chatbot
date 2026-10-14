@@ -139,7 +139,8 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   }, []);
 
   // Pindah halaman: tutup sidebar di layar kecil.
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
+  // Pindah halaman juga menutup form "Tambah toko", supaya formnya tidak menempel di halaman lain.
+  useEffect(() => { setMenuOpen(false); setAdding(false); }, [pathname]);
 
   // Esc menutup sidebar di layar kecil.
   useEffect(() => {
@@ -221,7 +222,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
           {showNav && (
             <nav aria-label="Menu utama">
               {tabs.map(([href, label, icon]) => (
-                <Link key={href} href={href} className="nav-i" aria-current={current && current[0] === href ? 'page' : undefined}>
+                <Link key={href} href={href} onClick={() => setAdding(false)} className="nav-i" aria-current={current && current[0] === href ? 'page' : undefined}>
                   <Icon k={icon} />
                   {label}
                   {href === '/dashboard' && humanCount ? <i>{humanCount}</i> : null}
