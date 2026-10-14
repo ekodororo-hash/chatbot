@@ -24,7 +24,7 @@ export default function ExpiryBanner({ sb, shopId }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      try { const r = await authFetch(sb, shopId, '/api/billing'); if (alive) setSt(r); } catch (e) { /* spanduk bersifat tambahan: diam saja kalau gagal */ }
+      try { const r = await authFetch(sb, shopId, '/api/billing?brief=1'); if (alive) setSt(r); } catch (e) { /* spanduk bersifat tambahan: diam saja kalau gagal */ }
     })();
     return () => { alive = false; };
   }, [sb, shopId]);

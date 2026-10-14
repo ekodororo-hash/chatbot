@@ -10,7 +10,8 @@ const json = (body, status = 200) => Response.json(body, { status, headers: { 'C
 export async function GET(request) {
   try {
     const { sb, shop } = await auth.requireMember(request, { ownerOnly: true });
-    return json(await billing.status(sb, shop));
+    const brief = new URL(request.url).searchParams.get('brief') === '1';
+    return json(await billing.status(sb, shop, undefined, { brief }));
   } catch (e) { return fail(e); }
 }
 

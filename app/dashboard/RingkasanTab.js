@@ -37,6 +37,8 @@ const head = (q) => q.then((r) => (r.error ? null : r.count || 0));
 export default function RingkasanTab({ sb, shop, role, fail }) {
   const [d, setD] = useState(null);
   const [quota, setQuota] = useState(null);
+  // Pemilik: kartu kuota ditahan tempatnya (kerangka) selagi data paket dimuat, supaya halaman tidak bergeser.
+  const [quotaLoading, setQuotaLoading] = useState(role === 'owner');
 
   const load = useCallback(async () => {
     const today = startOfTodayWIB();
@@ -88,9 +90,10 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
   useEffect(() => {
     if (role !== 'owner') return undefined;
     let alive = true;
-    authFetch(sb, shop.id, '/api/billing')
+    authFetch(sb, shop.id, '/api/billing?brief=1')
       .then((b) => { if (alive) setQuota(b); })
-      .catch(() => { /* kartu kuota disembunyikan kalau gagal */ });
+      .catch(() => { /* kartu kuota disembunyikan kalau gagal */ })
+      .finally(() => { if (alive) setQuotaLoading(false); });
     return () => { alive = false; };
   }, [sb, shop.id, role]);
 
@@ -98,6 +101,7 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
     return (
       <>
         <div className="stats s4">{[0, 1, 2, 3].map((i) => <Sk key={i} h={78} r={14} />)}</div>
+        {role === 'owner' ? <div className="card"><Sk w={200} h={18} /><Sk h={44} r={12} style={{ marginTop: 14 }} /></div> : null}
         <div className="card"><Sk w={160} h={18} /><Sk h={120} r={12} style={{ marginTop: 14 }} /></div>
       </>
     );
@@ -122,7 +126,10 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
         <Stat label="Pesanan baru" value={d.ordersOn ? num(d.ordersNew) : '-'} note={d.ordersOn ? num(d.ordersProses) + ' sedang diproses' : 'jalankan migrasi pesanan'} />
       </div>
 
-      {role === 'owner' && quota ? (
+      {role === 'owner' && quotaLoading ? (
+        <div className="card"><Sk w={200} h={18} /><Sk h={44} r={12} style={{ marginTop: 14 }} /></div>
+      ) : null}
+      {role === 'owner' && !quotaLoading && quota ? (
         <div className="card">
           <div className="chead">
             <div>

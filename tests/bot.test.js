@@ -972,6 +972,16 @@ t('notifikasi kuota dari bot: kabar saat balasan mencapai 80%, dan saat kuota ha
   } finally { global.fetch = realFetch; }
 });
 
+t('status langganan mode ringkas: paket dan kuota tetap ada, riwayat pembayaran dilewati', async () => {
+  const s = seedShop();
+  db.shop_billing.push({ shop_id: s.id, plan: 'starter', expires_at: new Date(Date.now() + 86400000).toISOString() });
+  db.payments.push({ order_id: 'AT-x', shop_id: s.id, plan: 'starter', months: 1, amount: 49000, status: 'paid', provider: 'midtrans', created_at: new Date().toISOString() });
+  const full = await billing.status(fake, s);
+  const brief = await billing.status(fake, s, undefined, { brief: true });
+  assert.strictEqual(full.payments.length, 1); assert.deepStrictEqual(brief.payments, []);
+  for (const k of ['plan', 'expiresAt', 'used', 'quota', 'plans']) assert.deepStrictEqual(brief[k], full[k], k);
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
