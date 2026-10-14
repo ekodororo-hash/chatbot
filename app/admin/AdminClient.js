@@ -25,6 +25,7 @@ export default function AdminClient({ supabaseUrl, supabaseAnonKey, error }) {
   const [plan, setPlan] = useState('starter');
   const [days, setDays] = useState('30');
   const [busy, setBusy] = useState('');
+  const [delText, setDelText] = useState('');
 
   const call = useCallback(async (client, method, body) => {
     const { data: s } = await client.auth.getSession();
@@ -117,7 +118,7 @@ export default function AdminClient({ supabaseUrl, supabaseAnonKey, error }) {
                 return (
                   <div key={s.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
                     <div className="li" style={{ border: 0, padding: 0 }}>
-                      <button type="button" className="open" onClick={() => setOpenId(open ? null : s.id)} aria-expanded={open}>
+                      <button type="button" className="open" onClick={() => { setOpenId(open ? null : s.id); setDelText(''); }} aria-expanded={open}>
                         <div className="t">
                           <b>{s.name}</b>
                           <small>{(s.owner || 'pemilik tidak diketahui') + ' · /chat/' + s.slug}</small>
@@ -147,6 +148,15 @@ export default function AdminClient({ supabaseUrl, supabaseAnonKey, error }) {
                             <Busy on={busy === 'bot' + s.id} label="Menyimpan...">{s.bot_on ? 'Matikan bot' : 'Nyalakan bot'}</Busy>
                           </button>
                           <a className="btn ghost sm" href={'/chat/' + s.slug} target="_blank" rel="noopener">Buka chat</a>
+                        </div>
+                        <b style={{ display: 'block', marginTop: 14 }}>Hapus toko</b>
+                        <p className="hint">{'Menghapus permanen toko ini beserta produk, FAQ, percakapan, tim, saluran, dan riwayat pembayarannya. Tidak bisa dibatalkan. Ketik alamat chat (' + s.slug + ') untuk konfirmasi.'}</p>
+                        <input aria-label="Ketik alamat chat untuk konfirmasi" autoComplete="off" value={delText} onChange={(e) => setDelText(e.target.value)} />
+                        <div className="row">
+                          <button className="btn danger solid sm" type="button" disabled={!!busy || delText.trim() !== s.slug}
+                            onClick={async () => { await act('del' + s.id, { action: 'delete_shop', shopId: s.id, confirm: delText.trim() }, 'Toko dihapus.'); setOpenId(null); setDelText(''); }}>
+                            <Busy on={busy === 'del' + s.id} label="Menghapus...">Hapus permanen</Busy>
+                          </button>
                         </div>
                       </div>
                     ) : null}

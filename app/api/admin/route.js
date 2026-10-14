@@ -1,5 +1,6 @@
 import admin from '@/lib/admin';
 import plans from '@/lib/plans';
+import shops from '@/lib/shops';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -74,7 +75,7 @@ export async function GET(request) {
   } catch (e) { return fail(e); }
 }
 
-// Aksi admin: ubah paket toko secara manual (misalnya klien bayar transfer) dan nyalakan/matikan bot toko.
+// Aksi admin: ubah paket toko secara manual (misalnya klien bayar transfer) nyalakan/matikan bot toko, dan hapus toko.
 export async function POST(request) {
   try {
     const { sb } = await admin.requireSuperAdmin(request);
@@ -97,6 +98,13 @@ export async function POST(request) {
         expires = new Date(now.getTime() + days * 86400000).toISOString();
       }
       await must(sb.from('shop_billing').upsert({ shop_id: shopId, plan: planId, expires_at: expires, updated_at: now.toISOString() }, { onConflict: 'shop_id' }));
+      return json({ ok: true });
+    }
+
+    if (b.action === 'delete_shop') {
+      const full = await must(sb.from('shops').select('id,slug').eq('id', shopId).maybeSingle());
+      if (String(b.confirm || '').trim() !== full.slug) return json({ error: 'Alamat chat yang diketik tidak cocok.' }, 400);
+      await shops.deleteShop(sb, shopId);
       return json({ ok: true });
     }
 
