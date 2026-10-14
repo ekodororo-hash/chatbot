@@ -89,7 +89,7 @@ export function RingkasanView() {
       <div className="stats s4">
         <Stat label="Total toko" value={num(t.shops)} note={t.paidShops + ' berlangganan aktif'} />
         <Stat label="Pendapatan bulan ini" value={rp(t.revenueMonth)} note="dari pembayaran lunas" />
-        <Stat label="Balasan bot bulan ini" value={num(t.botRepliesMonth)} note="semua toko" />
+        <Stat label="Balasan AI bulan ini" value={num(t.botRepliesMonth)} note="semua toko" />
         <Stat label="Total percakapan" value={num(t.conversations)} note="sejak awal" />
       </div>
 
@@ -352,7 +352,7 @@ export function PaketView() {
 
   return (
     <>
-      <p className="lead">Ubah jumlah chat (balasan bot per bulan), harga per bulan, dan diskon. Perubahan langsung berlaku untuk semua toko, tanpa deploy ulang. Langganan yang sudah dibayar tidak berubah masa berlakunya, tetapi kuota chat mengikuti angka terbaru.</p>
+      <p className="lead">Ubah jumlah chat (balasan AI per bulan), harga per bulan, dan diskon. Perubahan langsung berlaku untuk semua toko, tanpa deploy ulang. Langganan yang sudah dibayar tidak berubah masa berlakunya, tetapi kuota chat mengikuti angka terbaru.</p>
 
       <h2 className="sect">Paket dan harga</h2>
       {PLAN_ORDER.map((id) => {
@@ -616,7 +616,7 @@ export function AiView() {
 
   return (
     <>
-      <p className="lead">{'Atur API key dan model Gemini untuk tiap paket. Setiap paket boleh punya sampai ' + perPlan + ' key sendiri: bot memakainya bergantian supaya beban terbagi, dan kalau satu key kena limit atau error, otomatis pindah ke key berikutnya. Paket tanpa key sendiri memakai key bawaan. Perubahan langsung berlaku tanpa deploy ulang.'}</p>
+      <p className="lead">{'Atur API key dan model Gemini untuk tiap paket. Setiap paket boleh punya sampai ' + perPlan + ' key sendiri: asisten memakainya bergantian supaya beban terbagi, dan kalau satu key kena limit atau error, otomatis pindah ke key berikutnya. Paket tanpa key sendiri memakai key bawaan. Perubahan langsung berlaku tanpa deploy ulang.'}</p>
 
       <div className="stats">
         <div className="stat"><span className="hint">Key bawaan</span><b>{def.source ? 'Aktif' : 'Kosong'}</b><small>{def.source ? '••••' + String(def.hint || '').slice(-4) + (def.source === 'env' ? ' · dari Vercel' : '') : 'Belum diisi'}</small></div>

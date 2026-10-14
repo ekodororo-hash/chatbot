@@ -30,11 +30,11 @@ export default function CobaPage() {
       const token = data.session && data.session.access_token;
       const r = await fetch('/api/diagnosa', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'X-Shop-Id': shop.id } });
       const j = await r.json();
-      if (!r.ok) throw new Error(j.error || 'Gagal memeriksa bot.');
+      if (!r.ok) throw new Error(j.error || 'Gagal memeriksa asisten.');
       setResult(j);
     } catch (e) {
       setResult(null);
-      setProblem(e.message || 'Gagal memeriksa bot.');
+      setProblem(e.message || 'Gagal memeriksa asisten.');
     }
     setChecking(false);
   }
@@ -44,8 +44,8 @@ export default function CobaPage() {
       <section className="card" aria-labelledby="cb">
         <div className="chead">
           <div>
-            <h2 id="cb">Coba bot</h2>
-            <p className="hint">Chat seperti pelanggan untuk melihat jawaban bot dari data tokomu. Percakapan percobaan ikut muncul di halaman Percakapan. Kalau bot berhenti menjawab karena percakapan sudah diteruskan ke admin, mulai percakapan baru.</p>
+            <h2 id="cb">Coba asisten</h2>
+            <p className="hint">Chat seperti pelanggan untuk melihat jawaban asisten dari data tokomu. Percakapan percobaan ikut muncul di halaman Percakapan. Kalau asisten berhenti menjawab karena percakapan sudah diteruskan ke admin, mulai percakapan baru.</p>
           </div>
         </div>
         <div className="coba-frame">
@@ -63,11 +63,11 @@ export default function CobaPage() {
       <section className="card" aria-labelledby="cd">
         <div className="chead">
           <div>
-            <h2 id="cd">Bot tidak menjawab?</h2>
-            <p className="hint">Periksa pengaturan bot, kuota, data toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
+            <h2 id="cd">Asisten tidak menjawab?</h2>
+            <p className="hint">Periksa pengaturan asisten, kuota, data toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
           </div>
           <button className="btn" type="button" disabled={checking} onClick={diagnose}>
-            <Busy on={checking} label="Memeriksa...">Cek kesiapan bot</Busy>
+            <Busy on={checking} label="Memeriksa...">Cek kesiapan asisten</Busy>
           </button>
         </div>
         <div className="err" role="alert">{problem}</div>

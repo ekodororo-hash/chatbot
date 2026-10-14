@@ -103,7 +103,7 @@ export default function TimTab({ sb, shop, user, fail, toast }) {
         <Panduan title="Apa yang bisa dilakukan admin tambahan?">
           <ol>
             <li>Admin bisa membuka dan membalas percakapan, mengubah status percakapan, serta mengelola produk dan FAQ.</li>
-            <li>Admin tidak bisa mengubah info toko, pengaturan bot, pemasangan, saluran Telegram dan WhatsApp, notifikasi, atau tim. Itu khusus pemilik.</li>
+            <li>Admin tidak bisa mengubah info toko, pengaturan asisten AI, pemasangan, saluran Telegram dan WhatsApp, notifikasi, atau tim. Itu khusus pemilik.</li>
             <li>Untuk mengundang: tulis email admin di bawah lalu klik Undang. Orang itu mendaftar atau masuk di halaman login dengan email yang sama, dan toko ini langsung muncul di dashboard-nya.</li>
             <li>Satu akun bisa jadi pemilik di satu toko dan admin di toko lain. Pindah toko lewat pilihan di sidebar.</li>
           </ol>

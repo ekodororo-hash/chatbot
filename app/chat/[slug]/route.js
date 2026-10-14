@@ -22,7 +22,7 @@ function text(code, msg) {
 export async function GET(request, context) {
   const { slug: raw } = await context.params;
   const slug = String(raw || '');
-  if (!/^[a-z0-9-]{3,30}$/.test(slug)) return text(404, 'Bot tidak ditemukan');
+  if (!/^[a-z0-9-]{3,30}$/.test(slug)) return text(404, 'Asisten tidak ditemukan');
 
   let shop;
   try {
@@ -35,7 +35,7 @@ export async function GET(request, context) {
     console.error(e);
     return text(500, 'Terjadi gangguan. Coba lagi sebentar.');
   }
-  if (!shop) return text(404, 'Bot tidak ditemukan');
+  if (!shop) return text(404, 'Asisten tidak ditemukan');
 
   const wc = widgetConfig.clean(shop);
   const cfg = {

@@ -159,14 +159,14 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
         <div className="card">
           <h2>{'Daftar produk (' + items.length + ')'}</h2>
           {!items.length && (
-            <p className="hint">Belum ada produk. Bot hanya bisa menjawab dari data yang kamu isi di sini.</p>
+            <p className="hint">Belum ada produk. Asisten hanya bisa menjawab dari data yang kamu isi di sini.</p>
           )}
           {items.map((pr, i) => (
             <ProductRow key={pr.id} sb={sb} pr={pr} no={i + 1} ask={ask} fail={fail} toast={toast} onDeleted={load} />
           ))}
         </div>
       )}
-      <p className="hint">Klik Edit untuk mengubah produk, lalu Simpan. Bot memakai data terbaru pada pesan berikutnya.</p>
+      <p className="hint">Klik Edit untuk mengubah produk, lalu Simpan. Asisten memakai data terbaru pada pesan berikutnya.</p>
     </>
   );
 }

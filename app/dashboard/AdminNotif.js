@@ -13,7 +13,7 @@ function copy(text, toast) {
 
 const PanduanNotif = () => (
   <Panduan title="Kapan notifikasi dikirim dan cara mengaktifkannya">
-    <p className="hint" style={{ marginTop: 0 }}>Notifikasi dikirim lewat Telegram saat bot meneruskan percakapan ke admin (tidak tahu jawabannya, pelanggan komplain atau minta admin, bot nonaktif, atau kuota harian habis), saat ada pesanan, dan saat pelanggan menulis lagi di percakapan yang sudah dipegang admin. Satu percakapan paling sering dikabari sekali tiap 15 menit, jadi tidak membanjiri.</p>
+    <p className="hint" style={{ marginTop: 0 }}>Notifikasi dikirim lewat Telegram saat asisten meneruskan percakapan ke admin (tidak tahu jawabannya, pelanggan komplain atau minta admin, asisten nonaktif, atau kuota harian habis), saat ada pesanan, dan saat pelanggan menulis lagi di percakapan yang sudah dipegang admin. Satu percakapan paling sering dikabari sekali tiap 15 menit, jadi tidak membanjiri.</p>
     <h3>Telegram</h3>
     <ol>
       <li>Hubungkan bot Telegram tokomu di kartu <b>Telegram</b> di bawah halaman ini.</li>

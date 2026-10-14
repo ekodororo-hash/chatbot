@@ -87,7 +87,7 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
         <Link className="brand" href="/">Asisten<span>Toko</span></Link>
         <div className="auth-box">
           <h1>{reg ? 'Buat akun' : 'Masuk ke dashboard'}</h1>
-          <p className="sub">{reg ? 'Daftar, lalu isi data tokomu.' : 'Masuk untuk melihat percakapan dan mengatur bot.'}</p>
+          <p className="sub">{reg ? 'Daftar, lalu isi data tokomu.' : 'Masuk untuk melihat percakapan dan mengatur asisten AI.'}</p>
 
           <div className="seg" role="group" aria-label="Pilih masuk atau daftar">
             <button type="button" aria-pressed={!reg} onClick={() => mode(false)}>Masuk</button>

@@ -70,7 +70,7 @@ export default function LanggananTab({ sb, shop, fail, toast }) {
           {st.expiresAt ? 'Aktif sampai ' + tgl(st.expiresAt) : 'Paket gratis tidak punya masa berlaku.'}
         </div>
         <div className="use">
-          <span>Balasan bot bulan ini</span>
+          <span>Balasan AI bulan ini</span>
           <span>
             <b>{st.used.toLocaleString('id-ID') + ' / ' + st.quota.toLocaleString('id-ID')}</b>
             {' '}<span className={'pct' + (pct > 80 ? ' hot' : '')}>{'(' + pct + '%)'}</span>
@@ -107,7 +107,7 @@ export default function LanggananTab({ sb, shop, fail, toast }) {
               </div>
               <div className="price">{rp(term.prices[p.id])}<small>{' / ' + months + ' bulan'}</small></div>
               {was ? <div className="was"><s>{rp(term.listPrices[p.id])}</s></div> : null}
-              <p className="hint">{p.quota.toLocaleString('id-ID') + ' balasan bot per bulan'}</p>
+              <p className="hint">{p.quota.toLocaleString('id-ID') + ' balasan AI per bulan'}</p>
               <button className={'btn' + (mine || lower ? ' ghost' : '')} type="button" disabled={!st.ready || lower || !!busy} onClick={() => buy(p.id)}>
                 <Busy on={busy === p.id} label="Membuka pembayaran...">{mine ? 'Perpanjang' : lower ? 'Paket lebih rendah' : 'Pilih ' + p.name}</Busy>
               </button>

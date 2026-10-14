@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: { default: 'Asisten Toko - Chatbot untuk UMKM', template: '%s - Asisten Toko' },
-  description: 'Chatbot yang menjawab pertanyaan pelanggan dari data tokomu, 24 jam. Pasang di website dengan satu baris kode.'
+  title: { default: 'Asisten Toko - Asisten AI untuk UMKM', template: '%s - Asisten Toko' },
+  description: 'Asisten AI yang menjawab pertanyaan pelanggan dari data tokomu, 24 jam. Pasang di website dengan satu baris kode.'
 };
 
 export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' };

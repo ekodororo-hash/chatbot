@@ -1,3 +1,3 @@
-export const metadata = { title: 'Bot' };
+export const metadata = { title: 'Asisten AI' };
 
 export default function BotLayout({ children }) { return children; }

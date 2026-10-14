@@ -1,4 +1,4 @@
-# Asisten Toko - chatbot untuk UMKM
+# Asisten Toko - asisten AI untuk UMKM
 
 Web lengkap: dashboard klien, halaman chat, dan widget yang ditempel di website klien.
 Stack: Next.js (App Router, JavaScript) di Vercel, Supabase (login + database), Gemini (jawaban AI).
@@ -123,7 +123,7 @@ Hal yang perlu diketahui:
 
 **Persiapan database (sekali):** jalankan `supabase/migrations/langganan.sql` (tabel `shop_billing` dan `payments`, RLS tanpa policy sehingga hanya server yang bisa menulis). Toko yang sudah ada diberi masa percobaan paket Bisnis 30 hari supaya tidak mendadak terbatas; hapus blok itu di file migrasi kalau tidak diinginkan.
 
-**Paket** (ubah lewat menu **Admin → Paket**: nama, jumlah chat per bulan, harga per bulan, diskon paket, dan diskon lama langganan; langsung berlaku tanpa deploy. Disimpan di tabel `app_settings` kunci `PLANS_CONFIG`. Nilai bawaan ada di `lib/plans.js`, dipakai kalau belum pernah diubah atau setelah klik "Kembalikan ke bawaan"). Bawaan: Gratis 100 balasan/bulan, Starter Rp49.000 (1.500/bulan), Bisnis Rp149.000 (6.000/bulan). Lama 1, 3 (hemat 5%), atau 12 bulan (hemat 15%). Diskon paket (0 sampai 90%) ditumpuk dengan diskon lama langganan, dan pelanggan melihat harga normal dicoret di halaman Langganan. Angka ini contoh, sesuaikan dengan hitungan biaya Gemini dan harga pasarmu. Kuota dihitung per bulan kalender WIB per toko; setelah habis, pesan masuk ke admin tanpa memanggil AI. Batas harian di halaman Bot tetap berlaku.
+**Paket** (ubah lewat menu **Admin → Paket**: nama, jumlah chat per bulan, harga per bulan, diskon paket, dan diskon lama langganan; langsung berlaku tanpa deploy. Disimpan di tabel `app_settings` kunci `PLANS_CONFIG`. Nilai bawaan ada di `lib/plans.js`, dipakai kalau belum pernah diubah atau setelah klik "Kembalikan ke bawaan"). Bawaan: Gratis 100 balasan/bulan, Starter Rp49.000 (1.500/bulan), Bisnis Rp149.000 (6.000/bulan). Lama 1, 3 (hemat 5%), atau 12 bulan (hemat 15%). Diskon paket (0 sampai 90%) ditumpuk dengan diskon lama langganan, dan pelanggan melihat harga normal dicoret di halaman Langganan. Angka ini contoh, sesuaikan dengan hitungan biaya Gemini dan harga pasarmu. Kuota dihitung per bulan kalender WIB per toko; setelah habis, pesan masuk ke admin tanpa memanggil AI. Batas harian di halaman Asisten AI tetap berlaku.
 
 **Pasang Midtrans:**
 1. Daftar di dashboard.midtrans.com. Mulai dari mode Sandbox: ambil Server Key di Settings > Access Keys.

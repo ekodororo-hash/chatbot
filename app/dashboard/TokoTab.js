@@ -41,7 +41,7 @@ export default function TokoTab({ sb, shop, onShopChange, onShopDeleted, fail, t
         <div className="chead">
           <div>
             <h2 id="ti">Info toko</h2>
-            <p className="hint">Bot hanya menjawab dari data toko, produk, dan FAQ. Semakin lengkap, semakin jarang bot meneruskan ke admin.</p>
+            <p className="hint">Asisten hanya menjawab dari data toko, produk, dan FAQ. Semakin lengkap, semakin jarang asisten meneruskan ke admin.</p>
           </div>
         </div>
 

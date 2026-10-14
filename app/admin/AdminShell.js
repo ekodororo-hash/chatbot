@@ -23,7 +23,7 @@ const TABS = [
 
 const SUBTITLE = {
   ringkasan: 'Gambaran seluruh layanan: toko, pemakaian, dan pendapatan.',
-  toko: 'Kelola paket, status bot, dan data semua toko.',
+  toko: 'Kelola paket, status asisten, dan data semua toko.',
   pengguna: 'Daftar akun pemilik dan anggota tim.',
   paket: 'Atur harga, kuota chat, dan diskon paket langganan.',
   pembayaran: 'Riwayat pembayaran langganan dari semua toko.',

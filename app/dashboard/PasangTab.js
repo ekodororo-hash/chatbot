@@ -47,7 +47,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
           <span className="pstep-no" aria-hidden="true">1</span>
           <div>
             <h2 id="ps1">Pasang di website</h2>
-            <p className="hint">{'Tempel kode ini sebelum penutup </body> di website klien (WordPress, Shopify, Wix, atau HTML biasa). Warna, posisi, ikon, dan teks tombol diatur di halaman Bot dan berubah otomatis, tidak perlu menempel ulang.'}</p>
+            <p className="hint">{'Tempel kode ini sebelum penutup </body> di website klien (WordPress, Shopify, Wix, atau HTML biasa). Warna, posisi, ikon, dan teks tombol diatur di halaman Asisten AI dan berubah otomatis, tidak perlu menempel ulang.'}</p>
           </div>
         </header>
         <div className="codebox">

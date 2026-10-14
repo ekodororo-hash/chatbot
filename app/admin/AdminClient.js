@@ -102,7 +102,7 @@ export default function AdminClient({ supabaseUrl, supabaseAnonKey, error }) {
           <div className="grid2" style={{ marginBottom: 14 }}>
             <div className="card" style={{ marginBottom: 0 }}><span className="hint">Total toko</span><h2 style={{ margin: '2px 0 0' }}>{t.shops}</h2><span className="hint">{t.paidShops + ' berlangganan aktif'}</span></div>
             <div className="card" style={{ marginBottom: 0 }}><span className="hint">Pendapatan bulan ini</span><h2 style={{ margin: '2px 0 0' }}>{rp(t.revenueMonth)}</h2><span className="hint">dari pembayaran lunas</span></div>
-            <div className="card" style={{ marginBottom: 0 }}><span className="hint">Balasan bot bulan ini</span><h2 style={{ margin: '2px 0 0' }}>{t.botRepliesMonth.toLocaleString('id-ID')}</h2><span className="hint">semua toko</span></div>
+            <div className="card" style={{ marginBottom: 0 }}><span className="hint">Balasan AI bulan ini</span><h2 style={{ margin: '2px 0 0' }}>{t.botRepliesMonth.toLocaleString('id-ID')}</h2><span className="hint">semua toko</span></div>
             <div className="card" style={{ marginBottom: 0 }}><span className="hint">Total percakapan</span><h2 style={{ margin: '2px 0 0' }}>{t.conversations.toLocaleString('id-ID')}</h2><span className="hint">sejak awal</span></div>
           </div>
 

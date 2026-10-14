@@ -33,7 +33,7 @@ const PanduanTelegram = () => (
       <li>Tulis username bot. Harus unik dan berakhiran <b>bot</b>, misalnya <i>tokoayu_bot</i>.</li>
       <li>BotFather membalas dengan token, bentuknya seperti <i>123456789:AAH...</i>. Salin seluruhnya.</li>
       <li>Tempel token di kolom di bawah, lalu klik <b>Hubungkan</b>. Webhook dipasang otomatis.</li>
-      <li>Coba: klik <b>Buka bot</b>, kirim pesan, dan bot akan membalas.</li>
+      <li>Coba: klik <b>Buka bot</b>, kirim pesan, dan asisten akan membalas.</li>
     </ol>
     <p className="hint">Token adalah kunci bot, jangan dibagikan. Kalau bocor, kirim /revoke ke BotFather, lalu hubungkan lagi dengan token baru.</p>
   </Panduan>
@@ -50,7 +50,7 @@ const PanduanWhatsApp = () => (
       <li>Buat <b>Access token permanen</b>. Token di API Setup hanya berlaku sekitar 24 jam, jadi jangan dipakai. Buka <b>business.facebook.com</b>, lalu <b>Business Settings</b>, <b>Users</b>, <b>System users</b>, klik <b>Add</b> dengan peran Admin. Klik <b>Add Assets</b>, pilih app-mu dan beri <b>Full control</b>. Klik <b>Generate token</b>, pilih app, masa berlaku <b>Never</b>, lalu centang <b>whatsapp_business_messaging</b> dan <b>whatsapp_business_management</b>. Salin tokennya.</li>
       <li>Isi Phone number ID, Access token, dan App Secret di form di bawah, lalu klik <b>Simpan</b>.</li>
       <li>Setelah tersimpan, <b>Callback URL</b> dan <b>Verify token</b> muncul di bawah form. Di Meta buka <b>WhatsApp</b>, <b>Configuration</b>, <b>Webhook</b>, klik <b>Edit</b>, tempel keduanya, lalu <b>Verify and save</b>. Setelah itu subscribe ke field <b>messages</b>.</li>
-      <li>Coba kirim pesan WhatsApp ke nomor itu dan bot akan membalas.</li>
+      <li>Coba kirim pesan WhatsApp ke nomor itu dan asisten akan membalas.</li>
     </ol>
     <p className="hint">Selama app Meta masih berstatus Development, bot hanya membalas nomor yang terdaftar sebagai admin atau tester di app. Supaya semua pelanggan bisa chat, ubah app ke mode Live. Meta biasanya meminta URL kebijakan privasi. Tampilan Meta sering berubah, jadi nama menunya bisa sedikit berbeda.</p>
   </Panduan>
@@ -89,14 +89,14 @@ export default function SalurTab({ sb, shop, fail, toast }) {
     if (await run('tg', 'tg', { action: 'telegram_connect', token: tgToken }, 'Telegram terhubung.')) setTgToken('');
   }
   async function tgDisconnect() {
-    if (!(await ask({ title: 'Putuskan Telegram?', message: 'Bot Telegram berhenti membalas pelanggan. Riwayat percakapan tetap ada.', okLabel: 'Putuskan' }))) return;
+    if (!(await ask({ title: 'Putuskan Telegram?', message: 'Asisten berhenti membalas pelanggan di Telegram. Riwayat percakapan tetap ada.', okLabel: 'Putuskan' }))) return;
     run('tgx', 'tg', { action: 'telegram_disconnect' }, 'Telegram diputuskan.');
   }
   async function waSave() {
     if (await run('wa', 'wa', { action: 'whatsapp_save', phoneId, token: waToken, appSecret: waSecret }, 'WhatsApp tersimpan.')) { setWaToken(''); setWaSecret(''); }
   }
   async function waDisconnect() {
-    if (!(await ask({ title: 'Putuskan WhatsApp?', message: 'Bot berhenti membalas pesan WhatsApp. Riwayat percakapan tetap ada.', okLabel: 'Putuskan' }))) return;
+    if (!(await ask({ title: 'Putuskan WhatsApp?', message: 'Asisten berhenti membalas pesan WhatsApp. Riwayat percakapan tetap ada.', okLabel: 'Putuskan' }))) return;
     if (await run('wax', 'wa', { action: 'whatsapp_disconnect' }, 'WhatsApp diputuskan.')) setPhoneId('');
   }
 
@@ -113,7 +113,7 @@ export default function SalurTab({ sb, shop, fail, toast }) {
         <PanduanTelegram />
         {tg.connected ? (
           <>
-            <p className="hint">{'Terhubung ke '}<b>{'@' + tg.username}</b>{'. Pelanggan yang chat ke bot itu dibalas otomatis. Kalau bot tidak tahu jawabannya, percakapan masuk ke tab Percakapan dan kamu bisa membalas dari sana.'}</p>
+            <p className="hint">{'Terhubung ke '}<b>{'@' + tg.username}</b>{'. Pelanggan yang chat ke bot itu dibalas otomatis. Kalau asisten tidak tahu jawabannya, percakapan masuk ke tab Percakapan dan kamu bisa membalas dari sana.'}</p>
             <div className="row">
               <a className="btn ghost sm" href={'https://t.me/' + tg.username} target="_blank" rel="noopener">Buka bot</a>
               <button className="btn danger sm" type="button" disabled={busy === 'tgx'} onClick={tgDisconnect}><Busy on={busy === 'tgx'} label="Memutuskan...">Putuskan</Busy></button>

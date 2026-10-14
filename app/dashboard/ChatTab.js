@@ -6,7 +6,7 @@ import { SkConvRows, SkMsgs } from '../components/Skeleton';
 import { useConfirm } from '../components/useConfirm';
 import { useRealtime } from './useRealtime';
 
-const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
+const STATUS = { bot: ['Dijawab AI', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at,channel';
 const CHANNEL = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
 
@@ -63,7 +63,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
       <div>
         {!convs && <SkConvRows rows={guess === null ? 4 : Math.min(guess, 6)} />}
         {convs && !convs.length && (
-          <p className="hint">Belum ada percakapan. Coba chat lewat halaman Coba bot untuk melihat hasilnya di sini.</p>
+          <p className="hint">Belum ada percakapan. Coba chat lewat halaman Coba asisten untuk melihat hasilnya di sini.</p>
         )}
         {(convs || []).map((c, i) => (
           <div key={c.id} className="li conv">
