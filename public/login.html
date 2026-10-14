@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Masuk - Asisten Toko</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="top"><a class="brand" href="/">Asisten<span>Toko</span></a></div>
+<main class="wrap"><div class="narrow">
+  <h1 id="ttl" style="font-size:32px;margin-top:12px">Masuk</h1>
+  <div class="card">
+    <form id="f" novalidate>
+      <label for="e">Email</label><input id="e" type="email" autocomplete="email" required>
+      <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" minlength="8" required>
+      <div class="err" id="er" role="alert"></div>
+      <button class="btn" id="go" type="submit" style="width:100%;margin-top:12px">Masuk</button>
+    </form>
+  </div>
+  <p class="hint" style="text-align:center"><a href="#" id="sw">Belum punya akun? Daftar</a></p>
+</div></main>
+<div class="toast" id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/app.js"></script>
+<script>
+(async function () {
+  var $ = function (i) { return document.getElementById(i); };
+  var reg = location.hash === '#daftar';
+  var sb;
+  try { sb = await App.init(); } catch (e) { $('er').textContent = e.message; return; }
+  var s = await sb.auth.getSession();
+  if (s.data.session) { location.replace('/dashboard.html'); return; }
+
+  function paint() {
+    $('ttl').textContent = reg ? 'Buat akun' : 'Masuk';
+    $('go').textContent = reg ? 'Daftar' : 'Masuk';
+    $('sw').textContent = reg ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar';
+    $('p').setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
+    $('er').textContent = '';
+  }
+  paint();
+  $('sw').onclick = function (e) { e.preventDefault(); reg = !reg; history.replaceState(null, '', reg ? '#daftar' : '#'); paint(); };
+
+  $('f').onsubmit = async function (e) {
+    e.preventDefault();
+    var email = $('e').value.trim(), pass = $('p').value, er = $('er');
+    er.textContent = '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { er.textContent = 'Format email belum benar.'; return; }
+    if (pass.length < 8) { er.textContent = 'Password minimal 8 karakter.'; return; }
+    $('go').disabled = true;
+    try {
+      if (reg) {
+        var r = await sb.auth.signUp({ email: email, password: pass });
+        if (r.error) throw r.error;
+        if (r.data.session) { location.replace('/dashboard.html'); return; }
+        er.className = 'err ok';
+        er.textContent = 'Akun dibuat. Cek email untuk konfirmasi, lalu masuk.';
+      } else {
+        var l = await sb.auth.signInWithPassword({ email: email, password: pass });
+        if (l.error) throw l.error;
+        location.replace('/dashboard.html');
+      }
+    } catch (x) {
+      er.className = 'err';
+      var m = String(x && x.message || '');
+      if (/invalid login/i.test(m)) m = 'Email atau password salah.';
+      else if (/already registered|already been registered/i.test(m)) m = 'Email ini sudah terdaftar. Silakan masuk.';
+      else if (/not confirmed/i.test(m)) m = 'Email belum dikonfirmasi. Cek kotak masuk emailmu.';
+      er.textContent = m || 'Terjadi kesalahan. Coba lagi.';
+    } finally { $('go').disabled = false; }
+  };
+})();
+</script>
+</body>
+</html>

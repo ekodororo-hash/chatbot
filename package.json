@@ -1,0 +1,9 @@
+{
+  "name": "chatbot-umkm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Asisten chatbot untuk UMKM: dashboard klien, halaman chat, dan widget untuk website.",
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node tests/bot.test.js" },
+  "dependencies": { "@supabase/supabase-js": "^2.45.4" }
+}
