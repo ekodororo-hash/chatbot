@@ -16,6 +16,7 @@ function fromShop(shop) {
   return {
     bot_on: shop.bot_on, bot_name: shop.bot_name, tone: shop.tone, greeting: shop.greeting,
     fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent,
+    general_on: shop.general_on === true, general_topic: shop.general_topic || '',
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat'
@@ -72,11 +73,13 @@ export default function BotPage() {
     const icon = f.widget_icon.trim();
     if (!f.bot_name.trim()) return toast('Isi nama asisten.');
     if (!(limit >= 1 && limit <= 5000)) return toast('Batas harian: 1 sampai 5000.');
+    if (f.general_on && !f.general_topic.trim()) return toast('Isi bidang toko untuk jawaban umum.');
     if (!icon || Array.from(icon).length > 8) return toast('Ikon tombol: 1 sampai 8 karakter (boleh emoji).');
     setBusy(true);
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
       fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent,
+      general_on: f.general_on, general_topic: f.general_topic.trim(),
       widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
       widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape
     };
@@ -135,6 +138,23 @@ export default function BotPage() {
           </span>
           <input id="b0" type="checkbox" checked={f.bot_on} onChange={(e) => setF((p) => ({ ...p, bot_on: e.target.checked }))} />
         </label>
+
+        <label htmlFor="b7" className="swrow">
+          <span className="swrow-t">
+            <b>Jawab pertanyaan umum</b>
+            <small>Asisten boleh menjawab saran dan tips umum seputar bidang toko, tanpa menyambungkan ke admin. Harga, stok, dan kebijakan tetap hanya dari data toko.</small>
+          </span>
+          <input id="b7" type="checkbox" checked={f.general_on} onChange={(e) => setF((p) => ({ ...p, general_on: e.target.checked }))} />
+        </label>
+        {f.general_on ? (
+          <div className="fgrid one">
+            <div>
+              <label htmlFor="b8">Bidang toko / topik konsultasi</label>
+              <input id="b8" maxLength={150} value={f.general_topic} onChange={set('general_topic')} placeholder="Contoh: hair extension dan perawatan rambut" />
+              <p className="hint field-hint">Pertanyaan di luar topik ini akan ditolak dengan sopan. Jawaban umum tetap dihitung ke batas balasan harian.</p>
+            </div>
+          </div>
+        ) : null}
 
         <h3 className="fsec">Identitas</h3>
         <div className="fgrid">

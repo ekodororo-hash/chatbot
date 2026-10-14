@@ -17,6 +17,8 @@ create table public.shops (
   fallback text not null default 'Maaf {k}, saya belum punya jawabannya. Mau saya sambungkan ke admin?' check (char_length(fallback) <= 300),
   accent text not null default '#0b7a75' check (accent ~ '^#[0-9a-fA-F]{6}$'),
   bot_on boolean not null default true,
+  general_on boolean not null default false,
+  general_topic text not null default '' check (char_length(general_topic) <= 150),
   daily_limit int not null default 50 check (daily_limit between 1 and 5000),
   allowed_domains text[] not null default '{}' check (cardinality(allowed_domains) <= 20),
   created_at timestamptz not null default now()
