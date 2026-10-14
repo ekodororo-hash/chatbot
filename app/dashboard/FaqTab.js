@@ -60,7 +60,7 @@ function FaqRow({ sb, f, no, ask, fail, toast, onDeleted }) {
   return (
     <div className="li">
       <span className="no" aria-label={'Nomor ' + no}>{no}</span>
-      <div className="t wrap">
+      <div className="t stack">
         <b>{cur.question}</b>
         <small style={{ whiteSpace: 'pre-wrap' }}>{cur.answer}</small>
       </div>

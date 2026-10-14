@@ -67,7 +67,7 @@ function ProductRow({ sb, pr, no, ask, fail, toast, onDeleted }) {
   return (
     <div className="li">
       <span className="no" aria-label={'Nomor ' + no}>{no}</span>
-      <div className="t wrap">
+      <div className="t stack">
         <b>{cur.name}</b>
         <small>{rp(cur.price) + ' · Stok ' + cur.stock}</small>
         {cur.description ? <small>{cur.description}</small> : null}
