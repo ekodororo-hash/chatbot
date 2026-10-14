@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Reveal from './Reveal';
 import plans from '@/lib/plans';
 import settings from '@/lib/settings';
 
@@ -27,7 +28,7 @@ async function loadPlans() {
         cta: 'Pilih ' + P[id].name, feat: id === 'starter'
       }))
     ],
-    note: disc.length ? 'Langganan lebih lama lebih hemat: ' + disc.map((m) => m + ' bulan hemat ' + T[m] + '%').join(', ') + '.' : ''
+    note: disc.length ? 'Langganan lebih lama lebih hemat, ' + disc.map((m) => m + ' bulan hemat ' + T[m] + '%').join(' dan ') + '.' : ''
   };
 }
 
@@ -61,7 +62,7 @@ export default async function Beranda() {
               <Link className="btn lg" href="/login#daftar">Coba gratis</Link>
               <Link className="btn ghost lg" href="/login">Sudah punya akun</Link>
             </div>
-            <p className="note">Gratis tanpa kartu kredit. Tanpa coding: isi data toko, lalu tempel satu baris kode.</p>
+            <p className="note">Gratis tanpa kartu kredit. Tanpa coding, cukup isi data toko lalu tempel satu baris kode.</p>
           </div>
 
           <div className="demo" role="img" aria-label="Contoh percakapan pelanggan dengan asisten toko, berakhir dengan pertanyaan harga grosir yang diteruskan ke admin">
@@ -82,11 +83,11 @@ export default async function Beranda() {
 
         <section className="sec" aria-labelledby="cara">
           <h2 id="cara">Tiga langkah sampai AI menjawab</h2>
-          <ol className="flow">
+          <Reveal><ol className="flow">
             <li><span className="ic"><Ic d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" /></span><span className="n">Langkah 1</span><h3>Isi data toko</h3><p>Produk, harga, stok, jam buka, ongkir, dan pertanyaan yang sering muncul.</p></li>
             <li><span className="ic"><Ic d="m8 8-4 4 4 4m8-8 4 4-4 4m-2.5-11-3 14" /></span><span className="n">Langkah 2</span><h3>Pasang di website</h3><p>Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.</p></li>
             <li><span className="ic"><Ic d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l1.9-5.7A8.4 8.4 0 1 1 21 11.5Z" /></span><span className="n">Langkah 3</span><h3>Ambil alih kapan saja</h3><p>Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.</p></li>
-          </ol>
+          </ol></Reveal>
         </section>
 
         <section className="sec" aria-labelledby="kontrol">
@@ -101,7 +102,7 @@ export default async function Beranda() {
 
         <section className="sec" aria-labelledby="paket-h" id="paket">
           <h2 id="paket-h">Mulai gratis, naik paket kalau toko makin ramai</h2>
-          <div className="prices">
+          <Reveal><div className="prices">
             {list.map((p) => (
               <div key={p.id} className={'price-c' + (p.feat ? ' feat' : '')}>
                 <div className="ph"><b>{p.name}</b>{p.feat ? <span className="tag a">Terpopuler</span> : null}{p.promo ? <span className="tag w">{'Diskon ' + p.promo + '%'}</span> : null}</div>
@@ -114,7 +115,7 @@ export default async function Beranda() {
                 <Link className={'btn' + (p.id === 'free' ? '' : ' ghost')} href="/login#daftar">{p.cta}</Link>
               </div>
             ))}
-          </div>
+          </div></Reveal>
           <p className="hint">{'Setelah batas balasan bulanan, pesan baru masuk ke admin dan kamu tetap bisa membalas sendiri. ' + note}</p>
         </section>
 
