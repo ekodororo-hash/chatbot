@@ -91,7 +91,8 @@ export async function GET(request) {
       // Key Gemini: hanya status dan 4 karakter terakhir. Key bawaan + key per paket (kosong = ikut bawaan). Model per paket (kosong = bawaan).
       ai: {
         key: meta.GEMINI_API_KEY || { source: null, hint: '' },
-        planKeys: Object.fromEntries(Object.keys(plans.PLANS).map((id) => [id, meta[gemini.keyName(id)] || { source: null, hint: '' }])),
+        planKeys: Object.fromEntries(Object.keys(plans.PLANS).map((id) => [id, Array.from({ length: gemini.KEYS_PER_PLAN }, (_, i) => meta[gemini.keyName(id, i + 1)] || { source: null, hint: '' })])),
+        perPlan: gemini.KEYS_PER_PLAN,
         models: gemini.parseModels(allSettings.AI_CONFIG),
         defaultModel: gemini.DEFAULT_MODEL
       }
@@ -135,19 +136,41 @@ export async function POST(request) {
       return json({ ok: true });
     }
 
-    // AI: key Gemini (bawaan atau khusus satu paket) dan model per paket.
+    // AI: key Gemini. Tanpa plan = key bawaan. Dengan plan = key khusus paket itu (sampai 3, slot 1 sampai 3).
     if (b.action === 'save_ai_key' || b.action === 'clear_ai_key') {
-      // plan kosong = key bawaan; selain itu harus salah satu paket (maksimal 3 key khusus).
       const planId = String(b.plan || '');
       if (planId && !Object.prototype.hasOwnProperty.call(plans.PLANS, planId)) return json({ error: 'Paket tidak dikenal.' }, 400);
-      const name = planId ? gemini.keyName(planId) : 'GEMINI_API_KEY';
-      if (b.action === 'clear_ai_key') await settings.save({ [name]: '' });
-      else {
-        const v = String(b.key || '').trim();
-        if (!v) return json({ error: 'Isi API key Gemini dulu.' }, 400);
-        if (v.length > 500 || /\s/.test(v)) return json({ error: 'API key tidak valid.' }, 400);
-        await settings.save({ [name]: v });
+      const checkKey = (raw) => {
+        const v = String(raw || '').trim();
+        if (v.length > 500 || /\s/.test(v)) throw Object.assign(new Error('API key tidak valid.'), { httpStatus: 400 });
+        return v;
+      };
+      if (!planId) {
+        if (b.action === 'clear_ai_key') await settings.save({ GEMINI_API_KEY: '' });
+        else {
+          const v = checkKey(b.key);
+          if (!v) return json({ error: 'Isi API key Gemini dulu.' }, 400);
+          await settings.save({ GEMINI_API_KEY: v });
+        }
+        return json({ ok: true });
       }
+      const slotOk = (n) => Number.isInteger(n) && n >= 1 && n <= gemini.KEYS_PER_PLAN;
+      if (b.action === 'clear_ai_key') {
+        const n = Number(b.slot);
+        if (!slotOk(n)) return json({ error: 'Nomor key tidak valid (1 sampai ' + gemini.KEYS_PER_PLAN + ').' }, 400);
+        await settings.save({ [gemini.keyName(planId, n)]: '' });
+        return json({ ok: true });
+      }
+      // keys = { "1": "AIza...", "2": "...", "3": "" }; isian kosong tidak mengubah apa pun.
+      const patch = {};
+      Object.keys(b.keys || {}).forEach((k) => {
+        const n = Number(k);
+        if (!slotOk(n)) throw Object.assign(new Error('Nomor key tidak valid (1 sampai ' + gemini.KEYS_PER_PLAN + ').'), { httpStatus: 400 });
+        const v = checkKey(b.keys[k]);
+        if (v) patch[gemini.keyName(planId, n)] = v;
+      });
+      if (!Object.keys(patch).length) return json({ error: 'Isi API key Gemini dulu.' }, 400);
+      await settings.save(patch);
       return json({ ok: true });
     }
     if (b.action === 'save_ai_models') {
@@ -158,15 +181,17 @@ export async function POST(request) {
     if (b.action === 'test_ai') {
       const planId = String(b.plan || '');
       if (!Object.prototype.hasOwnProperty.call(plans.PLANS, planId)) return json({ error: 'Paket tidak dikenal.' }, 400);
+      const slot = b.slot ? Number(b.slot) : 0;
       const { model, keySource } = await gemini.resolve(planId);
       const t0 = Date.now();
       try {
         await gemini.generate({
           system: 'Balas HANYA dengan JSON: {"reply":"ok"}',
           contents: [{ role: 'user', parts: [{ text: 'tes' }] }],
-          plan: planId
+          plan: planId,
+          slot: slot || undefined
         });
-        return json({ ok: true, model, keySource, ms: Date.now() - t0 });
+        return json({ ok: true, model, keySource, slot, ms: Date.now() - t0 });
       } catch (e) {
         return json({ ok: false, model, keySource, error: String((e && e.message) || e).slice(0, 300) });
       }

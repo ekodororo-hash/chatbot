@@ -263,70 +263,72 @@ export function PaketView() {
 
   return (
     <>
-      <div className="card">
-        <h2>Paket dan harga</h2>
-        <p className="hint">Ubah jumlah chat (balasan bot per bulan), harga per bulan, dan diskon. Perubahan langsung berlaku untuk semua toko, tanpa deploy ulang. Langganan yang sudah dibayar tidak berubah masa berlakunya, tetapi kuota chat mengikuti angka terbaru.</p>
-      </div>
+      <p className="lead">Ubah jumlah chat (balasan bot per bulan), harga per bulan, dan diskon. Perubahan langsung berlaku untuk semua toko, tanpa deploy ulang. Langganan yang sudah dibayar tidak berubah masa berlakunya, tetapi kuota chat mengikuti angka terbaru.</p>
 
+      <h2 className="sect">Paket dan harga</h2>
       {PLAN_ORDER.map((id) => {
         const p = form.plans[id];
         const free = id === 'free';
         return (
-          <div className="card" key={id}>
-            <div className="li" style={{ border: 0, padding: 0 }}>
-              <div className="t"><b>{p.name || id}</b><small>{free ? 'Paket gratis: tanpa harga dan tanpa masa berlaku.' : 'Paket berbayar'}</small></div>
+          <section className="card plan" key={id}>
+            <div className="chead">
+              <div>
+                <h2>{p.name || id}</h2>
+                <p className="hint">{free ? 'Paket gratis: tanpa harga dan tanpa masa berlaku.' : 'Paket berbayar'}</p>
+              </div>
               {!free && Number(p.promo) > 0 ? <span className="tag a">{'Diskon ' + p.promo + '%'}</span> : null}
             </div>
-            <div className="grid2" style={{ marginTop: 10 }}>
-              <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-                <span>Nama paket</span>
+            <div className="fgrid">
+              <label>
+                <span className="flabel">Nama paket</span>
                 <input value={p.name} maxLength={30} onChange={(e) => setPlan(id, 'name', e.target.value)} />
               </label>
-              <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-                <span>Jumlah chat per bulan</span>
+              <label>
+                <span className="flabel">Jumlah chat per bulan</span>
                 <input type="number" min="1" inputMode="numeric" value={p.quota} onChange={(e) => setPlan(id, 'quota', e.target.value)} />
               </label>
               {!free ? (
                 <>
-                  <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-                    <span>Harga per bulan (Rp)</span>
+                  <label>
+                    <span className="flabel">Harga per bulan (Rp)</span>
                     <input type="number" min="1000" inputMode="numeric" value={p.price} onChange={(e) => setPlan(id, 'price', e.target.value)} />
                   </label>
-                  <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-                    <span>Diskon paket (%)</span>
+                  <label>
+                    <span className="flabel">Diskon paket (%)</span>
                     <input type="number" min="0" max="90" inputMode="numeric" value={p.promo} onChange={(e) => setPlan(id, 'promo', e.target.value)} />
                   </label>
                 </>
               ) : null}
             </div>
             {!free ? (
-              <small className="hint" style={{ display: 'block', marginTop: 8 }}>
+              <p className="hint">
                 {'Harga yang dibayar pelanggan: ' + TERM_ORDER.map((m) => m + ' bulan ' + rp(previewPrice(p, form.terms[m]) * Number(m))).join(' · ')}
-              </small>
+              </p>
             ) : null}
-          </div>
+          </section>
         );
       })}
 
-      <div className="card">
-        <h2>Diskon lama langganan</h2>
-        <p className="hint">Potongan tambahan kalau pelanggan membayar beberapa bulan sekaligus. Ditumpuk dengan diskon paket di atas.</p>
-        <div className="grid2">
+      <h2 className="sect">Diskon lama langganan</h2>
+      <section className="card">
+        <p className="hint" style={{ marginTop: 0 }}>Potongan tambahan kalau pelanggan membayar beberapa bulan sekaligus. Ditumpuk dengan diskon paket di atas.</p>
+        <div className="fgrid">
           {TERM_ORDER.map((m) => (
-            <label key={m} style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-              <span>{m + ' bulan (%)'}</span>
+            <label key={m}>
+              <span className="flabel">{m + ' bulan (%)'}</span>
               <input type="number" min="0" max="90" inputMode="numeric" value={form.terms[m]} onChange={(e) => setTerm(m, e.target.value)} />
             </label>
           ))}
         </div>
-        <div className="row">
-          <button className="btn sm" type="button" disabled={!!busy} onClick={save}>
-            <Busy on={busy === 'save'} label="Menyimpan...">Simpan perubahan</Busy>
-          </button>
-          <button className="btn ghost sm" type="button" disabled={!!busy} onClick={reset}>
-            <Busy on={busy === 'reset'} label="Mengembalikan...">Kembalikan ke bawaan</Busy>
-          </button>
-        </div>
+      </section>
+
+      <div className="row">
+        <button className="btn sm" type="button" disabled={!!busy} onClick={save}>
+          <Busy on={busy === 'save'} label="Menyimpan...">Simpan perubahan</Busy>
+        </button>
+        <button className="btn ghost sm" type="button" disabled={!!busy} onClick={reset}>
+          <Busy on={busy === 'reset'} label="Mengembalikan...">Kembalikan ke bawaan</Busy>
+        </button>
       </div>
     </>
   );
@@ -453,15 +455,20 @@ export function AiView() {
   const { data, act, post } = useAdmin();
   const ai = data.ai;
   const def = ai.key;                                   // key bawaan
-  const planKeys = ai.planKeys || {};                   // key khusus per paket (maksimal 3)
+  const planKeys = ai.planKeys || {};                   // { paket: [meta key 1, 2, 3] }
+  const perPlan = ai.perPlan || 3;
+  const slots = Array.from({ length: perPlan }, (_, i) => i + 1);
   const [defKey, setDefKey] = useState('');
-  const [keys, setKeys] = useState({});                 // isian key baru per paket (belum disimpan)
+  const [keys, setKeys] = useState({});                 // isian key baru: { 'paket:slot': '...' } (belum disimpan)
   const [models, setModels] = useState(() => Object.fromEntries(data.plans.map((p) => [p.id, ai.models[p.id] || ''])));
   const [busy, setBusy] = useState('');
-  const [tests, setTests] = useState({});
+  const [tests, setTests] = useState({});               // hasil tes: { 'paket': ..., 'paket:slot': ... }
 
   const savedModel = (id) => ai.models[id] || '';
-  const ownCount = data.plans.filter((p) => planKeys[p.id] && planKeys[p.id].source).length;
+  const metaOf = (id, n) => (planKeys[id] && planKeys[id][n - 1]) || { source: null, hint: '' };
+  const countOf = (id) => slots.filter((n) => metaOf(id, n).source).length;
+  const totalOwn = data.plans.reduce((a, p) => a + countOf(p.id), 0);
+  const typedOf = (id) => Object.fromEntries(slots.map((n) => [n, String(keys[id + ':' + n] || '').trim()]).filter(([, v]) => v));
 
   async function run(tag, body, okMsg) {
     setBusy(tag);
@@ -477,12 +484,12 @@ export function AiView() {
     await run('defclear', { action: 'clear_ai_key' }, 'Key bawaan dihapus.');
   }
   async function savePlan(p) {
-    const newKey = String(keys[p.id] || '').trim();
+    const typed = typedOf(p.id);
     const modelChanged = String(models[p.id] || '').trim() !== savedModel(p.id);
-    if (newKey) {
-      const ok = await run('save' + p.id, { action: 'save_ai_key', plan: p.id, key: newKey }, 'Key paket ' + p.name + ' disimpan.');
+    if (Object.keys(typed).length) {
+      const ok = await run('save' + p.id, { action: 'save_ai_key', plan: p.id, keys: typed }, 'Key paket ' + p.name + ' disimpan.');
       if (!ok) return;
-      setKeys((k) => ({ ...k, [p.id]: '' }));
+      setKeys((k) => { const n = { ...k }; slots.forEach((i) => { delete n[p.id + ':' + i]; }); return n; });
     }
     if (modelChanged) {
       const next = { ...Object.fromEntries(data.plans.map((q) => [q.id, savedModel(q.id)])), [p.id]: models[p.id] || '' };
@@ -490,37 +497,116 @@ export function AiView() {
     }
     setTests((t) => ({ ...t, [p.id]: undefined }));
   }
-  async function clearPlanKey(p) {
-    if (!window.confirm('Hapus key khusus paket ' + p.name + '? Paket ini akan kembali memakai key bawaan.')) return;
-    await run('clear' + p.id, { action: 'clear_ai_key', plan: p.id }, 'Key paket ' + p.name + ' dihapus. Sekarang ikut key bawaan.');
-    setTests((t) => ({ ...t, [p.id]: undefined }));
+  async function clearSlot(p, n) {
+    if (!window.confirm('Hapus key ' + n + ' paket ' + p.name + '?' + (countOf(p.id) === 1 ? ' Ini key terakhir, paket akan memakai key bawaan.' : ''))) return;
+    await run('clear' + p.id + n, { action: 'clear_ai_key', plan: p.id, slot: n }, 'Key ' + n + ' paket ' + p.name + ' dihapus.');
+    setTests((t) => ({ ...t, [p.id]: undefined, [p.id + ':' + n]: undefined }));
   }
-  async function test(id) {
-    setBusy('test' + id);
-    setTests((t) => ({ ...t, [id]: null }));
+  // slot kosong = tes paket (key dipakai bergantian seperti saat bot membalas); slot terisi = tes satu key saja.
+  async function test(id, slot) {
+    const tag = slot ? id + ':' + slot : id;
+    setBusy('test' + tag);
+    setTests((t) => ({ ...t, [tag]: null }));
     try {
-      const r = await post({ action: 'test_ai', plan: id });
-      const via = r.keySource === 'plan' ? 'key paket' : 'key bawaan';
-      setTests((t) => ({ ...t, [id]: r.ok ? { ok: true, text: 'Berfungsi · ' + r.model + ' · ' + via + ' · ' + r.ms + ' ms' } : { ok: false, text: r.error || 'Gagal.' } }));
+      const r = await post({ action: 'test_ai', plan: id, slot: slot || undefined });
+      const via = r.keySource === 'plan' ? (slot ? 'key ' + slot : 'key paket') : 'key bawaan';
+      setTests((t) => ({ ...t, [tag]: r.ok ? { ok: true, text: 'Berfungsi · ' + r.model + ' · ' + via + ' · ' + r.ms + ' ms' } : { ok: false, text: r.error || 'Gagal.' } }));
     } catch (e) {
-      setTests((t) => ({ ...t, [id]: { ok: false, text: e.message || 'Gagal.' } }));
+      setTests((t) => ({ ...t, [tag]: { ok: false, text: e.message || 'Gagal.' } }));
     }
     setBusy('');
   }
 
   return (
     <>
-      <p className="lead">Atur API key dan model Gemini untuk tiap paket. Setiap paket boleh punya key sendiri (maksimal 3); paket yang belum diisi otomatis memakai key bawaan. Semua perubahan langsung berlaku tanpa deploy ulang.</p>
+      <p className="lead">{'Atur API key dan model Gemini untuk tiap paket. Setiap paket boleh punya sampai ' + perPlan + ' key sendiri: bot memakainya bergantian supaya beban terbagi, dan kalau satu key kena limit atau error, otomatis pindah ke key berikutnya. Paket tanpa key sendiri memakai key bawaan. Perubahan langsung berlaku tanpa deploy ulang.'}</p>
 
       <div className="stats">
         <div className="stat"><span className="hint">Key bawaan</span><b>{def.source ? 'Aktif' : 'Kosong'}</b><small>{def.source ? '••••' + String(def.hint || '').slice(-4) + (def.source === 'env' ? ' · dari Vercel' : '') : 'Belum diisi'}</small></div>
-        <div className="stat"><span className="hint">Paket dengan key sendiri</span><b>{ownCount} / {data.plans.length}</b><small>{ownCount ? 'Sisanya ikut key bawaan' : 'Semua ikut key bawaan'}</small></div>
+        <div className="stat"><span className="hint">Key khusus paket</span><b>{totalOwn} / {data.plans.length * perPlan}</b><small>{totalOwn ? 'Paket tanpa key ikut key bawaan' : 'Semua paket ikut key bawaan'}</small></div>
         <div className="stat"><span className="hint">Model bawaan</span><b className="mono">{ai.defaultModel}</b><small>Untuk paket tanpa model sendiri</small></div>
       </div>
 
+      <h2 className="sect">Key dan model per paket</h2>
+      <datalist id="model-hints">{MODEL_HINTS.map((m) => <option key={m} value={m} />)}</datalist>
+      {data.plans.map((p) => {
+        const n = countOf(p.id);
+        const effective = n > 0 || !!def.source;
+        const typed = Object.keys(typedOf(p.id)).length;
+        const modelDirty = String(models[p.id] || '').trim() !== savedModel(p.id);
+        const dirty = typed > 0 || modelDirty;
+        const t = tests[p.id];
+        const me = (models[p.id] || '').trim();
+        return (
+          <section className="card plan" key={p.id}>
+            <div className="chead">
+              <div>
+                <h2>{'Paket ' + p.name}</h2>
+                <p className="hint">{'Model: ' + (me || ai.defaultModel) + (me ? '' : ' (bawaan)') + ' · Key: ' + (n ? n + ' key sendiri' : def.source ? 'ikut bawaan' : 'belum ada')}</p>
+              </div>
+              {n ? <span className="tag a">{n + ' / ' + perPlan + ' key'}</span>
+                : def.source ? <span className="tag">Ikut key bawaan</span>
+                : <span className="tag w">Belum ada key</span>}
+            </div>
+
+            <div className="keylist">
+              {slots.map((i) => {
+                const m = metaOf(p.id, i);
+                const has = !!m.source;
+                const st = tests[p.id + ':' + i];
+                return (
+                  <div className="keyslot" key={i}>
+                    <span className="flabel">{'Key ' + i}{has ? <span className="hint">{' · tersimpan ' + m.hint + (m.source === 'env' ? ' (dari Vercel)' : '')}</span> : null}</span>
+                    <div className="keyrow">
+                      <input type="password" autoComplete="off" spellCheck="false" aria-label={'API key ' + i + ' paket ' + p.name}
+                        value={keys[p.id + ':' + i] || ''}
+                        placeholder={has ? 'Kosongkan jika tidak diubah' : 'AIza... (boleh dikosongkan)'}
+                        onChange={(e) => setKeys((k) => ({ ...k, [p.id + ':' + i]: e.target.value }))} />
+                      {has ? (
+                        <>
+                          <button className="btn ghost sm" type="button" disabled={!!busy || dirty} onClick={() => test(p.id, i)} title={dirty ? 'Simpan perubahan dulu' : undefined}>
+                            <Busy on={busy === 'test' + p.id + ':' + i} label="Menguji...">Tes</Busy>
+                          </button>
+                          {m.source === 'web' ? (
+                            <button className="btn ghost sm" type="button" disabled={!!busy} onClick={() => clearSlot(p, i)}>
+                              <Busy on={busy === 'clear' + p.id + i} label="Menghapus...">Hapus</Busy>
+                            </button>
+                          ) : null}
+                        </>
+                      ) : null}
+                    </div>
+                    {st ? <span className={'test ' + (st.ok ? 'ok' : 'bad')} role={st.ok ? undefined : 'alert'}>{st.text}</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="fgrid one">
+              <label>
+                <span className="flabel">Model</span>
+                <input list="model-hints" autoComplete="off" spellCheck="false" maxLength={60} value={models[p.id] || ''}
+                  placeholder={ai.defaultModel} onChange={(e) => setModels((m) => ({ ...m, [p.id]: e.target.value }))} />
+              </label>
+            </div>
+
+            <div className="row">
+              <button className="btn sm" type="button" disabled={!!busy || !dirty} onClick={() => savePlan(p)}>
+                <Busy on={busy === 'save' + p.id} label="Menyimpan...">Simpan</Busy>
+              </button>
+              <button className="btn ghost sm" type="button" disabled={!!busy || dirty || !effective} onClick={() => test(p.id)}
+                title={dirty ? 'Simpan perubahan dulu' : !effective ? 'Isi key dulu' : undefined}>
+                <Busy on={busy === 'test' + p.id} label="Menguji...">Tes paket</Busy>
+              </button>
+              {t ? <span className={'test ' + (t.ok ? 'ok' : 'bad')} role={t.ok ? undefined : 'alert'}>{t.text}</span> : null}
+            </div>
+          </section>
+        );
+      })}
+
+      <h2 className="sect">Key bawaan</h2>
       <section className="card">
         <div className="chead">
-          <div><h2>Key bawaan</h2><p className="hint">Dipakai paket yang belum punya key sendiri. Buat key di <b>aistudio.google.com/apikey</b>.</p></div>
+          <div><h2>Key bawaan</h2><p className="hint">Cadangan untuk paket yang belum punya key sendiri. Buat key di <b>aistudio.google.com/apikey</b>.</p></div>
           {def.source ? <span className="tag a">{'Terhubung · ' + def.hint}</span> : <span className="tag w">Belum diisi</span>}
         </div>
         <div className="fgrid one">
@@ -542,60 +628,7 @@ export function AiView() {
         </div>
       </section>
 
-      <datalist id="model-hints">{MODEL_HINTS.map((m) => <option key={m} value={m} />)}</datalist>
-      <h2 className="sect">Key dan model per paket</h2>
-      {data.plans.map((p) => {
-        const own = planKeys[p.id] || { source: null, hint: '' };
-        const hasOwn = !!own.source;
-        const effective = hasOwn || !!def.source;
-        const typedKey = String(keys[p.id] || '').trim();
-        const modelDirty = String(models[p.id] || '').trim() !== savedModel(p.id);
-        const dirty = !!typedKey || modelDirty;
-        const t = tests[p.id];
-        const me = (models[p.id] || '').trim();
-        return (
-          <section className="card plan" key={p.id}>
-            <div className="chead">
-              <div>
-                <h2>{'Paket ' + p.name}</h2>
-                <p className="hint">{'Model: ' + (me || ai.defaultModel) + (me ? '' : ' (bawaan)') + ' · Key: ' + (hasOwn ? 'sendiri' : def.source ? 'ikut bawaan' : 'belum ada')}</p>
-              </div>
-              {hasOwn ? <span className="tag a">{'Key sendiri · ' + own.hint}</span>
-                : def.source ? <span className="tag">Ikut key bawaan</span>
-                : <span className="tag w">Belum ada key</span>}
-            </div>
-            <div className="fgrid">
-              <label>
-                <span className="flabel">API key paket{hasOwn ? <span className="hint">{' · tersimpan ' + own.hint + (own.source === 'env' ? ' (dari Vercel)' : '')}</span> : null}</span>
-                <input type="password" autoComplete="off" spellCheck="false" value={keys[p.id] || ''}
-                  placeholder={hasOwn ? 'Kosongkan jika tidak diubah' : 'Kosong = ikut key bawaan'}
-                  onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))} />
-              </label>
-              <label>
-                <span className="flabel">Model</span>
-                <input list="model-hints" autoComplete="off" spellCheck="false" maxLength={60} value={models[p.id] || ''}
-                  placeholder={ai.defaultModel} onChange={(e) => setModels((m) => ({ ...m, [p.id]: e.target.value }))} />
-              </label>
-            </div>
-            <div className="row">
-              <button className="btn sm" type="button" disabled={!!busy || !dirty} onClick={() => savePlan(p)}>
-                <Busy on={busy === 'save' + p.id} label="Menyimpan...">Simpan</Busy>
-              </button>
-              <button className="btn ghost sm" type="button" disabled={!!busy || dirty || !effective} onClick={() => test(p.id)}
-                title={dirty ? 'Simpan perubahan dulu' : !effective ? 'Isi key dulu' : undefined}>
-                <Busy on={busy === 'test' + p.id} label="Menguji...">Tes koneksi</Busy>
-              </button>
-              {own.source === 'web' ? (
-                <button className="btn ghost sm" type="button" disabled={!!busy} onClick={() => clearPlanKey(p)}>
-                  <Busy on={busy === 'clear' + p.id} label="Menghapus...">Hapus key paket</Busy>
-                </button>
-              ) : null}
-              {t ? <span className={'test ' + (t.ok ? 'ok' : 'bad')} role={t.ok ? undefined : 'alert'}>{t.text}</span> : null}
-            </div>
-          </section>
-        );
-      })}
-      <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan. Toko tanpa langganan aktif memakai paket Gratis. Nama model harus tersedia di akun Gemini-mu. “Tes koneksi” menguji pengaturan yang sudah tersimpan.</p>
+      <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan. Toko tanpa langganan aktif memakai paket Gratis. Nama model harus tersedia di akun Gemini-mu. Tombol “Tes” menguji pengaturan yang sudah tersimpan.</p>
     </>
   );
 }

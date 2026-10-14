@@ -261,3 +261,8 @@ a.nav-i{text-decoration:none}
   .chead{flex-direction:column;gap:8px}
 }
 .phead{margin-bottom:18px}.phead .ptitle{margin:0}.psub{margin:4px 0 0;font-size:14px;color:var(--mute)}
+.keylist{display:grid;gap:12px;margin-bottom:12px}
+.keyslot{display:grid;gap:4px;min-width:0}
+.keyrow{display:flex;gap:8px;align-items:center}
+.keyrow input{flex:1;min-width:0}
+.keyrow .btn{flex:none}

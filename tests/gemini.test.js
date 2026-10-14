@@ -64,6 +64,68 @@ test('tanpa key bawaan, paket yang punya key sendiri tetap jalan; yang lain gaga
   await assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /GEMINI_API_KEY/);
 });
 
+// fetch tiruan yang menolak key tertentu dengan kode HTTP tertentu.
+function rejectKeys(map) {
+  global.fetch = async (url, init) => {
+    const key = init.headers['x-goog-api-key'];
+    fetched.push({ url, key });
+    if (map[key]) return { ok: false, status: map[key].status, text: async () => map[key].body || '' };
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{"reply":"ok"}' }] } }] }) };
+  };
+}
+const okFetch = global.fetch;
+
+test('satu paket boleh punya 3 key; dipakai bergantian', async () => {
+  store = { GEMINI_API_KEY_STARTER: 'a1', GEMINI_API_KEY_STARTER_2: 'a2', GEMINI_API_KEY_STARTER_3: 'a3', GEMINI_API_KEY: 'bawaan' };
+  const r = await gemini.resolve('starter');
+  assert.deepStrictEqual(r.keys.map((k) => k.value), ['a1', 'a2', 'a3']);
+  assert.strictEqual(r.keySource, 'plan');
+  fetched = [];
+  for (let i = 0; i < 6; i++) await gemini.generate({ system: 's', contents: [], plan: 'starter' });
+  const used = fetched.map((f) => f.key);
+  ['a1', 'a2', 'a3'].forEach((k) => assert.strictEqual(used.filter((u) => u === k).length, 2));
+  assert.ok(!used.includes('bawaan'));
+});
+
+test('key paket lain tidak tercampur', async () => {
+  store = { GEMINI_API_KEY_FREE: 'f1', GEMINI_API_KEY_FREE_2: 'f2', GEMINI_API_KEY_BISNIS_3: 'b3' };
+  assert.deepStrictEqual((await gemini.resolve('free')).keys.map((k) => k.slot), [1, 2]);
+  assert.deepStrictEqual((await gemini.resolve('bisnis')).keys.map((k) => [k.slot, k.value]), [[3, 'b3']]);
+  assert.strictEqual(gemini.keyName('free', 1), 'GEMINI_API_KEY_FREE');
+  assert.strictEqual(gemini.keyName('free', 3), 'GEMINI_API_KEY_FREE_3');
+});
+
+test('key kena limit (429) atau ditolak: pindah ke key berikutnya, hasil tetap ada', async () => {
+  store = { GEMINI_API_KEY_FREE: 'f1', GEMINI_API_KEY_FREE_2: 'f2', GEMINI_API_KEY_FREE_3: 'f3' };
+  rejectKeys({ f1: { status: 429 }, f2: { status: 400, body: 'API key not valid' } });
+  for (let i = 0; i < 3; i++) {
+    fetched = [];
+    const out = await gemini.generate({ system: 's', contents: [], plan: 'free' });
+    assert.ok(out.includes('ok'));
+    assert.strictEqual(fetched[fetched.length - 1].key, 'f3');
+  }
+  global.fetch = okFetch;
+});
+
+test('semua key gagal: galat terakhir dilempar; galat model salah (404) tidak mencoba key lain', async () => {
+  store = { GEMINI_API_KEY_FREE: 'f1', GEMINI_API_KEY_FREE_2: 'f2' };
+  rejectKeys({ f1: { status: 429 }, f2: { status: 503 } });
+  await assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /Gemini (429|503)/);
+  rejectKeys({ f1: { status: 404, body: 'model not found' }, f2: { status: 404, body: 'model not found' } });
+  fetched = [];
+  await assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /Gemini 404/);
+  assert.strictEqual(fetched.length, 1);
+  global.fetch = okFetch;
+});
+
+test('slot: tes satu key saja', async () => {
+  store = { GEMINI_API_KEY_FREE: 'f1', GEMINI_API_KEY_FREE_2: 'f2' };
+  fetched = [];
+  await gemini.generate({ system: 's', contents: [], plan: 'free', slot: 2 });
+  assert.deepStrictEqual(fetched.map((f) => f.key), ['f2']);
+  await assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free', slot: 3 }), /GEMINI_API_KEY/);
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
