@@ -1,17 +1,22 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sk, SkItems } from '../components/Skeleton';
+import { Busy, readCount, saveCount } from './helpers';
 
 function FaqRow({ sb, f, fail, toast, onDeleted }) {
   const [q, setQ] = useState(f.question);
   const [a, setA] = useState(f.answer);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const saved = useRef(JSON.stringify([f.question, f.answer]));
 
   async function save() {
     const snap = JSON.stringify([q, a]);
     if (snap === saved.current) return;
     if (!q.trim() || !a.trim()) return toast('Pertanyaan dan jawaban tidak boleh kosong.');
+    setSaving(true);
     const { error } = await sb.from('faqs').update({ question: q.trim(), answer: a.trim() }).eq('id', f.id);
+    setSaving(false);
     if (error) { fail(error); return; }
     saved.current = snap;
     toast('Tersimpan.');
@@ -19,8 +24,9 @@ function FaqRow({ sb, f, fail, toast, onDeleted }) {
 
   async function remove() {
     if (!confirm('Hapus FAQ ini?')) return;
+    setRemoving(true);
     const { error } = await sb.from('faqs').delete().eq('id', f.id);
-    if (error) { fail(error); return; }
+    if (error) { setRemoving(false); fail(error); return; }
     toast('FAQ dihapus.');
     onDeleted();
   }
@@ -31,7 +37,12 @@ function FaqRow({ sb, f, fail, toast, onDeleted }) {
       <div style={{ marginTop: 8 }}>
         <textarea value={a} maxLength={1000} aria-label="Jawaban" onChange={(e) => setA(e.target.value)} onBlur={save} />
       </div>
-      <div className="row"><button className="btn danger sm" type="button" onClick={remove}>Hapus</button></div>
+      <div className="row">
+        <button className="btn danger sm" type="button" disabled={removing} onClick={remove}>
+          <Busy on={removing} label="Menghapus...">Hapus</Busy>
+        </button>
+        {saving ? <span className="hint" role="status"><span className="spin" aria-hidden="true" />Menyimpan...</span> : null}
+      </div>
     </div>
   );
 }
@@ -42,11 +53,14 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
   const [a, setA] = useState('');
   const [busy, setBusy] = useState(false);
   const answerRef = useRef(null);
+  // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
+  const [guess] = useState(() => readCount('faq:' + shop.id));
 
   const load = useCallback(async () => {
     const { data, error } = await sb.from('faqs').select('*').eq('shop_id', shop.id).order('created_at');
     if (error) { fail(error); return; }
     setItems(data);
+    saveCount('faq:' + shop.id, data.length);
   }, [sb, shop.id, fail]);
 
   useEffect(() => { load(); }, [load]);
@@ -79,13 +93,13 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
         <div style={{ marginTop: 8 }}>
           <textarea id="fa" ref={answerRef} maxLength={1000} placeholder="Jawaban" value={a} onChange={(e) => setA(e.target.value)} />
         </div>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}>Tambah FAQ</button></div>
+        <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}><Busy on={busy} label="Menambah...">Tambah FAQ</Busy></button></div>
       </div>
 
       {!items && (
         <div className="card">
           <Sk w={130} h={20} style={{ marginBottom: 14 }} />
-          <SkItems rows={3} variant="faq" />
+          <SkItems rows={guess === null ? 2 : Math.min(guess, 4)} variant="faq" />
         </div>
       )}
       {items && (

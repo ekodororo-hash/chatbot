@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Field, useOrigin } from './helpers';
+import { Busy, Field, useOrigin } from './helpers';
 
 export default function Onboarding({ sb, user, onCreated }) {
   const origin = useOrigin();
@@ -43,7 +43,7 @@ export default function Onboarding({ sb, user, onCreated }) {
         </Field>
         <p className="hint">Link chat tokomu: {origin}/chat/alamat-ini</p>
         <div className="err" role="alert">{err}</div>
-        <button className="btn" type="button" disabled={busy} style={{ width: '100%', marginTop: 12 }} onClick={create}>Buat toko</button>
+        <button className="btn" type="button" disabled={busy} style={{ width: '100%', marginTop: 12 }} onClick={create}><Busy on={busy} label="Membuat toko...">Buat toko</Busy></button>
       </div>
     </div>
   );

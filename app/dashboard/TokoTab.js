@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Field } from './helpers';
+import { Busy, Field } from './helpers';
 
 export default function TokoTab({ sb, shop, onShopChange, fail, toast }) {
   const [f, setF] = useState({
@@ -32,7 +32,7 @@ export default function TokoTab({ sb, shop, onShopChange, fail, toast }) {
       <Field id="t3" label="Alamat"><textarea id="t3" maxLength={500} value={f.address} onChange={set('address')} /></Field>
       <Field id="t4" label="Pengiriman (ekspedisi, estimasi, gratis ongkir)"><textarea id="t4" maxLength={1000} value={f.shipping} onChange={set('shipping')} /></Field>
       <Field id="t5" label="Pembayaran"><textarea id="t5" maxLength={500} value={f.payment} onChange={set('payment')} /></Field>
-      <div className="row"><button className="btn" type="button" disabled={busy} onClick={save}>Simpan</button></div>
+      <div className="row"><button className="btn" type="button" disabled={busy} onClick={save}><Busy on={busy} label="Menyimpan...">Simpan</Busy></button></div>
     </div>
   );
 }

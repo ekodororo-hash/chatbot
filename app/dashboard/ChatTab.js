@@ -1,17 +1,21 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { dayTime, hhmm } from './helpers';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Busy, dayTime, hhmm, readCount, saveCount } from './helpers';
 import { SkConvRows, SkMsgs } from '../components/Skeleton';
 
 const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
+const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at';
 
 function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
   const [convs, setConvs] = useState(null);
   const [prev, setPrev] = useState({});
+  // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
+  const [guess] = useState(() => readCount('conv:' + shop.id));
 
   const load = useCallback(async () => {
     const { data, error } = await sb.from('conversations')
-      .select('id,customer_name,status,flag,unanswered,last_question,updated_at')
+      .select(CONV_COLS)
       .eq('shop_id', shop.id).order('updated_at', { ascending: false }).limit(50);
     if (error) { fail(error); return; }
     const p = {};
@@ -22,6 +26,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
     }
     setPrev(p);
     setConvs(data);
+    saveCount('conv:' + shop.id, data.length);
     onHumanCount(data.filter((c) => c.status === 'human').length);
   }, [sb, shop.id, fail, onHumanCount]);
 
@@ -35,9 +40,9 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
     <div className="card">
       <h2>Percakapan terbaru</h2>
       <div>
-        {!convs && <SkConvRows rows={5} />}
+        {!convs && <SkConvRows rows={guess === null ? 4 : Math.min(guess, 6)} />}
         {convs && !convs.length && (
-          <p className="hint">Belum ada percakapan. Coba chat lewat tab Pasang untuk melihat hasilnya di sini.</p>
+          <p className="hint">Belum ada percakapan. Coba chat lewat halaman Pasang untuk melihat hasilnya di sini.</p>
         )}
         {(convs || []).map((c) => (
           <button key={c.id} className="li" type="button" onClick={() => onOpen(c)}>
@@ -59,6 +64,8 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [pending, setPending] = useState('');
   const lastId = useRef(0);
   const listRef = useRef(null);
 
@@ -89,7 +96,9 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   async function setStatus(s, silent) {
     const patch = { status: s };
     if (s !== 'human') patch.unanswered = false;
+    setPending(s);
     const { error } = await sb.from('conversations').update(patch).eq('id', c.id);
+    setPending('');
     if (error) { fail(error); return; }
     setC((p) => ({ ...p, status: s }));
     if (!silent) toast('Status diubah.');
@@ -99,12 +108,14 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   async function send(e) {
     e.preventDefault();
     const t = text.trim();
-    if (!t) return;
+    if (!t || sending) return;
     setText('');
+    setSending(true);
     const { error } = await sb.from('messages').insert({ conversation_id: c.id, shop_id: shop.id, role: 'admin', content: t });
-    if (error) { fail(error); setText(t); return; }
+    if (error) { setSending(false); fail(error); setText(t); return; }
     if (c.status !== 'human') await setStatus('human', true);
     await pull();
+    setSending(false);
   }
 
   return (
@@ -126,15 +137,19 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
           <div style={{ flex: 1, minWidth: 160 }}>
             <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
           </div>
-          <button className="btn" type="submit">Kirim</button>
+          <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
         </form>
         <div className="row">
           <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
           {c.status !== 'selesai' && (
-            <button className="btn ghost sm" type="button" onClick={() => setStatus('selesai')}>Tandai selesai</button>
+            <button className="btn ghost sm" type="button" disabled={!!pending} onClick={() => setStatus('selesai')}>
+              <Busy on={pending === 'selesai'} label="Menyimpan...">Tandai selesai</Busy>
+            </button>
           )}
           {c.status !== 'bot' && (
-            <button className="btn ghost sm" type="button" onClick={() => setStatus('bot')}>Kembalikan ke bot</button>
+            <button className="btn ghost sm" type="button" disabled={!!pending} onClick={() => setStatus('bot')}>
+              <Busy on={pending === 'bot'} label="Menyimpan...">Kembalikan ke bot</Busy>
+            </button>
           )}
           {c.unanswered && c.last_question && (
             <button className="btn ghost sm" type="button" onClick={() => onMakeFaq(c.last_question)}>Jadikan FAQ</button>
@@ -145,16 +160,44 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   );
 }
 
-export default function ChatTab({ sb, shop, openConv, setOpenConv, onHumanCount, refreshHumanCount, onMakeFaq, fail, toast }) {
-  if (openConv) {
+// Percakapan yang dibuka disimpan di alamat (?c=id), jadi reload tetap di percakapan yang sama.
+export default function ChatTab({ sb, shop, onHumanCount, refreshHumanCount, onMakeFaq, fail, toast }) {
+  const router = useRouter();
+  const id = useSearchParams().get('c');
+  const [conv, setConv] = useState(null);
+
+  useEffect(() => {
+    if (!id || (conv && conv.id === id)) return;
+    let alive = true;
+    (async () => {
+      const { data, error } = await sb.from('conversations').select(CONV_COLS)
+        .eq('id', id).eq('shop_id', shop.id).maybeSingle();
+      if (!alive) return;
+      if (error || !data) {
+        if (error) fail(error); else toast('Percakapan tidak ditemukan.');
+        router.replace('/dashboard');
+        return;
+      }
+      setConv(data);
+    })();
+    return () => { alive = false; };
+  }, [id, conv, sb, shop.id, fail, toast, router]);
+
+  if (id) {
+    if (!conv || conv.id !== id) {
+      return <div className="card"><SkMsgs /></div>;
+    }
     return (
       <ConvView
-        key={openConv.id}
-        sb={sb} shop={shop} conv={openConv}
-        onBack={() => setOpenConv(null)}
+        key={conv.id}
+        sb={sb} shop={shop} conv={conv}
+        onBack={() => router.push('/dashboard')}
         onMakeFaq={onMakeFaq} fail={fail} toast={toast} refreshHumanCount={refreshHumanCount}
       />
     );
   }
-  return <ConvList sb={sb} shop={shop} onOpen={setOpenConv} onHumanCount={onHumanCount} fail={fail} />;
+  return (
+    <ConvList sb={sb} shop={shop} onHumanCount={onHumanCount} fail={fail}
+      onOpen={(c) => { setConv(c); router.push('/dashboard?c=' + c.id); }} />
+  );
 }

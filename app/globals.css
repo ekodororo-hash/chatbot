@@ -183,3 +183,7 @@ iframe.preview{width:100%;height:520px;border:1px solid var(--line);border-radiu
   .sk,.spin,.demo .b{animation:none!important}
   .side,.scrim{transition:none!important}
 }
+
+a.nav-i{text-decoration:none}
+.hint .spin{width:11px;height:11px;margin-right:6px}
+.btn.sm .spin{width:12px;height:12px;margin-right:6px}

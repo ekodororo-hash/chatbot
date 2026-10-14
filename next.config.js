@@ -11,7 +11,7 @@ module.exports = {
       { source: '/widget.js', headers: [{ key: 'Cache-Control', value: 'public, max-age=300' }] },
       // Dashboard dan login tidak boleh dipasang di iframe situs lain.
       { source: '/login', headers: noFrame },
-      { source: '/dashboard', headers: noFrame }
+      { source: '/dashboard/:path*', headers: noFrame }
     ];
   }
 };

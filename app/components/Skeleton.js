@@ -15,6 +15,7 @@ function Status({ children }) {
 
 // Baris daftar percakapan (judul + cuplikan + label status).
 export function SkConvRows({ rows = 5 }) {
+  if (rows === 0) return <Status><Sk w="78%" h={14} /></Status>;
   return (
     <Status>
       {Array.from({ length: rows }, (_, i) => (
@@ -32,6 +33,7 @@ export function SkConvRows({ rows = 5 }) {
 
 // Kotak item produk (3 kolom + deskripsi) atau FAQ (pertanyaan + jawaban).
 export function SkItems({ rows = 3, variant = 'produk' }) {
+  if (rows === 0) return <Status><Sk w="78%" h={14} /></Status>;
   return (
     <Status>
       {Array.from({ length: rows }, (_, i) => (
@@ -86,5 +88,21 @@ export function SkNav({ rows = 6 }) {
       {Array.from({ length: rows }, (_, i) => <Sk key={i} h={38} r={10} />)}
       <span className="sr">Memuat...</span>
     </div>
+  );
+}
+
+// Formulir (Toko, Bot, Pasang) saat halaman pertama kali dimuat.
+export function SkForm({ fields = 4 }) {
+  return (
+    <Status>
+      <Sk w={120} h={20} style={{ marginBottom: 16 }} />
+      {Array.from({ length: fields }, (_, i) => (
+        <div key={i} style={{ marginBottom: 14 }}>
+          <Sk w={90} h={12} style={{ marginBottom: 6 }} />
+          <Sk h={42} r={10} />
+        </div>
+      ))}
+      <Sk w={96} h={40} r={10} />
+    </Status>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { rp, toInt } from './helpers';
+import { Busy, readCount, rp, saveCount, toInt } from './helpers';
 import { Sk, SkItems } from '../components/Skeleton';
 
 function ProductRow({ sb, pr, fail, toast, onDeleted }) {
@@ -9,6 +9,8 @@ function ProductRow({ sb, pr, fail, toast, onDeleted }) {
   const [stock, setStock] = useState(String(pr.stock));
   const [desc, setDesc] = useState(pr.description || '');
   const [shownPrice, setShownPrice] = useState(pr.price);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const saved = useRef(JSON.stringify([pr.name, String(pr.price), String(pr.stock), pr.description || '']));
 
   // Disimpan otomatis saat kolom ditinggalkan (blur), hanya kalau isinya berubah.
@@ -17,8 +19,10 @@ function ProductRow({ sb, pr, fail, toast, onDeleted }) {
     if (snap === saved.current) return;
     const pv = toInt(price), sv = toInt(stock);
     if (!name.trim() || !(pv >= 0) || !(sv >= 0)) { toast('Nama, harga, dan stok harus valid.'); return; }
+    setSaving(true);
     const { error } = await sb.from('products')
       .update({ name: name.trim(), price: pv, stock: sv, description: desc.trim() }).eq('id', pr.id);
+    setSaving(false);
     if (error) { fail(error); return; }
     saved.current = snap;
     setShownPrice(pv);
@@ -27,8 +31,9 @@ function ProductRow({ sb, pr, fail, toast, onDeleted }) {
 
   async function remove() {
     if (!confirm('Hapus produk "' + pr.name + '"?')) return;
+    setRemoving(true);
     const { error } = await sb.from('products').delete().eq('id', pr.id);
-    if (error) { fail(error); return; }
+    if (error) { setRemoving(false); fail(error); return; }
     toast('Produk dihapus.');
     onDeleted();
   }
@@ -44,8 +49,12 @@ function ProductRow({ sb, pr, fail, toast, onDeleted }) {
         <input value={desc} maxLength={300} placeholder="Deskripsi" aria-label="Deskripsi" onChange={(e) => setDesc(e.target.value)} onBlur={save} />
       </div>
       <div className="row">
-        <span className="hint">{rp(shownPrice)}</span>
-        <button className="btn danger sm" type="button" onClick={remove}>Hapus</button>
+        <span className="hint" role="status">
+          {saving ? <><span className="spin" aria-hidden="true" />Menyimpan...</> : rp(shownPrice)}
+        </span>
+        <button className="btn danger sm" type="button" disabled={removing} onClick={remove}>
+          <Busy on={removing} label="Menghapus...">Hapus</Busy>
+        </button>
       </div>
     </div>
   );
@@ -58,11 +67,14 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
   const [k, setK] = useState('');
   const [d, setD] = useState('');
   const [busy, setBusy] = useState(false);
+  // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
+  const [guess] = useState(() => readCount('produk:' + shop.id));
 
   const load = useCallback(async () => {
     const { data, error } = await sb.from('products').select('*').eq('shop_id', shop.id).order('created_at');
     if (error) { fail(error); return; }
     setItems(data);
+    saveCount('produk:' + shop.id, data.length);
   }, [sb, shop.id, fail]);
 
   useEffect(() => { load(); }, [load]);
@@ -96,13 +108,13 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
             <input id="pd" maxLength={300} placeholder="Deskripsi singkat (boleh kosong)" value={d} onChange={(e) => setD(e.target.value)} />
           </div>
         </div>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}>Tambah produk</button></div>
+        <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}><Busy on={busy} label="Menambah...">Tambah produk</Busy></button></div>
       </div>
 
       {!items && (
         <div className="card">
           <Sk w={150} h={20} style={{ marginBottom: 14 }} />
-          <SkItems rows={3} variant="produk" />
+          <SkItems rows={guess === null ? 2 : Math.min(guess, 4)} variant="produk" />
         </div>
       )}
       {items && (

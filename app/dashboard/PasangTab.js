@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import domains from '@/lib/domains';
-import { useOrigin } from './helpers';
+import { Busy, useOrigin } from './helpers';
 import { Sk } from '../components/Skeleton';
 
 export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
@@ -56,7 +56,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
         <p className="hint">Satu domain per baris. Browser hanya mau menampilkan chat di situs yang terdaftar, jadi orang lain tidak bisa menempelkan botmu di situs mereka. Subdomain ikut diizinkan. Kosong berarti widget tidak bisa dipasang di situs mana pun.</p>
         <textarea id="pd" rows={4} placeholder={'tokoayu.com\nwww.tokoayu.com'} value={dom} onChange={(e) => setDom(e.target.value)} />
         <div className="err" role="alert">{err}</div>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={saveDomains}>Simpan domain</button></div>
+        <div className="row"><button className="btn" type="button" disabled={busy} onClick={saveDomains}><Busy on={busy} label="Menyimpan...">Simpan domain</Busy></button></div>
       </div>
 
       <div className="card">
@@ -71,7 +71,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
 
       <div className="card">
         <h2>Coba bot</h2>
-        <p className="hint">Percakapan percobaan ikut muncul di tab Percakapan.</p>
+        <p className="hint">Percakapan percobaan ikut muncul di halaman Percakapan.</p>
         <div className="preview-box">
           <iframe className="preview" src={'/chat/' + shop.slug} title="Pratinjau chat" onLoad={() => setFrameReady(true)} />
           {!frameReady && <Sk h="100%" r={12} style={{ position: 'absolute', inset: 0 }} />}

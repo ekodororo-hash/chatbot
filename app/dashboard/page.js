@@ -1,9 +1,5 @@
-import Dashboard from './Dashboard';
-import { getPublicConfig } from '@/lib/publicConfig';
+import { ChatView } from './views';
 
-export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Dashboard', robots: { index: false, follow: false } };
+export const metadata = { title: 'Percakapan' };
 
-export default function DashboardPage() {
-  return <Dashboard {...getPublicConfig()} />;
-}
+export default function Page() { return <ChatView />; }

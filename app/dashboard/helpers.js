@@ -27,3 +27,25 @@ export function Field({ id, label, children }) {
     </>
   );
 }
+
+// Isi tombol: spinner + teks sementara saat proses berjalan. <Busy on={busy} label="Menyimpan...">Simpan</Busy>
+export function Busy({ on, label, children }) {
+  return (
+    <>
+      {on ? <span className="spin" aria-hidden="true" /> : null}
+      {on && label ? label : children}
+    </>
+  );
+}
+
+// Jumlah data terakhir yang dilihat, dipakai agar skeleton sepanjang isi aslinya.
+export function readCount(key) {
+  try {
+    const v = window.localStorage.getItem('cnt:' + key);
+    const n = v === null ? NaN : parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  } catch (e) { return null; }
+}
+export function saveCount(key, n) {
+  try { window.localStorage.setItem('cnt:' + key, String(n)); } catch (e) { /* abaikan */ }
+}

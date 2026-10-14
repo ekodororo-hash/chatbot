@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Field, startOfTodayWIB, toInt } from './helpers';
+import { Busy, Field, startOfTodayWIB, toInt } from './helpers';
 import { SkUsage } from '../components/Skeleton';
 
 export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
@@ -77,7 +77,7 @@ export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
         <Field id="b6" label="Warna widget dan halaman chat">
           <input id="b6" type="color" value={f.accent} onChange={set('accent')} />
         </Field>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={save}>Simpan</button></div>
+        <div className="row"><button className="btn" type="button" disabled={busy} onClick={save}><Busy on={busy} label="Menyimpan...">Simpan</Busy></button></div>
       </div>
     </>
   );

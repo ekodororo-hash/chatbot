@@ -26,7 +26,7 @@ Pelanggan tidak pernah menyentuh database. Semua lewat `app/api/chat/route.js` y
    Nama variabel tidak berubah dari versi lama dan tidak perlu awalan `NEXT_PUBLIC_`. URL dan kunci publik diteruskan ke browser lewat server component.
    `SUPABASE_ANON_KEY` boleh diisi Publishable key (`sb_publishable_...`), `SUPABASE_SERVICE_ROLE_KEY` boleh diisi Secret key (`sb_secret_...`).
 4. **Domain**: tambahkan domain, misalnya `chat.isengin.site`, di Vercel > Settings > Domains lalu arahkan DNS-nya.
-5. Buka `/login#daftar`, buat akun, buat toko, isi produk dan FAQ, lalu buka tab **Pasang**.
+5. Buka `/login#daftar`, buat akun, buat toko, isi produk dan FAQ, lalu buka halaman **Pasang**.
 
 Uji lokal: `npm install`, buat `.env.local` dari `.env.example`, lalu `npm run dev` (buka http://localhost:3000).
 Tes otomatis otak bot: `npm test` (tanpa jaringan).
@@ -36,7 +36,7 @@ Tes otomatis otak bot: `npm test` (tanpa jaringan).
 ```
 app/page.js                  beranda
 app/login/                   halaman masuk dan daftar
-app/dashboard/               dashboard pemilik toko (satu file per tab)
+app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShell.js, satu route per menu: /dashboard, /produk, /faq, /toko, /bot, /pasang)
 app/api/chat/route.js        POST pesan pelanggan, GET polling balasan admin
 app/chat/[slug]/route.js     menyajikan /chat/:slug + header CSP frame-ancestors per toko
 app/globals.css              gaya seluruh halaman
@@ -60,7 +60,7 @@ CSP bisa dibuat sangat ketat (`default-src 'none'`). Isinya hanya berubah lewat 
 - **RLS di semua tabel.** Pemilik toko hanya bisa membaca dan mengubah data tokonya. Pelanggan (anon) tidak punya akses langsung.
 - **Secret key / service role key hanya di `app/api`, `app/chat`, dan `lib/`.** Jangan pernah menaruhnya di `public/` atau memberinya awalan `NEXT_PUBLIC_`.
 - **Domain yang diizinkan** dipaksa lewat header CSP `frame-ancestors`: browser menolak menampilkan chat di situs lain. Ini mencegah orang menempelkan botmu di situs mereka lewat browser. Ini tidak menghentikan orang yang memanggil `/api/chat` langsung (curl), karena header bisa dipalsukan.
-- **Pengaman biaya yang sebenarnya:** batas 8 pesan per menit per percakapan, 60 per menit per toko, dan batas balasan bot per hari per toko (atur di tab Bot). Setelah batas tercapai, pesan masuk ke admin tanpa memanggil Gemini.
+- **Pengaman biaya yang sebenarnya:** batas 8 pesan per menit per percakapan, 60 per menit per toko, dan batas balasan bot per hari per toko (atur di halaman Bot). Setelah batas tercapai, pesan masuk ke admin tanpa memanggil Gemini.
 - **Prompt injection:** pesan pelanggan hanya masuk sebagai giliran user, dan prompt menyuruh bot menjawab hanya dari data toko. Ini mengurangi risiko, bukan menghilangkannya. Karena itu bot tidak diberi kemampuan mengubah harga, stok, atau pesanan; admin yang mengonfirmasi pesanan.
 - **Privasi:** pesan pelanggan disimpan di databasemu, dan halaman chat memberi tahu hal itu. Sebelum jualan ke klien, siapkan kebijakan privasi dan perjanjian pemrosesan data sederhana.
 - Library Supabase sekarang dipasang lewat npm (bukan CDN), jadi versinya terkunci di `package-lock.json`. Commit file itu setelah `npm install` pertama.
