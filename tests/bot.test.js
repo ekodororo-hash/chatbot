@@ -212,15 +212,25 @@ t('bot dimatikan: langsung ke admin', async () => {
   const r = await bot.handleMessage({ slug: s.slug, text: 'halo' });
   assert.strictEqual(r.status, 'human'); assert.strictEqual(geminiCalls.length, 0);
 });
-t('Gemini error atau keluaran rusak: pesan maaf dan diteruskan ke admin', async () => {
-  const s = seedShop(); geminiImpl = async () => { throw new Error('boom'); };
+t('Gemini error atau keluaran rusak: dicoba ulang, gangguan pertama tetap dipegang bot, berturut-turut baru ke admin', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = async () => { throw new Error('boom'); };
   const oldErr = console.error; console.error = () => {};
   const r1 = await bot.handleMessage({ slug: s.slug, text: 'halo' });
-  assert.strictEqual(r1.status, 'human'); assert.ok(/gangguan/.test(r1.messages[1].content));
+  assert.strictEqual(geminiCalls.length, 2, 'dicoba ulang sekali');
+  assert.notStrictEqual(r1.status, 'human'); assert.ok(/gangguan/.test(r1.messages[1].content));
+  const r1b = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'halo lagi' });
+  assert.strictEqual(r1b.status, 'human');
   const s2 = seedShop(); geminiImpl = async () => 'ini bukan json';
   const r2 = await bot.handleMessage({ slug: s2.slug, text: 'halo' });
+  const r2b = await bot.handleMessage({ slug: s2.slug, conversationId: r2.conversationId, token: r2.token, text: 'halo' });
   console.error = oldErr;
-  assert.strictEqual(r2.status, 'human');
+  assert.strictEqual(r2b.status, 'human');
+  // gagal sekali lalu berhasil pada percobaan ulang: pelanggan tidak merasakan gangguan
+  const s3 = seedShop(); let k = 0; geminiImpl = async () => (k++ === 0 ? (() => { throw new Error('429'); })() : JSON.stringify({ reply: 'Ada kak', handoff: false, order: false }));
+  console.error = () => {};
+  const r3 = await bot.handleMessage({ slug: s3.slug, text: 'ada mie?' });
+  console.error = oldErr;
+  assert.strictEqual(r3.messages[1].content, 'Ada kak'); assert.notStrictEqual(r3.status, 'human');
 });
 t('prompt injection: pesan pelanggan hanya masuk sebagai giliran user, bukan system', async () => {
   const s = seedShop(); geminiCalls = []; geminiImpl = reply('Maaf, saya hanya bisa bantu soal toko.');
