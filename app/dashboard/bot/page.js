@@ -43,45 +43,88 @@ export default function BotPage() {
 
   return (
     <>
-      <div className="card">
-        <h2>Pemakaian hari ini</h2>
+      <section className="card" aria-labelledby="bu">
+        <div className="chead">
+          <div>
+            <h2 id="bu">Pemakaian hari ini</h2>
+            <p className="hint">Setelah batas tercapai, pesan baru diteruskan ke admin. Ini menjaga biaya AI tetap terkendali.</p>
+          </div>
+          <span className={'tag' + (f.bot_on ? ' a' : '')}>{f.bot_on ? 'Bot aktif' : 'Bot mati'}</span>
+        </div>
         {used === null ? <SkUsage /> : (
           <>
-            <div className="hint">{'Balasan bot: ' + used + ' dari batas ' + shop.daily_limit}</div>
-            <div className={'bar' + (pct > 80 ? ' hot' : '')}><i style={{ width: pct + '%' }} /></div>
+            <div className="usage">
+              <b>{used}</b>
+              <span>{'dari ' + shop.daily_limit + ' balasan'}</span>
+              <small>{pct + '%'}</small>
+            </div>
+            <div className={'bar' + (pct > 80 ? ' hot' : '')} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Pemakaian balasan bot hari ini"><i style={{ width: pct + '%' }} /></div>
           </>
         )}
-        <p className="hint">Setelah batas tercapai, pesan baru diteruskan ke admin. Ini menjaga biaya AI tetap terkendali.</p>
-      </div>
+      </section>
 
-      <div className="card">
-        <h2>Perilaku bot</h2>
-        <label htmlFor="b0" style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink)', fontSize: 15, margin: 0 }}>
+      <section className="card" aria-labelledby="bp">
+        <div className="chead">
+          <div>
+            <h2 id="bp">Perilaku bot</h2>
+            <p className="hint">Atur nama, gaya bahasa, dan kalimat yang dipakai bot saat membalas pelanggan.</p>
+          </div>
+        </div>
+
+        <label htmlFor="b0" className="swrow">
+          <span className="swrow-t">
+            <b>Bot aktif</b>
+            <small>Kalau mati, semua pesan langsung ke admin.</small>
+          </span>
           <input id="b0" type="checkbox" checked={f.bot_on} onChange={(e) => setF((p) => ({ ...p, bot_on: e.target.checked }))} />
-          Bot aktif (kalau mati, semua pesan langsung ke admin)
         </label>
-        <Field id="b1" label="Nama asisten"><input id="b1" maxLength={60} value={f.bot_name} onChange={set('bot_name')} /></Field>
-        <Field id="b2" label="Gaya bahasa">
-          <select id="b2" value={f.tone} onChange={set('tone')}>
-            <option value="ramah">Ramah (kak, boleh emoji)</option>
-            <option value="santai">Santai (kak)</option>
-            <option value="formal">Formal (Bapak/Ibu)</option>
-          </select>
-        </Field>
-        <Field id="b3" label="Sapaan pembuka (tulis {k} untuk panggilan otomatis)">
-          <textarea id="b3" maxLength={300} value={f.greeting} onChange={set('greeting')} />
-        </Field>
-        <Field id="b4" label="Kalimat saat bot tidak tahu">
-          <textarea id="b4" maxLength={300} value={f.fallback} onChange={set('fallback')} />
-        </Field>
-        <Field id="b5" label="Batas balasan otomatis per hari">
-          <input id="b5" type="number" inputMode="numeric" min="1" max="5000" value={f.daily_limit} onChange={set('daily_limit')} />
-        </Field>
-        <Field id="b6" label="Warna widget dan halaman chat">
-          <input id="b6" type="color" value={f.accent} onChange={set('accent')} />
-        </Field>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={save}><Busy on={busy} label="Menyimpan...">Simpan</Busy></button></div>
-      </div>
+
+        <h3 className="fsec">Identitas</h3>
+        <div className="fgrid">
+          <div>
+            <label htmlFor="b1">Nama asisten</label>
+            <input id="b1" maxLength={60} value={f.bot_name} onChange={set('bot_name')} />
+          </div>
+          <div>
+            <label htmlFor="b2">Gaya bahasa</label>
+            <select id="b2" value={f.tone} onChange={set('tone')}>
+              <option value="ramah">Ramah (kak, boleh emoji)</option>
+              <option value="santai">Santai (kak)</option>
+              <option value="formal">Formal (Bapak/Ibu)</option>
+            </select>
+          </div>
+        </div>
+
+        <h3 className="fsec">Pesan otomatis</h3>
+        <div className="fgrid one">
+          <div>
+            <label htmlFor="b3">Sapaan pembuka</label>
+            <textarea id="b3" maxLength={300} value={f.greeting} onChange={set('greeting')} />
+            <p className="hint field-hint">{'Tulis {k} untuk panggilan otomatis.'}</p>
+          </div>
+          <div>
+            <label htmlFor="b4">Kalimat saat bot tidak tahu</label>
+            <textarea id="b4" maxLength={300} value={f.fallback} onChange={set('fallback')} />
+          </div>
+        </div>
+
+        <h3 className="fsec">Batas dan tampilan</h3>
+        <div className="fgrid">
+          <div>
+            <label htmlFor="b5">Batas balasan otomatis per hari</label>
+            <input id="b5" type="number" inputMode="numeric" min="1" max="5000" value={f.daily_limit} onChange={set('daily_limit')} />
+          </div>
+          <div>
+            <label htmlFor="b6">Warna widget dan halaman chat</label>
+            <div className="colorrow">
+              <input id="b6" type="color" value={f.accent} onChange={set('accent')} />
+              <code className="code">{f.accent}</code>
+            </div>
+          </div>
+        </div>
+
+        <div className="row bot-save"><button className="btn" type="button" disabled={busy} onClick={save}><Busy on={busy} label="Menyimpan...">Simpan</Busy></button></div>
+      </section>
     </>
   );
 }

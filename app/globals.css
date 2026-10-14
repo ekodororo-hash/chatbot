@@ -394,3 +394,27 @@ a.nav-i{text-decoration:none}
   .linkbox-url{white-space:normal;word-break:break-all}
   .linkbox-act .btn{flex:1}
 }
+
+/* ===== Bot: tampilan rapi ===== */
+.usage{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.usage b{font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+.usage span{color:var(--mute);font-size:14px}
+.usage small{margin-left:auto;color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums}
+.swrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font-size:15px;cursor:pointer}
+.swrow-t{display:grid;gap:1px;min-width:0}
+.swrow-t b{font-weight:500}
+.swrow-t small{color:var(--mute);font-size:13px}
+.swrow input[type=checkbox]{flex:none;width:20px;height:20px;accent-color:var(--accent)}
+.fsec{margin:20px 0 10px;padding-top:16px;border-top:1px solid var(--line);font-size:15px}
+.fgrid>div{min-width:0}
+.fgrid>div>label{margin-top:0;margin-bottom:5px;font-size:13px;color:var(--mute)}
+.field-hint{margin:6px 0 0}
+.colorrow{display:flex;align-items:center;gap:10px}
+.bot-save{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+
+/* ===== Toko: tampilan rapi ===== */
+.tfield{margin-top:12px}
+.card.dz{border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.card.dz h2{color:var(--danger)}
+.card.dz .chead{border-bottom:0;padding-bottom:0;margin-bottom:12px}
+.card.dz .row{margin-top:0}
