@@ -445,3 +445,110 @@ export function PengaturanView() {
     </>
   );
 }
+
+// Contoh nama model untuk saran saat mengetik. Admin boleh mengisi nama model apa pun yang tersedia di akun Gemini-nya.
+const MODEL_HINTS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+
+export function AiView() {
+  const { data, act, post } = useAdmin();
+  const ai = data.ai;
+  const [key, setKey] = useState('');
+  const [models, setModels] = useState(() => Object.fromEntries(data.plans.map((p) => [p.id, ai.models[p.id] || ''])));
+  const [busy, setBusy] = useState('');
+  const [tests, setTests] = useState({});
+
+  const saved = (id) => ai.models[id] || '';
+  const dirty = data.plans.some((p) => String(models[p.id] || '').trim() !== saved(p.id));
+  const cur = ai.key;
+
+  async function saveKey() {
+    setBusy('key');
+    const ok = await act({ action: 'save_ai_key', key }, 'API key Gemini disimpan.');
+    setBusy('');
+    if (ok) setKey('');
+  }
+  async function clearKey() {
+    if (!window.confirm('Hapus API key dari halaman ini? Bot akan memakai GEMINI_API_KEY di Vercel kalau ada.')) return;
+    setBusy('clear');
+    await act({ action: 'clear_ai_key' }, 'Isian API key dihapus.');
+    setBusy('');
+  }
+  async function saveModels() {
+    setBusy('models');
+    const ok = await act({ action: 'save_ai_models', models }, 'Model disimpan. Langsung berlaku untuk semua toko.');
+    setBusy('');
+    if (ok) setTests({});
+  }
+  async function test(id) {
+    setBusy('test' + id);
+    setTests((t) => ({ ...t, [id]: null }));
+    try {
+      const r = await post({ action: 'test_ai', plan: id });
+      setTests((t) => ({ ...t, [id]: r.ok ? { ok: true, text: 'Berfungsi · ' + r.model + ' · ' + r.ms + ' ms' } : { ok: false, text: r.error || 'Gagal.' } }));
+    } catch (e) {
+      setTests((t) => ({ ...t, [id]: { ok: false, text: e.message || 'Gagal.' } }));
+    }
+    setBusy('');
+  }
+
+  return (
+    <>
+      <div className="card">
+        <div className="li" style={{ border: 0, padding: 0 }}>
+          <div className="t"><b>API key Gemini</b><small>Dipakai bot semua toko</small></div>
+          {cur.source ? <span className="tag a">{'Terhubung · ' + cur.hint}</span> : <span className="tag w">Belum diisi</span>}
+        </div>
+        <p className="hint">Buat key di <b>aistudio.google.com/apikey</b>, lalu tempel di bawah. Tanpa deploy ulang. Kalau key juga diisi di Vercel (GEMINI_API_KEY), isian dari halaman ini yang dipakai.</p>
+        <label style={{ display: 'grid', gap: 4, fontSize: 14, marginTop: 8 }}>
+          <span>API key{cur.source ? <span className="hint">{' · tersimpan ' + cur.hint + (cur.source === 'env' ? ' (dari Vercel)' : '')}</span> : null}</span>
+          <input type="password" autoComplete="off" spellCheck="false" value={key}
+            placeholder={cur.source ? 'Kosongkan jika tidak diubah' : 'AIza...'} onChange={(e) => setKey(e.target.value)} />
+        </label>
+        <div className="row">
+          <button className="btn sm" type="button" disabled={!!busy || !key.trim()} onClick={saveKey}>
+            <Busy on={busy === 'key'} label="Menyimpan...">Simpan key</Busy>
+          </button>
+          {cur.source === 'web' ? (
+            <button className="btn ghost sm" type="button" disabled={!!busy} onClick={clearKey}>
+              <Busy on={busy === 'clear'} label="Menghapus...">Hapus isian</Busy>
+            </button>
+          ) : null}
+        </div>
+        <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan.</p>
+      </div>
+
+      <div className="card">
+        <h2>Model AI per paket</h2>
+        <p className="hint">{'Pilih model yang dipakai bot untuk toko di tiap paket. Kosongkan untuk memakai model bawaan (' + ai.defaultModel + '). Perubahan langsung berlaku untuk semua toko. Nama model harus ada di akun Gemini-mu; cek daftar model di dokumentasi Google sebelum mengisi.'}</p>
+        <datalist id="model-hints">{MODEL_HINTS.map((m) => <option key={m} value={m} />)}</datalist>
+        {data.plans.map((p) => {
+          const t = tests[p.id];
+          return (
+            <div key={p.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
+              <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+                <span><b>{p.name}</b><span className="hint">{' · ' + (models[p.id] ? '' : 'bawaan: ') + (String(models[p.id] || '').trim() || ai.defaultModel)}</span></span>
+                <input list="model-hints" autoComplete="off" spellCheck="false" maxLength={60} value={models[p.id] || ''}
+                  placeholder={ai.defaultModel} onChange={(e) => setModels((m) => ({ ...m, [p.id]: e.target.value }))} />
+              </label>
+              <div className="row">
+                <button className="btn ghost sm" type="button" disabled={!!busy || dirty || !(cur.source)} onClick={() => test(p.id)}
+                  title={dirty ? 'Simpan perubahan dulu' : undefined}>
+                  <Busy on={busy === 'test' + p.id} label="Menguji...">Tes model</Busy>
+                </button>
+                {t ? <span className={t.ok ? 'hint' : 'err'} role={t.ok ? undefined : 'alert'}>{t.text}</span> : null}
+              </div>
+            </div>
+          );
+        })}
+        <div className="row">
+          <button className="btn sm" type="button" disabled={!!busy || !dirty} onClick={saveModels}>
+            <Busy on={busy === 'models'} label="Menyimpan...">Simpan model</Busy>
+          </button>
+          <button className="btn ghost sm" type="button" disabled={!!busy}
+            onClick={() => setModels(Object.fromEntries(data.plans.map((p) => [p.id, ''])))}>Pakai bawaan semua</button>
+        </div>
+        <p className="hint">Paket tiap toko mengikuti langganannya: toko tanpa langganan aktif memakai model paket Gratis. Tombol “Tes model” menguji model yang sudah tersimpan.</p>
+      </div>
+    </>
+  );
+}

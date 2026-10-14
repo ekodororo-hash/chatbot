@@ -44,7 +44,7 @@ app/api/doku/route.js        webhook notifikasi pembayaran DOKU
 app/chat/[slug]/route.js     menyajikan /chat/:slug + header CSP frame-ancestors per toko
 app/globals.css              gaya seluruh halaman
 lib/bot.js                   alur percakapan, batas laju, batas harian, prompt, handoff
-lib/gemini.js                pemanggil Gemini (model dari env GEMINI_MODEL)
+lib/gemini.js                pemanggil Gemini (key dan model per paket dari /admin/ai; cadangan env GEMINI_API_KEY / GEMINI_MODEL)
 lib/plans.js                 paket, harga, kuota, diskon, perhitungan masa berlaku (bisa diubah dari /admin/paket)
 lib/billing.js               Midtrans Snap dan DOKU Checkout, verifikasi webhook, perpanjangan paket
 lib/notify.js                notifikasi admin (Telegram) dan perintah /admin KODE
@@ -161,4 +161,4 @@ Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), fakt
 
 ## Catatan Gemini
 
-Model dibaca dari `GEMINI_MODEL` (default `gemini-3.5-flash-lite`). Nama model dan parameter yang didukung bisa berubah, jadi cek dokumentasi Google sebelum meluncur. Untuk model Gemini 3.x, `lib/gemini.js` sengaja tidak mengirim `temperature`, `top_p`, atau `top_k`.
+Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemini (tersimpan terenkripsi, tanpa deploy ulang). Paket yang modelnya dikosongkan memakai `GEMINI_MODEL` (default `gemini-3.5-flash-lite`); toko tanpa langganan aktif memakai model paket Gratis. Nama model dan parameter yang didukung bisa berubah, jadi cek dokumentasi Google sebelum meluncur. Untuk model Gemini 3.x, `lib/gemini.js` sengaja tidak mengirim `temperature`, `top_p`, atau `top_k`.

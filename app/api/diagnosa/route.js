@@ -1,6 +1,7 @@
 import bot from '@/lib/bot';
 import supabase from '@/lib/supabase';
 import gemini from '@/lib/gemini';
+import billing from '@/lib/billing';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -59,22 +60,26 @@ export async function POST(request) {
   } catch (e) { add('data', 'Data toko', false, 'Gagal membaca: ' + e.message); }
 
   const AI_LABEL = 'Layanan AI';
-  if (!process.env.GEMINI_API_KEY) {
+  let planId = 'free';
+  try { planId = (await billing.currentPlan(sb, shop.id)).id; } catch (e) { /* tabel paket bermasalah: pakai model paket gratis */ }
+  const ai = await gemini.resolve(planId);
+  if (!ai.key) {
     add('ai', AI_LABEL, false, 'Layanan AI belum terhubung. Hubungi penyedia layananmu.',
-      'GEMINI_API_KEY belum diisi di server. Isi di Vercel > Settings > Environment Variables (atau .env.local), lalu deploy ulang / restart.');
+      'API key Gemini belum diisi. Isi di Admin > AI (atau GEMINI_API_KEY di Vercel > Settings > Environment Variables).');
   } else {
     try {
       const raw = await gemini.generate({
         system: 'Balas HANYA dengan JSON: {"reply":"ok"}',
-        contents: [{ role: 'user', parts: [{ text: 'tes' }] }]
+        contents: [{ role: 'user', parts: [{ text: 'tes' }] }],
+        plan: planId
       });
       const parsed = bot._internal.parseModelOutput(raw);
       add('ai', AI_LABEL, !!parsed,
         parsed ? 'Terhubung dan berfungsi.' : 'Layanan AI membalas dengan format yang tidak terbaca. Coba lagi nanti atau hubungi penyedia layananmu.',
-        'Model ' + gemini.MODEL + (parsed ? ': OK.' : '. Jawaban mentah: ' + String(raw).slice(0, 120)));
+        'Model ' + ai.model + ' (paket ' + planId + ')' + (parsed ? ': OK.' : '. Jawaban mentah: ' + String(raw).slice(0, 120)));
     } catch (e) {
       add('ai', AI_LABEL, false, 'Layanan AI sedang bermasalah. Coba lagi nanti atau hubungi penyedia layananmu.',
-        'Model ' + gemini.MODEL + ': ' + String((e && e.message) || e).slice(0, 300));
+        'Model ' + ai.model + ': ' + String((e && e.message) || e).slice(0, 300));
     }
   }
 

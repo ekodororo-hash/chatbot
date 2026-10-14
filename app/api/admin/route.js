@@ -2,6 +2,7 @@ import admin from '@/lib/admin';
 import plans from '@/lib/plans';
 import shops from '@/lib/shops';
 import settings from '@/lib/settings';
+import gemini from '@/lib/gemini';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -71,6 +72,9 @@ export async function GET(request) {
       count(sb.from('messages').select('id', { count: 'exact', head: true }).eq('role', 'bot').gte('created_at', monthStart))
     ]);
 
+    const allSettings = await settings.getAll();
+    const meta = await settings.describe();
+
     return json({
       totals: {
         shops: totalShops, conversations: totalConvs, botRepliesMonth: botToday,
@@ -83,7 +87,13 @@ export async function GET(request) {
       plans: Object.values(plans.PLANS).map((p) => ({ id: p.id, name: p.name })),
       planConfig: planConfig(),
       // Hanya status dan 4 karakter terakhir; isi key tidak pernah dikirim ke browser.
-      gateways: gateways(await settings.describe())
+      gateways: gateways(meta),
+      // Key Gemini: hanya status dan 4 karakter terakhir. Model per paket (kosong = bawaan).
+      ai: {
+        key: meta.GEMINI_API_KEY || { source: null, hint: '' },
+        models: gemini.parseModels(allSettings.AI_CONFIG),
+        defaultModel: gemini.DEFAULT_MODEL
+      }
     });
   } catch (e) { return fail(e); }
 }
@@ -122,6 +132,39 @@ export async function POST(request) {
       if (b.action === 'reset_plans') await settings.save({ PLANS_CONFIG: '' });
       else await settings.save({ PLANS_CONFIG: JSON.stringify(plans.sanitize({ plans: b.plans, terms: b.terms })) });
       return json({ ok: true });
+    }
+
+    // AI: key Gemini dan model per paket. Berlaku untuk semua toko.
+    if (b.action === 'save_ai_key' || b.action === 'clear_ai_key') {
+      if (b.action === 'clear_ai_key') await settings.save({ GEMINI_API_KEY: '' });
+      else {
+        const v = String(b.key || '').trim();
+        if (!v) return json({ error: 'Isi API key Gemini dulu.' }, 400);
+        if (v.length > 500 || /\s/.test(v)) return json({ error: 'API key tidak valid.' }, 400);
+        await settings.save({ GEMINI_API_KEY: v });
+      }
+      return json({ ok: true });
+    }
+    if (b.action === 'save_ai_models') {
+      const clean = gemini.sanitizeModels(b.models);
+      await settings.save({ AI_CONFIG: Object.keys(clean).length ? JSON.stringify({ models: clean }) : '' });
+      return json({ ok: true });
+    }
+    if (b.action === 'test_ai') {
+      const planId = String(b.plan || '');
+      if (!Object.prototype.hasOwnProperty.call(plans.PLANS, planId)) return json({ error: 'Paket tidak dikenal.' }, 400);
+      const { model } = await gemini.resolve(planId);
+      const t0 = Date.now();
+      try {
+        await gemini.generate({
+          system: 'Balas HANYA dengan JSON: {"reply":"ok"}',
+          contents: [{ role: 'user', parts: [{ text: 'tes' }] }],
+          plan: planId
+        });
+        return json({ ok: true, model, ms: Date.now() - t0 });
+      } catch (e) {
+        return json({ ok: false, model, error: String((e && e.message) || e).slice(0, 300) });
+      }
     }
 
     // Pengaturan pembayaran: tidak terkait satu toko.
