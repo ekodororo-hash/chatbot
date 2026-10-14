@@ -58,61 +58,79 @@ export default function LanggananTab({ sb, shop, fail, toast }) {
 
   return (
     <>
-      <div className="card">
-        <h2>Paket saat ini: {cur.name}</h2>
+      <div className="card plan-now">
+        <div className="pn-h">
+          <div>
+            <span className="hint">Paket saat ini</span>
+            <h2>{cur.name}</h2>
+          </div>
+          <span className="tag a">Aktif</span>
+        </div>
         <div className="hint">
           {st.expiresAt ? 'Aktif sampai ' + tgl(st.expiresAt) : 'Paket gratis tidak punya masa berlaku.'}
         </div>
-        <div className="hint" style={{ marginTop: 10 }}>{'Balasan bot bulan ini: ' + st.used.toLocaleString('id-ID') + ' dari ' + st.quota.toLocaleString('id-ID')}</div>
+        <div className="use">
+          <span>Balasan bot bulan ini</span>
+          <b>{st.used.toLocaleString('id-ID') + ' / ' + st.quota.toLocaleString('id-ID')}</b>
+        </div>
         <div className={'bar' + (pct > 80 ? ' hot' : '')}><i style={{ width: pct + '%' }} /></div>
         <p className="hint">Kuota dihitung per bulan kalender (WIB) untuk toko ini. Setelah habis, pesan baru diteruskan ke admin sampai bulan berikutnya atau sampai paket dinaikkan.</p>
       </div>
 
-      <div className="card">
-        <h2>Beli atau perpanjang</h2>
-        {!st.ready ? <p className="hint">Pembayaran online belum diaktifkan oleh pengelola layanan. Hubungi pengelola untuk aktivasi paket.</p> : null}
-        {prov && prov.sandbox ? <p className="hint"><b>Mode uji coba ({prov.name}):</b> pembayaran di sini tidak memakai uang sungguhan.</p> : null}
-        {st.providers.length > 1 ? (
-          <>
-            <label htmlFor="lp">Bayar lewat</label>
-            <select id="lp" value={prov.id} onChange={(e) => setProvider(e.target.value)}>
-              {st.providers.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select>
-          </>
-        ) : null}
-        <label htmlFor="lm">Lama langganan</label>
-        <select id="lm" value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-          {st.terms.map((x) => <option key={x.months} value={x.months}>{x.months + ' bulan' + (x.discount ? ' (hemat ' + x.discount + '%)' : '')}</option>)}
-        </select>
+      <h2 className="sect-t">Beli atau perpanjang</h2>
+      {!st.ready ? <p className="hint">Pembayaran online belum diaktifkan oleh pengelola layanan. Hubungi pengelola untuk aktivasi paket.</p> : null}
+      {prov && prov.sandbox ? <p className="hint"><b>Mode uji coba ({prov.name}):</b> pembayaran di sini tidak memakai uang sungguhan.</p> : null}
+
+      <div className="terms" role="group" aria-label="Lama langganan">
+        {st.terms.map((x) => (
+          <button key={x.months} type="button" aria-pressed={months === x.months} onClick={() => setMonths(x.months)}>
+            <b>{x.months + ' bulan'}</b>
+            <small>{x.discount ? 'Hemat ' + x.discount + '%' : 'Harga normal'}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="plans">
         {paid.map((p) => {
           const lower = rank[st.plan] > rank[p.id];
+          const mine = st.plan === p.id;
+          const was = term.listPrices[p.id] > term.prices[p.id];
           return (
-            <div key={p.id} className="li" style={{ alignItems: 'center' }}>
-              <div className="t">
-                <b>{p.name}{st.plan === p.id ? ' (paket kamu)' : ''}{p.promo ? <span className="tag a" style={{ marginLeft: 8 }}>{'Diskon ' + p.promo + '%'}</span> : null}</b>
-                <small>
-                  {p.quota.toLocaleString('id-ID') + ' balasan per bulan. '}
-                  {term.listPrices[p.id] > term.prices[p.id] ? <s style={{ opacity: 0.6 }}>{rp(term.listPrices[p.id])}</s> : null}
-                  {term.listPrices[p.id] > term.prices[p.id] ? ' ' : ''}
-                  {rp(term.prices[p.id]) + ' untuk ' + months + ' bulan'}
-                </small>
+            <div key={p.id} className={'pcard' + (mine ? ' cur' : '')}>
+              <div className="ph">
+                <b>{p.name}</b>
+                {mine ? <span className="tag">Paket kamu</span> : null}
+                {p.promo ? <span className="tag a">{'Diskon ' + p.promo + '%'}</span> : null}
               </div>
-              <button className="btn sm" type="button" disabled={!st.ready || lower || !!busy} onClick={() => buy(p.id)}>
-                <Busy on={busy === p.id} label="Membuka pembayaran...">{st.plan === p.id ? 'Perpanjang' : lower ? 'Paket lebih rendah' : 'Pilih'}</Busy>
+              <div className="price">{rp(term.prices[p.id])}<small>{' / ' + months + ' bulan'}</small></div>
+              {was ? <div className="was"><s>{rp(term.listPrices[p.id])}</s></div> : null}
+              <p className="hint">{p.quota.toLocaleString('id-ID') + ' balasan bot per bulan'}</p>
+              <button className={'btn' + (mine || lower ? ' ghost' : '')} type="button" disabled={!st.ready || lower || !!busy} onClick={() => buy(p.id)}>
+                <Busy on={busy === p.id} label="Membuka pembayaran...">{mine ? 'Perpanjang' : lower ? 'Paket lebih rendah' : 'Pilih ' + p.name}</Busy>
               </button>
             </div>
           );
         })}
-        <p className="hint">Pembayaran lewat Midtrans atau DOKU (QRIS, transfer bank, e-wallet, kartu; metode yang tampil mengikuti pengaturan akun penyedia). Memperpanjang paket yang sama menyambung dari tanggal berakhir. Pindah ke paket lain dihitung mulai hari pembayaran.</p>
       </div>
+
+      {st.providers.length > 1 ? (
+        <div className="card">
+          <label htmlFor="lp">Bayar lewat</label>
+          <select id="lp" value={prov.id} onChange={(e) => setProvider(e.target.value)}>
+            {st.providers.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+        </div>
+      ) : null}
+      <p className="hint note-pay">Pembayaran lewat Midtrans atau DOKU (QRIS, transfer bank, e-wallet, kartu; metode yang tampil mengikuti pengaturan akun penyedia). Memperpanjang paket yang sama menyambung dari tanggal berakhir. Pindah ke paket lain dihitung mulai hari pembayaran.</p>
 
       <div className="card">
         <h2>Riwayat pembayaran</h2>
         {st.payments.length === 0 ? <p className="hint">Belum ada pembayaran.</p> : st.payments.map((p) => (
-          <div key={p.order_id} className="li">
-            <div className="t">
+          <div key={p.order_id} className="li pay">
+            <div className="t stack">
               <b>{(st.plans.find((x) => x.id === p.plan) || {}).name + ' ' + p.months + ' bulan, ' + rp(p.amount)}</b>
-              <small>{tgl(p.created_at) + ' · ' + (p.provider === 'doku' ? 'DOKU' : 'Midtrans') + ' · ' + p.order_id}</small>
+              <small>{tgl(p.created_at) + ' · ' + (p.provider === 'doku' ? 'DOKU' : 'Midtrans')}</small>
+              <small className="oid">{p.order_id}</small>
             </div>
             <span className={'tag' + (p.status === 'paid' ? ' a' : p.status === 'pending' ? ' w' : '')}>{STATUS[p.status] || p.status}</span>
             {p.status === 'pending' ? (
