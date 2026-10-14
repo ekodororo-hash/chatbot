@@ -75,6 +75,8 @@ function FaqRow({ sb, f, no, ask, fail, toast, onDeleted }) {
 export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast }) {
   const [items, setItems] = useState(null);
   const [q, setQ] = useState(prefillQ || '');
+  // Pertanyaan asal dari "Jadikan FAQ" (daftar Belum terjawab / percakapan), dipakai untuk menandainya beres setelah FAQ tersimpan.
+  const [origQ] = useState(prefillQ || '');
   const [a, setA] = useState('');
   const [busy, setBusy] = useState(false);
   // Form tertutup sampai tombol ditekan; terbuka langsung kalau datang dari "Jadikan FAQ".
@@ -108,6 +110,12 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
     const { error } = await sb.from('faqs').insert({ shop_id: shop.id, question: q.trim(), answer: a.trim() });
     setBusy(false);
     if (error) return fail(error);
+    if (origQ) {
+      // Awalan yang sama (pertanyaan dipotong 200 huruf untuk FAQ). Tanda % dan _ di-escape supaya tidak jadi wildcard.
+      const like = origQ.replace(/[\\%_]/g, '\\$&') + '%';
+      const r = await sb.from('conversations').update({ unanswered: false }).eq('shop_id', shop.id).eq('unanswered', true).ilike('last_question', like);
+      if (r.error) console.error(r.error);
+    }
     toast('FAQ ditambahkan.');
     setQ(''); setA('');
     setOpen(false);

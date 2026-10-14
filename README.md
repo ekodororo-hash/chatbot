@@ -98,6 +98,16 @@ Hal yang perlu diketahui:
 
 **Realtime.** Daftar percakapan, isi percakapan, dan angka "butuh admin" di menu diperbarui lewat Supabase Realtime (dibatasi RLS), bukan polling 10 detik. Sebagai jaring pengaman, data juga dimuat ulang tiap 60 detik dan saat tab dibuka kembali. Penghapusan percakapan oleh admin lain baru terlihat di jaring pengaman itu, karena event DELETE tidak bisa difilter per toko. Halaman chat pelanggan masih polling 6 detik hanya saat menunggu admin.
 
+## Ringkasan, pesanan, pertanyaan belum terjawab, dan notifikasi kuota
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/dashboard_pesanan_kuota.sql` di Supabase SQL Editor (aman dijalankan ulang; proyek baru sudah tercakup di `schema.sql`). Ini menambah `conversations.order_status` dan kolom catatan notifikasi kuota di `shop_notify`. Kalau belum dijalankan, bot dan halaman lain tetap jalan; hanya fitur Pesanan dan notifikasi kuota yang belum aktif.
+
+- **Ringkasan** (`/dashboard/ringkasan`): percakapan dan balasan asisten hari ini, jumlah yang butuh admin, pesanan baru, pemakaian kuota bulan ini (hanya pemilik), grafik percakapan 7 hari, dan daftar hal yang perlu ditangani.
+- **Pesanan** (`/dashboard/pesanan`): percakapan yang ditandai bot sebagai pesanan, dengan status baru, diproses, selesai, atau dibatalkan. Rincian pesanan (produk, jumlah, nama, alamat) dibaca dari isi percakapan. Lencana di menu menghitung pesanan berstatus baru. Saat migrasi dijalankan, pesanan lama yang aktif dalam 14 hari terakhir menjadi "baru" dan yang lebih lama menjadi "selesai".
+- **Belum terjawab** (`/dashboard/belum-terjawab`): pertanyaan pelanggan yang tidak bisa dijawab asisten, dikelompokkan bila sama. Tombol **Jadikan FAQ** membuka form FAQ dengan pertanyaan terisi; setelah FAQ disimpan, pertanyaan itu otomatis ditandai beres.
+- **Notifikasi kuota** (`lib/quotaAlert.js`): lewat Telegram admin toko, sekali saat kuota balasan bulan ini terpakai 80% dan sekali saat habis, per bulan kalender (WIB). Tidak ada penerima Telegram berarti tidak ada kiriman dan jatah bulan itu tidak terpakai. Batas 80% diatur di `WARN_AT`.
+- **Pengingat masa aktif** sudah ada sebelumnya (`lib/reminder.js`, tahap 7, 3, 1 hari dan habis) dan butuh `CRON_SECRET` serta cron-job.org seperti di bagian langganan.
+
 ## Keamanan: yang sudah ada dan batasnya
 
 - **RLS di semua tabel.** Pemilik toko hanya bisa membaca dan mengubah data tokonya. Pelanggan (anon) tidak punya akses langsung.

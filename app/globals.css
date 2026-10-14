@@ -480,3 +480,10 @@ html{scroll-behavior:smooth}
 @keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media (prefers-reduced-motion:reduce){.rv .flow li,.rv .price-c{animation:none!important;opacity:1!important;transform:none!important}}
 .expiry{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--warnbg);border:1px solid var(--warn);color:var(--ink);border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:14px}.expiry span{flex:1 1 220px}
+
+/* ===== Dashboard: ringkasan (grafik mini 7 hari) ===== */
+.mini{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:6px}
+.mini-c{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
+.mini-c i{display:block;width:100%;max-width:44px;background:var(--accent);border-radius:6px 6px 2px 2px;opacity:.9}
+.mini-c small{font-size:12px;color:var(--mute)}
+.mini-n{font-size:12px;font-weight:550;font-variant-numeric:tabular-nums;min-height:16px}

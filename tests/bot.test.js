@@ -15,7 +15,7 @@ class Q {
   upsert(row, opt) { this.op = 'upsert'; this.payload = row; this.key = (opt && opt.onConflict) || 'id'; return this; }
   or(expr) {
     const parts = String(expr).split(',').map(x => x.split('.'));
-    this.f.push(r => parts.some(([c, op, ...v]) => (op === 'is' ? r[c] == null : op === 'lt' ? r[c] != null && r[c] < v.join('.') : false)));
+    this.f.push(r => parts.some(([c, op, ...v]) => (op === 'is' ? r[c] == null : op === 'lt' ? r[c] != null && r[c] < v.join('.') : op === 'eq' ? r[c] === v.join('.') : op === 'neq' ? r[c] != null && r[c] !== v.join('.') : false)));
     return this;
   }
   gte(c, v) { this.f.push(r => r[c] >= v); return this; }
@@ -890,6 +890,86 @@ t('paket dari admin: harga, kuota, diskon paket + diskon lama, ditolak bila tida
   } finally { plans.configure(null); }
   assert.strictEqual(plans.priceFor('starter', 3), Math.round(49000 * 3 * 0.95));
   assert.strictEqual(plans.PLANS.free.quota, 100);
+});
+
+/* ---------- Status pesanan dan notifikasi kuota ---------- */
+t('status pesanan: baru saat bot menandai pesanan; diproses tidak ditimpa; selesai/batal jadi baru lagi', async () => {
+  const s = seedShop(); geminiImpl = reply('Kirim alamat ya', false, true);
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'mau pesan' });
+  const conv = db.conversations.find(c => c.id === r1.conversationId);
+  assert.strictEqual(conv.order_status, 'baru');
+  conv.order_status = 'diproses';
+  await bot.handleMessage({ slug: s.slug, conversationId: conv.id, token: conv.visitor_token, text: 'tambah satu lagi' });
+  assert.strictEqual(conv.order_status, 'diproses', 'pesanan yang sedang diproses tidak dikembalikan ke baru');
+  for (const done of ['selesai', 'batal']) {
+    conv.order_status = done;
+    await bot.handleMessage({ slug: s.slug, conversationId: conv.id, token: conv.visitor_token, text: 'pesan lagi ya' });
+    assert.strictEqual(conv.order_status, 'baru', done + ' lalu pesan baru = baru');
+  }
+  // Balasan biasa tidak menyentuh status pesanan
+  const s2 = seedShop(); geminiImpl = reply('Halo');
+  const r2 = await bot.handleMessage({ slug: s2.slug, text: 'halo' });
+  assert.ok(!db.conversations.find(c => c.id === r2.conversationId).order_status);
+});
+t('notifikasi kuota: 80% dan habis sekali per bulan, ulang bulan baru, tanpa Telegram tidak memakai jatah', async () => {
+  const quotaAlert = require('../lib/quotaAlert');
+  const mk = (chats) => {
+    const s = seedShop();
+    db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'x', tg_chat_ids: chats });
+    db.shop_channels.push({ shop_id: s.id, telegram_token: '1:T' });
+    return { s, row: db.shop_notify.find(x => x.shop_id === s.id) };
+  };
+  const calls = []; const realFetch = global.fetch;
+  global.fetch = async (url, opt) => { calls.push(JSON.parse(opt.body)); return { ok: true, json: async () => ({ ok: true }) }; };
+  try {
+    assert.strictEqual(quotaAlert.stageFor(79, 100), 0);
+    assert.strictEqual(quotaAlert.stageFor(80, 100), 1);
+    assert.strictEqual(quotaAlert.stageFor(100, 100), 2);
+    assert.strictEqual(quotaAlert.stageFor(5, 0), 0);
+    const oct = new Date('2026-10-15T03:00:00Z'), nov = new Date('2026-11-02T03:00:00Z');
+    const a = mk(['777']);
+    const run = (used, now) => quotaAlert.check({ shop: a.s, used, quota: 100, planName: 'Starter', now });
+    await run(79, oct); assert.strictEqual(calls.length, 0, 'di bawah 80% tidak ada notifikasi');
+    await run(80, oct); assert.strictEqual(calls.length, 1);
+    assert.ok(/80%/.test(calls[0].text) && calls[0].text.includes('Starter') && calls[0].text.includes('https://toko.test/dashboard/langganan'));
+    assert.strictEqual(a.row.quota_alert_stage, 1); assert.strictEqual(a.row.quota_alert_month, '2026-10');
+    await run(85, oct); await run(99, oct); assert.strictEqual(calls.length, 1, 'tahap 1 tidak dikirim ganda');
+    await run(100, oct); assert.strictEqual(calls.length, 2);
+    assert.ok(/habis/.test(calls[1].text)); assert.strictEqual(a.row.quota_alert_stage, 2);
+    await run(100, oct); await run(120, oct); assert.strictEqual(calls.length, 2, 'tahap 2 tidak dikirim ganda');
+    await run(80, nov); assert.strictEqual(calls.length, 3, 'bulan baru: mulai lagi');
+    assert.strictEqual(a.row.quota_alert_month, '2026-11'); assert.strictEqual(a.row.quota_alert_stage, 1);
+    // Langsung habis tanpa melewati tahap 1 (misalnya kuota diturunkan): tahap 2 tetap terkirim
+    const b = mk(['888']);
+    await quotaAlert.check({ shop: b.s, used: 100, quota: 100, planName: 'Gratis', now: oct });
+    assert.strictEqual(calls.length, 4); assert.strictEqual(b.row.quota_alert_stage, 2);
+    // Tanpa penerima Telegram: tidak ada kiriman dan jatah bulan ini tidak terpakai
+    const c = mk([]);
+    const r = await quotaAlert.check({ shop: c.s, used: 90, quota: 100, planName: 'Gratis', now: oct });
+    assert.strictEqual(r.noChannel, true); assert.strictEqual(calls.length, 4);
+    assert.ok(!c.row.quota_alert_month && !c.row.quota_alert_stage);
+  } finally { global.fetch = realFetch; }
+});
+t('notifikasi kuota dari bot: kabar saat balasan mencapai 80%, dan saat kuota habis', async () => {
+  const s = seedShop({ daily_limit: 5000 });
+  db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'x', tg_chat_ids: ['777'] });
+  db.shop_channels.push({ shop_id: s.id, telegram_token: '1:T' });
+  const calls = []; const realFetch = global.fetch;
+  global.fetch = async (url, opt) => { calls.push(JSON.parse(opt.body)); return { ok: true, json: async () => ({ ok: true }) }; };
+  try {
+    const q = plans.PLANS.free.quota;                 // paket gratis (tanpa baris langganan)
+    fillMonth(s, Math.ceil(q * 0.8) - 2); geminiImpl = reply('Halo');
+    await bot.handleMessage({ slug: s.slug, text: 'satu' });
+    assert.strictEqual(calls.filter(c => /hampir habis/.test(c.text)).length, 0, 'belum 80%');
+    await bot.handleMessage({ slug: s.slug, text: 'dua' });
+    assert.strictEqual(calls.filter(c => /hampir habis/.test(c.text)).length, 1, 'balasan ke-80% memicu notifikasi');
+    await bot.handleMessage({ slug: s.slug, text: 'tiga' });
+    assert.strictEqual(calls.filter(c => /hampir habis/.test(c.text)).length, 1, 'tidak dobel');
+    fillMonth(s, q);                                   // kuota terlampaui
+    const r = await bot.handleMessage({ slug: s.slug, text: 'empat' });
+    assert.strictEqual(r.status, 'human');
+    assert.strictEqual(calls.filter(c => /habis \(/.test(c.text) || /bulan ini habis/.test(c.text)).length >= 1, true, 'kuota habis dikabari');
+  } finally { global.fetch = realFetch; }
 });
 
 (async () => {

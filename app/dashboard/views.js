@@ -13,8 +13,11 @@ import SalurTab from './SalurTab';
 import AdminNotif from './AdminNotif';
 import TimTab from './TimTab';
 import LanggananTab from './LanggananTab';
+import RingkasanTab from './RingkasanTab';
+import PesananTab from './PesananTab';
+import BelumTab from './BelumTab';
 
-const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange, onShopDeleted: d.onShopDeleted });
+const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, role: d.role, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange, onShopDeleted: d.onShopDeleted, refreshBadges: d.refreshBadges });
 
 export function ChatView() {
   const d = useDash();
@@ -49,4 +52,12 @@ export function LanggananView() {
       <LanggananTab {...common(useDash())} />
     </Suspense>
   );
+}
+
+export function RingkasanView() { return <RingkasanTab {...common(useDash())} />; }
+export function PesananView() { return <PesananTab {...common(useDash())} />; }
+export function BelumView() {
+  const d = useDash();
+  const router = useRouter();
+  return <BelumTab {...common(d)} onMakeFaq={(q) => { d.setPrefillQ(q); router.push('/dashboard/faq'); }} />;
 }

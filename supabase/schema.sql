@@ -388,3 +388,16 @@ alter table public.app_settings enable row level security;
 -- Pengingat masa langganan habis (sama dengan supabase/migrations/pengingat_langganan.sql).
 alter table public.shop_billing add column if not exists reminded_stage int not null default 0;
 alter table public.shop_billing add column if not exists reminded_for timestamptz;
+
+
+-- =====================================================================
+-- BAGIAN TAMBAHAN: status pesanan dan notifikasi kuota.
+-- Sama dengan supabase/migrations/dashboard_pesanan_kuota.sql.
+-- =====================================================================
+alter table public.conversations add column if not exists order_status text
+  check (order_status in ('baru','diproses','selesai','batal'));
+grant update (order_status) on public.conversations to authenticated;
+create index if not exists conversations_order_idx on public.conversations (shop_id, order_status) where order_status is not null;
+create index if not exists conversations_unanswered_idx on public.conversations (shop_id, updated_at desc) where unanswered;
+alter table public.shop_notify add column if not exists quota_alert_month text;
+alter table public.shop_notify add column if not exists quota_alert_stage int not null default 0;

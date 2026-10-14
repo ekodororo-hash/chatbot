@@ -15,7 +15,10 @@ import ExpiryBanner from './ExpiryBanner';
 import { useRealtime } from './useRealtime';
 
 const TABS = [
+  ['/dashboard/ringkasan', 'Ringkasan', 'ringkasan'],
   ['/dashboard', 'Percakapan', 'chat'],
+  ['/dashboard/pesanan', 'Pesanan', 'pesanan'],
+  ['/dashboard/belum-terjawab', 'Belum terjawab', 'belum'],
   ['/dashboard/produk', 'Produk', 'produk'],
   ['/dashboard/faq', 'FAQ', 'faq'],
   ['/dashboard/toko', 'Toko', 'toko'],
@@ -31,6 +34,9 @@ const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pas
 
 // Ikon garis sederhana untuk menu sidebar.
 const ICON = {
+  ringkasan: 'M3 20h18M6 20v-7m6 7V5m6 15v-10',
+  pesanan: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0',
+  belum: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 8v5m0 3h.01',
   chat: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8Z',
   produk: 'M21 8 12 3 3 8m18 0-9 5m9-5v8l-9 5m0-8L3 8m9 5v8M3 8v8l9 5',
   faq: 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z',
@@ -65,7 +71,7 @@ function PageSkeleton({ href }) {
       </div>
     );
   }
-  if (href === '/dashboard' || !href) return <div className="card"><SkConvRows rows={4} /></div>;
+  if (href === '/dashboard' || !href || href === '/dashboard/pesanan' || href === '/dashboard/belum-terjawab') return <div className="card"><SkConvRows rows={4} /></div>;
   return <div className="card"><SkForm fields={href === '/dashboard/bot' ? 5 : 4} /></div>;
 }
 
@@ -82,6 +88,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   const [fatal, setFatal] = useState(error || '');
   const [prefillQ, setPrefillQ] = useState('');
   const [humanCount, setHumanCount] = useState(0);
+  const [badges, setBadges] = useState({ unanswered: 0, orders: 0 });
   const [menuOpen, setMenuOpen] = useState(false);
 
   const fail = useCallback((err) => {
@@ -129,9 +136,20 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
       .eq('shop_id', shopId).eq('status', 'human');
     setHumanCount(count || 0);
   }, [sb, shopId]);
-  useEffect(() => { refreshHumanCount(); }, [refreshHumanCount]);
-  // Realtime: angka "butuh admin" di menu ikut berubah begitu ada percakapan baru atau status berubah.
-  useRealtime(sb, 'conversations', shopId ? 'shop_id=eq.' + shopId : '', refreshHumanCount, 60000);
+  // Lencana "Pesanan" (status baru) dan "Belum terjawab". Kolom order_status berasal dari migrasi dashboard_pesanan_kuota.sql;
+  // kalau belum dijalankan, hitungan pesanan dibiarkan 0 tanpa mengganggu halaman lain.
+  const refreshBadges = useCallback(async () => {
+    if (!sb || !shopId) return;
+    const [u, o] = await Promise.all([
+      sb.from('conversations').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('unanswered', true),
+      sb.from('conversations').select('id', { count: 'exact', head: true }).eq('shop_id', shopId).eq('order_status', 'baru')
+    ]);
+    setBadges({ unanswered: u.error ? 0 : (u.count || 0), orders: o.error ? 0 : (o.count || 0) });
+  }, [sb, shopId]);
+  const refreshAll = useCallback(() => { refreshHumanCount(); refreshBadges(); }, [refreshHumanCount, refreshBadges]);
+  useEffect(() => { refreshAll(); }, [refreshAll]);
+  // Realtime: angka di menu ikut berubah begitu ada percakapan baru atau status berubah.
+  useRealtime(sb, 'conversations', shopId ? 'shop_id=eq.' + shopId : '', refreshAll, 60000);
 
   const onShopChange = useCallback((patch) => {
     setShops((list) => list.map((x) => (x.id === activeId ? { ...x, ...patch } : x)));
@@ -144,12 +162,12 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
       setActiveId((cur) => (cur === id ? (rest[0] ? rest[0].id : null) : cur));
       return rest;
     });
-    setHumanCount(0);
+    setHumanCount(0); setBadges({ unanswered: 0, orders: 0 });
     router.push('/dashboard');
   }, [router]);
 
   const switchShop = useCallback((id) => {
-    setActiveId(id); setHumanCount(0); setAdding(false);
+    setActiveId(id); setHumanCount(0); setBadges({ unanswered: 0, orders: 0 }); setAdding(false);
   }, []);
 
   // Pindah halaman: tutup sidebar di layar kecil.
@@ -171,8 +189,8 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
 
   const ctx = useMemo(() => ({
     sb, user, shop, shops, role, fail, toast, onShopChange, onShopDeleted,
-    humanCount, setHumanCount, refreshHumanCount, prefillQ, setPrefillQ
-  }), [sb, user, shop, shops, role, fail, toast, onShopChange, onShopDeleted, humanCount, refreshHumanCount, prefillQ]);
+    humanCount, setHumanCount, refreshHumanCount, refreshBadges, prefillQ, setPrefillQ
+  }), [sb, user, shop, shops, role, fail, toast, onShopChange, onShopDeleted, humanCount, refreshHumanCount, refreshBadges, prefillQ]);
 
   const current = activeTab(pathname || '');
   const showNav = !!shop && !fatal;
@@ -245,6 +263,8 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
                   <Icon k={icon} />
                   {label}
                   {href === '/dashboard' && humanCount ? <i>{humanCount}</i> : null}
+                  {href === '/dashboard/pesanan' && badges.orders ? <i>{badges.orders}</i> : null}
+                  {href === '/dashboard/belum-terjawab' && badges.unanswered ? <i>{badges.unanswered}</i> : null}
                 </Link>
               ))}
             </nav>
