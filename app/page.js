@@ -5,8 +5,10 @@ import settings from '@/lib/settings';
 // Harga dibaca dari pengaturan admin (/admin/paket), jadi halaman depan selalu sama dengan halaman Langganan.
 export const revalidate = 60;
 
+const Ic = ({ d }) => <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
+const Check = () => <svg className="ck" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>;
 const rp = (n) => 'Rp' + Number(n).toLocaleString('id-ID');
-const chat = (n) => Number(n).toLocaleString('id-ID') + ' balasan bot per bulan';
+const chat = (n) => Number(n).toLocaleString('id-ID') + ' balasan AI / bulan';
 
 async function loadPlans() {
   try {
@@ -20,7 +22,7 @@ async function loadPlans() {
       { id: 'free', name: P.free.name, price: 'Rp0', per: 'selamanya', quota: chat(P.free.quota), pts: ['Semua fitur dasar', 'Tidak perlu kartu kredit'], cta: 'Coba gratis', feat: false },
       ...['starter', 'bisnis'].map((id) => ({
         id, name: P[id].name, promo: P[id].promo,
-        price: rp(plans.priceFor(id, 1)), was: P[id].promo ? rp(plans.listPriceFor(id, 1)) : '', per: 'per bulan',
+        price: rp(plans.priceFor(id, 1)), was: P[id].promo ? rp(plans.listPriceFor(id, 1)) : '', per: '/ bulan',
         quota: chat(P[id].quota), pts: ['Semua fitur dasar', id === 'bisnis' ? 'Cocok untuk toko ramai' : 'Cocok untuk toko yang mulai tumbuh'],
         cta: 'Pilih ' + P[id].name, feat: id === 'starter'
       }))
@@ -53,7 +55,7 @@ export default async function Beranda() {
       <main className="land">
         <section className="hero">
           <div>
-            <h1>Chatbot yang menjawab pelangganmu saat kamu sibuk</h1>
+            <h1>Asisten AI yang menjawab pelangganmu saat kamu sibuk</h1>
             <p className="lead">Isi produk, stok, dan FAQ tokomu sekali. Asisten menjawab dari data itu, dan menyerahkan ke kamu kalau ada yang tidak diketahui.</p>
             <div className="row">
               <Link className="btn lg" href="/login#daftar">Coba gratis</Link>
@@ -79,11 +81,11 @@ export default async function Beranda() {
         </section>
 
         <section className="sec" aria-labelledby="cara">
-          <h2 id="cara">Tiga langkah sampai bot menjawab</h2>
+          <h2 id="cara">Tiga langkah sampai AI menjawab</h2>
           <ol className="flow">
-            <li><h3>Isi data toko</h3><p>Produk, harga, stok, jam buka, ongkir, dan pertanyaan yang sering muncul.</p></li>
-            <li><h3>Pasang di website</h3><p>Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.</p></li>
-            <li><h3>Ambil alih kapan saja</h3><p>Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.</p></li>
+            <li><span className="ic"><Ic d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" /></span><span className="n">Langkah 1</span><h3>Isi data toko</h3><p>Produk, harga, stok, jam buka, ongkir, dan pertanyaan yang sering muncul.</p></li>
+            <li><span className="ic"><Ic d="m8 8-4 4 4 4m8-8 4 4-4 4m-2.5-11-3 14" /></span><span className="n">Langkah 2</span><h3>Pasang di website</h3><p>Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.</p></li>
+            <li><span className="ic"><Ic d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l1.9-5.7A8.4 8.4 0 1 1 21 11.5Z" /></span><span className="n">Langkah 3</span><h3>Ambil alih kapan saja</h3><p>Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.</p></li>
           </ol>
         </section>
 
@@ -93,7 +95,7 @@ export default async function Beranda() {
             <div><dt>Menjawab dari datamu</dt><dd>Kalau jawabannya tidak ada di data, asisten meneruskan ke kamu, bukan menebak.</dd></div>
             <div><dt>Balas langsung dari dashboard</dt><dd>Percakapan yang butuh admin diberi tanda, jadi tidak ada pelanggan yang terlewat.</dd></div>
             <div><dt>Biaya terkendali</dt><dd>Atur batas balasan otomatis per hari. Setelah batas, pesan baru masuk ke admin.</dd></div>
-            <div><dt>Widget hanya di situsmu</dt><dd>Daftarkan domain yang boleh memasang chat. Situs lain tidak bisa memakai botmu.</dd></div>
+            <div><dt>Widget hanya di situsmu</dt><dd>Daftarkan domain yang boleh memasang chat. Situs lain tidak bisa memakai AI-mu.</dd></div>
           </dl>
         </section>
 
@@ -106,8 +108,8 @@ export default async function Beranda() {
                 <div className="amt">{p.price}<small>{' ' + p.per}</small></div>
                 {p.was ? <div className="was"><s>{p.was}</s></div> : null}
                 <ul>
-                  <li><b>{p.quota}</b></li>
-                  {p.pts.map((t) => <li key={t}>{t}</li>)}
+                  <li><Check /><b>{p.quota}</b></li>
+                  {p.pts.map((t) => <li key={t}><Check />{t}</li>)}
                 </ul>
                 <Link className={'btn' + (p.id === 'free' ? '' : ' ghost')} href="/login#daftar">{p.cta}</Link>
               </div>
@@ -116,14 +118,9 @@ export default async function Beranda() {
           <p className="hint">{'Setelah batas balasan bulanan, pesan baru masuk ke admin dan kamu tetap bisa membalas sendiri. ' + note}</p>
         </section>
 
-        <section className="cta">
-          <h2>Biarkan asisten menjaga toko, kamu fokus jualan</h2>
-          <p>Buat akun gratis, isi data tokomu, dan coba chat-nya langsung di dashboard.</p>
-          <Link className="btn inv lg" href="/login#daftar">Coba gratis</Link>
-        </section>
       </main>
 
-      <footer className="foot">Asisten Toko, chatbot untuk UMKM.</footer>
+      <footer className="foot">Asisten Toko, asisten AI untuk UMKM.</footer>
     </>
   );
 }

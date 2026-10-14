@@ -160,11 +160,13 @@ iframe.preview{width:100%;height:520px;border:1px solid var(--line);border-radiu
 @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.97)}}
 .sec{padding:48px 0;border-top:1px solid var(--line)}
 .sec h2{font-size:clamp(24px,4vw,34px);letter-spacing:-.025em;line-height:1.1;margin:0 0 24px;font-weight:600}
-.flow{list-style:none;margin:0;padding:0;display:grid;gap:22px;counter-reset:s}
-@media (min-width:760px){.flow{grid-template-columns:repeat(3,1fr);gap:28px}}
-.flow li{counter-increment:s;border-top:3px solid var(--accent);padding-top:14px}
-.flow li::before{content:counter(s);display:block;font-size:34px;font-weight:600;color:var(--accent);line-height:1;margin-bottom:10px}
-.flow h3{font-size:19px;margin:0 0 6px}
+.flow{list-style:none;margin:0;padding:0;display:grid;gap:16px}
+@media (min-width:760px){.flow{grid-template-columns:repeat(3,1fr);gap:20px}}
+.flow li{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:4px;box-shadow:0 10px 30px -22px color-mix(in srgb,var(--accent) 70%,transparent)}
+@media (min-width:760px){.flow li:not(:last-child)::after{content:"";position:absolute;top:44px;right:-21px;width:22px;height:2px;background:repeating-linear-gradient(90deg,var(--accent) 0 4px,transparent 4px 8px);z-index:1}}
+.flow .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--accent);margin-bottom:12px}
+.flow .n{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.flow h3{font-size:19px;margin:0 0 4px;letter-spacing:-.01em}
 .flow p{margin:0;color:var(--mute)}
 .ctrl{display:grid;gap:0;margin:0}
 @media (min-width:760px){.ctrl{grid-template-columns:1fr 1fr;column-gap:48px}}
@@ -461,7 +463,8 @@ a.nav-i{text-decoration:none}
 .price-c .amt small{font-size:14px;font-weight:400;color:var(--mute);letter-spacing:0}
 .price-c .was{font-size:13px;color:var(--mute);margin-top:-6px}
 .price-c ul{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;flex:1;color:var(--mute);font-size:15px}
-.price-c li::before{content:"\2713";color:var(--accent);font-weight:700;margin-right:8px}
+.price-c li{display:flex;align-items:flex-start;gap:8px}
+.price-c .ck{flex:none;color:var(--accent);margin-top:2px}
 .price-c li b{color:var(--ink);font-weight:550}
 .price-c .btn{width:100%}
 html{scroll-behavior:smooth}
