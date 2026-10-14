@@ -8,7 +8,6 @@ import ChatTab from './ChatTab';
 import ProdukTab from './ProdukTab';
 import FaqTab from './FaqTab';
 import TokoTab from './TokoTab';
-import BotTab from './BotTab';
 import PasangTab from './PasangTab';
 
 const common = (d) => ({ sb: d.sb, shop: d.shop, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange });
@@ -29,5 +28,4 @@ export function FaqView() {
   return <FaqTab {...common(d)} prefillQ={d.prefillQ} onPrefillUsed={() => d.setPrefillQ('')} />;
 }
 export function TokoView() { return <TokoTab {...common(useDash())} />; }
-export function BotView() { return <BotTab {...common(useDash())} />; }
 export function PasangView() { return <PasangTab {...common(useDash())} />; }
