@@ -211,3 +211,18 @@ a.nav-i{text-decoration:none}
 .busy>*{grid-area:1/1}
 .busy.on .busy-t{visibility:hidden}
 .busy .spin{margin:0;vertical-align:baseline}
+
+:root{--info:#2563eb}
+@media (prefers-color-scheme:dark){:root{--info:#60a5fa}}
+.guide{border:1px solid var(--line);border-radius:12px;background:var(--bg);margin:10px 0 14px}
+.guide summary{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;font-weight:500;font-size:15px;list-style:none;border-radius:12px}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.guide .gi{flex:none;width:20px;height:20px;color:var(--info)}
+.guide .gc{flex:none;margin-left:auto;width:16px;height:16px;fill:none;stroke:var(--mute);stroke-width:2;transition:transform .15s}
+.guide[open] .gc{transform:rotate(180deg)}
+.guide-body{padding:0 14px 12px;font-size:14px}
+.guide-body ol{margin:0;padding-left:20px}
+.guide-body li{margin:0 0 8px}
+.guide-body li:last-child{margin-bottom:0}
+.guide-body .hint{margin:10px 0 0}

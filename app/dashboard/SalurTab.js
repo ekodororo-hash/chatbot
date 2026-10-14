@@ -23,6 +23,55 @@ function copy(text, toast) {
   } else toast('Tekan lama pada teks untuk menyalin.');
 }
 
+// Kotak panduan yang bisa dibuka-tutup, dengan ikon informasi biru.
+function Panduan({ title, children }) {
+  return (
+    <details className="guide">
+      <summary>
+        <svg className="gi" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" fill="currentColor" />
+          <path d="M12 11v5M12 7.6h.01" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+        <span>{title}</span>
+        <svg className="gc" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </summary>
+      <div className="guide-body">{children}</div>
+    </details>
+  );
+}
+
+const PanduanTelegram = () => (
+  <Panduan title="Cara membuat bot Telegram">
+    <ol>
+      <li>Buka Telegram, cari <b>@BotFather</b> (yang ada centang biru), lalu tekan <b>Start</b>.</li>
+      <li>Kirim perintah <b>/newbot</b>.</li>
+      <li>Tulis nama bot. Bebas, ini yang terlihat pelanggan di chat, misalnya <i>Toko Ayu</i>.</li>
+      <li>Tulis username bot. Harus unik dan berakhiran <b>bot</b>, misalnya <i>tokoayu_bot</i>.</li>
+      <li>BotFather membalas dengan token, bentuknya seperti <i>123456789:AAH...</i>. Salin seluruhnya.</li>
+      <li>Tempel token di kolom di bawah, lalu klik <b>Hubungkan</b>. Webhook dipasang otomatis.</li>
+      <li>Coba: klik <b>Buka bot</b>, kirim pesan, dan bot akan membalas.</li>
+    </ol>
+    <p className="hint">Token adalah kunci bot, jangan dibagikan. Kalau bocor, kirim /revoke ke BotFather, lalu hubungkan lagi dengan token baru.</p>
+  </Panduan>
+);
+
+const PanduanWhatsApp = () => (
+  <Panduan title="Cara menyiapkan WhatsApp Business">
+    <p className="hint" style={{ marginTop: 0 }}>Yang dibutuhkan: akun Facebook, dan satu nomor telepon yang bisa menerima SMS atau telepon verifikasi. Nomor itu tidak boleh sedang terdaftar di aplikasi WhatsApp biasa atau WhatsApp Business. Kalau sudah terdaftar, hapus akunnya di aplikasi dulu.</p>
+    <ol>
+      <li>Buka <b>developers.facebook.com</b>, login, klik <b>My Apps</b> lalu <b>Create App</b>. Pilih opsi WhatsApp (Connect with customers through WhatsApp) dan hubungkan ke Meta Business portfolio. Buat baru kalau belum punya.</li>
+      <li>Di dashboard app, buka <b>WhatsApp</b> lalu <b>API Setup</b>. Di situ ada nomor uji coba dari Meta. Untuk memakai nomor tokomu sendiri, klik <b>Add phone number</b> dan masukkan kode verifikasinya.</li>
+      <li>Salin <b>Phone number ID</b> dari halaman API Setup. Ini bukan nomor teleponnya, tapi deretan angka panjang di bawahnya.</li>
+      <li>Salin <b>App Secret</b>: buka <b>App settings</b>, lalu <b>Basic</b>, klik <b>Show</b> di samping App secret.</li>
+      <li>Buat <b>Access token permanen</b>. Token di API Setup hanya berlaku sekitar 24 jam, jadi jangan dipakai. Buka <b>business.facebook.com</b>, lalu <b>Business Settings</b>, <b>Users</b>, <b>System users</b>, klik <b>Add</b> dengan peran Admin. Klik <b>Add Assets</b>, pilih app-mu dan beri <b>Full control</b>. Klik <b>Generate token</b>, pilih app, masa berlaku <b>Never</b>, lalu centang <b>whatsapp_business_messaging</b> dan <b>whatsapp_business_management</b>. Salin tokennya.</li>
+      <li>Isi Phone number ID, Access token, dan App Secret di form di bawah, lalu klik <b>Simpan</b>.</li>
+      <li>Setelah tersimpan, <b>Callback URL</b> dan <b>Verify token</b> muncul di bawah form. Di Meta buka <b>WhatsApp</b>, <b>Configuration</b>, <b>Webhook</b>, klik <b>Edit</b>, tempel keduanya, lalu <b>Verify and save</b>. Setelah itu subscribe ke field <b>messages</b>.</li>
+      <li>Coba kirim pesan WhatsApp ke nomor itu dan bot akan membalas.</li>
+    </ol>
+    <p className="hint">Selama app Meta masih berstatus Development, bot hanya membalas nomor yang terdaftar sebagai admin atau tester di app. Supaya semua pelanggan bisa chat, ubah app ke mode Live. Meta biasanya meminta URL kebijakan privasi. Tampilan Meta sering berubah, jadi nama menunya bisa sedikit berbeda.</p>
+  </Panduan>
+);
+
 // Dua kartu di halaman Notifikasi: sambungkan bot Telegram dan nomor WhatsApp Business.
 export default function SalurTab({ sb, fail, toast }) {
   const [st, setSt] = useState(null);
@@ -77,6 +126,7 @@ export default function SalurTab({ sb, fail, toast }) {
       {confirmNode}
       <div className="card">
         <h2>Telegram</h2>
+        <PanduanTelegram />
         {tg.connected ? (
           <>
             <p className="hint">{'Terhubung ke '}<b>{'@' + tg.username}</b>{'. Pelanggan yang chat ke bot itu dibalas otomatis. Kalau bot tidak tahu jawabannya, percakapan masuk ke tab Percakapan dan kamu bisa membalas dari sana.'}</p>
@@ -97,6 +147,7 @@ export default function SalurTab({ sb, fail, toast }) {
 
       <div className="card">
         <h2>WhatsApp</h2>
+        <PanduanWhatsApp />
         <p className="hint">{'Memakai WhatsApp Business Platform (Cloud API) dari Meta. Buat app di developers.facebook.com, tambahkan produk WhatsApp, lalu salin tiga data di bawah.'}</p>
         <label htmlFor="wpi">Phone number ID</label>
         <input id="wpi" inputMode="numeric" autoComplete="off" placeholder="Contoh 109876543210987" value={phoneId} onChange={(e) => setPhoneId(e.target.value)} />
