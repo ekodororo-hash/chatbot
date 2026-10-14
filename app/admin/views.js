@@ -4,33 +4,71 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Busy, rp, dayTime } from '../dashboard/helpers';
 import { SkForm } from '../components/Skeleton';
+import { Panduan } from '../components/Panduan';
+import { useConfirm } from '../components/useConfirm';
 import { useAdmin } from './context';
 
 const dateOnly = (iso) => (iso ? new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
 const STATUS = { paid: 'Lunas', pending: 'Menunggu', failed: 'Gagal', expired: 'Kedaluwarsa' };
+const PROVIDER = { midtrans: 'Midtrans', doku: 'DOKU' };
 const num = (n) => Number(n || 0).toLocaleString('id-ID');
 
 function Stat({ label, value, note }) {
   return (
-    <div className="card" style={{ marginBottom: 0 }}>
+    <div className="stat">
       <span className="hint">{label}</span>
-      <h2 style={{ margin: '2px 0 0' }}>{value}</h2>
-      <span className="hint">{note}</span>
+      <b>{value}</b>
+      <small>{note}</small>
     </div>
   );
 }
 
-function PaymentRows({ payments }) {
-  if (!payments.length) return <p className="hint">Belum ada pembayaran.</p>;
-  return payments.map((p) => (
-    <div className="li" key={p.order_id}>
-      <div className="t stack">
-        <b>{(p.shop_name || 'Toko') + ' · ' + p.plan + ' ' + p.months + ' bulan'}</b>
-        <small>{rp(p.amount) + ' · ' + (p.provider || '-') + ' · ' + dayTime(p.created_at)}</small>
-      </div>
-      <span className={'tag' + (p.status === 'paid' ? ' a' : p.status === 'pending' ? '' : ' w')}>{STATUS[p.status] || p.status}</span>
+function Empty({ title, children }) {
+  return (
+    <div className="empty">
+      <b>{title}</b>
+      {children ? <p>{children}</p> : null}
     </div>
-  ));
+  );
+}
+
+function Chevron({ up }) {
+  return <svg className={'chev' + (up ? ' up' : '')} viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function usePlanName() {
+  const { data } = useAdmin();
+  return (id) => { const p = data.plans.find((x) => x.id === id); return p ? p.name : id; };
+}
+
+function PaymentRows({ payments }) {
+  const planName = usePlanName();
+  if (!payments.length) return <Empty title="Belum ada pembayaran">Pembayaran muncul di sini setelah pemilik toko berlangganan.</Empty>;
+  return (
+    <div>
+      {payments.map((p) => (
+        <div className="li pay" key={p.order_id}>
+          <div className="t stack">
+            <b>{p.shop_name || 'Toko'}</b>
+            <small>{planName(p.plan) + ' · ' + p.months + ' bulan · ' + (PROVIDER[p.provider] || p.provider || '-') + ' · ' + dayTime(p.created_at)}</small>
+          </div>
+          <span className="amt">{rp(p.amount)}</span>
+          <span className={'tag' + (p.status === 'paid' ? ' a' : p.status === 'pending' ? '' : ' w')}>{STATUS[p.status] || p.status}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ownerLine = (s) => (s.owner || 'Pemilik tidak diketahui') + ' · /chat/' + s.slug;
+
+function ShopTags({ s }) {
+  return (
+    <>
+      {!s.bot_on ? <span className="tag w">Bot mati</span> : null}
+      <span className={'tag' + (s.plan !== 'free' ? ' a' : '')}>{s.plan_name}</span>
+    </>
+  );
 }
 
 function ShopUsage({ s }) {
@@ -48,32 +86,40 @@ export function RingkasanView() {
   const t = data.totals;
   return (
     <>
-      <div className="grid2" style={{ marginBottom: 14 }}>
-        <Stat label="Total toko" value={t.shops} note={t.paidShops + ' berlangganan aktif'} />
+      <div className="stats s4">
+        <Stat label="Total toko" value={num(t.shops)} note={t.paidShops + ' berlangganan aktif'} />
         <Stat label="Pendapatan bulan ini" value={rp(t.revenueMonth)} note="dari pembayaran lunas" />
         <Stat label="Balasan bot bulan ini" value={num(t.botRepliesMonth)} note="semua toko" />
         <Stat label="Total percakapan" value={num(t.conversations)} note="sejak awal" />
       </div>
-      <div className="card">
-        <h2>Toko terbaru</h2>
-        {!data.shops.length ? <p className="hint">Belum ada toko.</p> : null}
-        {data.shops.slice(0, 5).map((s) => (
-          <div key={s.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
-            <div className="li" style={{ border: 0, padding: 0 }}>
-              <div className="t"><b>{s.name}</b><small>{(s.owner || 'pemilik tidak diketahui') + ' · /chat/' + s.slug}</small></div>
-              {!s.bot_on ? <span className="tag w">Bot mati</span> : null}
-              <span className={'tag' + (s.plan !== 'free' ? ' a' : '')}>{s.plan_name}</span>
-            </div>
-            <ShopUsage s={s} />
+
+      <section className="card">
+        <div className="chead">
+          <div><h2>Toko terbaru</h2><p className="hint">Lima toko yang paling baru mendaftar.</p></div>
+          {data.shops.length ? <Link className="btn ghost sm" href="/admin/toko">Lihat semua</Link> : null}
+        </div>
+        {!data.shops.length ? <Empty title="Belum ada toko">Toko muncul di sini setelah ada yang mendaftar.</Empty> : (
+          <div className="rows">
+            {data.shops.slice(0, 5).map((s) => (
+              <div className="srow" key={s.id}>
+                <div className="srow-h">
+                  <div className="t"><b>{s.name}</b><small>{ownerLine(s)}</small></div>
+                  <ShopTags s={s} />
+                </div>
+                <ShopUsage s={s} />
+              </div>
+            ))}
           </div>
-        ))}
-        {data.shops.length ? <Link className="btn ghost sm" href="/admin/toko">Lihat semua toko</Link> : null}
-      </div>
-      <div className="card">
-        <h2>Pembayaran terbaru</h2>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="chead">
+          <div><h2>Pembayaran terbaru</h2><p className="hint">Lima transaksi terakhir dari semua toko.</p></div>
+          {data.payments.length ? <Link className="btn ghost sm" href="/admin/pembayaran">Lihat semua</Link> : null}
+        </div>
         <PaymentRows payments={data.payments.slice(0, 5)} />
-        {data.payments.length ? <Link className="btn ghost sm" href="/admin/pembayaran">Lihat semua pembayaran</Link> : null}
-      </div>
+      </section>
     </>
   );
 }
@@ -101,36 +147,42 @@ export function TokoView() {
   }
 
   return (
-    <div className="card">
-      <input type="search" placeholder="Cari nama toko, slug, atau email pemilik" aria-label="Cari toko" value={q} onChange={(e) => setQ(e.target.value)} />
-      {data.totals.capped ? <p className="hint">{'Menampilkan 200 toko terbaru dari ' + data.totals.shops + '.'}</p> : null}
-      <div style={{ marginTop: 8 }}>
-        {!shops.length ? <p className="hint">Tidak ada toko yang cocok.</p> : null}
+    <section className="card">
+      <div className="toolbar">
+        <input type="search" placeholder="Cari nama toko, alamat chat, atau email pemilik" aria-label="Cari toko" value={q} onChange={(e) => setQ(e.target.value)} />
+        <span className="hint">{shops.length + ' toko'}</span>
+      </div>
+      {data.totals.capped ? <p className="hint note">{'Menampilkan 200 toko terbaru dari ' + data.totals.shops + '.'}</p> : null}
+
+      <div className="rows">
+        {!shops.length ? <Empty title="Tidak ada toko yang cocok">Coba nama toko, alamat chat, atau email pemilik yang lain.</Empty> : null}
         {shops.map((s) => {
           const open = openId === s.id;
           return (
-            <div key={s.id} style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
-              <div className="li" style={{ border: 0, padding: 0 }}>
-                <button type="button" className="open" onClick={() => { setOpenId(open ? null : s.id); setDelText(''); }} aria-expanded={open}>
-                  <div className="t">
-                    <b>{s.name}</b>
-                    <small>{(s.owner || 'pemilik tidak diketahui') + ' · /chat/' + s.slug}</small>
-                  </div>
-                </button>
-                {!s.bot_on ? <span className="tag w">Bot mati</span> : null}
-                <span className={'tag' + (s.plan !== 'free' ? ' a' : '')}>{s.plan_name}</span>
-              </div>
+            <div className="srow" key={s.id}>
+              <button type="button" className="srow-h srow-btn" aria-expanded={open}
+                onClick={() => { setOpenId(open ? null : s.id); setDelText(''); }}>
+                <span className="t"><b>{s.name}</b><small>{ownerLine(s)}</small></span>
+                <ShopTags s={s} />
+                <Chevron up={open} />
+              </button>
               <ShopUsage s={s} />
 
               {open ? (
-                <div className="item" style={{ marginTop: 10 }}>
-                  <b>Ubah paket manual</b>
+                <div className="detail">
+                  <h3>Ubah paket manual</h3>
                   <p className="hint">Untuk klien yang bayar lewat transfer. Masa berlaku dihitung mulai hari ini.</p>
-                  <div className="grid2">
-                    <select aria-label="Paket" value={plan} onChange={(e) => setPlan(e.target.value)}>
-                      {data.plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <input type="number" min="1" max="3650" aria-label="Lama (hari)" placeholder="Lama (hari)" value={days} disabled={plan === 'free'} onChange={(e) => setDays(e.target.value)} />
+                  <div className="fgrid">
+                    <label>
+                      <span className="flabel">Paket</span>
+                      <select value={plan} onChange={(e) => setPlan(e.target.value)}>
+                        {data.plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      <span className="flabel">Lama (hari)</span>
+                      <input type="number" min="1" max="3650" inputMode="numeric" value={days} disabled={plan === 'free'} onChange={(e) => setDays(e.target.value)} />
+                    </label>
                   </div>
                   <div className="row">
                     <button className="btn sm" type="button" disabled={!!busy} onClick={() => run('plan' + s.id, { action: 'set_plan', shopId: s.id, plan, days }, 'Paket diubah.')}>
@@ -141,14 +193,22 @@ export function TokoView() {
                     </button>
                     <a className="btn ghost sm" href={'/chat/' + s.slug} target="_blank" rel="noopener">Buka chat</a>
                   </div>
-                  <b style={{ display: 'block', marginTop: 14 }}>Hapus toko</b>
-                  <p className="hint">{'Menghapus permanen toko ini beserta produk, FAQ, percakapan, tim, saluran, dan riwayat pembayarannya. Tidak bisa dibatalkan. Ketik alamat chat (' + s.slug + ') untuk konfirmasi.'}</p>
-                  <input aria-label="Ketik alamat chat untuk konfirmasi" autoComplete="off" value={delText} onChange={(e) => setDelText(e.target.value)} />
-                  <div className="row">
-                    <button className="btn danger solid sm" type="button" disabled={!!busy || delText.trim() !== s.slug}
-                      onClick={async () => { if (await run('del' + s.id, { action: 'delete_shop', shopId: s.id, confirm: delText.trim() }, 'Toko dihapus.')) { setOpenId(null); setDelText(''); } }}>
-                      <Busy on={busy === 'del' + s.id} label="Menghapus...">Hapus permanen</Busy>
-                    </button>
+
+                  <div className="danger-zone">
+                    <h3>Hapus toko</h3>
+                    <p className="hint">{'Menghapus permanen toko ini beserta produk, FAQ, percakapan, tim, saluran, dan riwayat pembayarannya. Tidak bisa dibatalkan.'}</p>
+                    <div className="fgrid one">
+                      <label>
+                        <span className="flabel">{'Ketik ' + s.slug + ' untuk konfirmasi'}</span>
+                        <input autoComplete="off" spellCheck="false" value={delText} onChange={(e) => setDelText(e.target.value)} />
+                      </label>
+                    </div>
+                    <div className="row">
+                      <button className="btn danger solid sm" type="button" disabled={!!busy || delText.trim() !== s.slug}
+                        onClick={async () => { if (await run('del' + s.id, { action: 'delete_shop', shopId: s.id, confirm: delText.trim() }, 'Toko dihapus.')) { setOpenId(null); setDelText(''); } }}>
+                        <Busy on={busy === 'del' + s.id} label="Menghapus...">Hapus permanen</Busy>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -156,7 +216,7 @@ export function TokoView() {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -189,42 +249,70 @@ export function PenggunaView() {
 
   return (
     <>
-      <div className="grid2" style={{ marginBottom: 14 }}>
+      <div className="stats s4">
         <Stat label="Total pengguna" value={num(r.stats.total)} note="akun yang mendaftar" />
         <Stat label="Daftar 7 hari terakhir" value={num(r.stats.new7)} note="pengguna baru" />
         <Stat label="Aktif 30 hari terakhir" value={num(r.stats.active30)} note="pernah login" />
-        <Stat label="Belum punya toko" value={num(r.stats.noShop)} note="daftar tapi belum membuat toko" />
+        <Stat label="Belum punya toko" value={num(r.stats.noShop)} note="belum membuat toko" />
       </div>
-      <div className="card">
-        <input type="search" placeholder="Cari email atau nama toko" aria-label="Cari pengguna" value={q} onChange={(e) => setQ(e.target.value)} />
-        {st.error ? <p className="err" role="alert">{st.error}</p> : null}
-        {r.stats.capped ? <p className="hint">{'Hanya sebagian akun yang dibaca dari total ' + num(r.stats.total) + '. Pakai kolom cari untuk akun tertentu.'}</p> : null}
-        {r.matched > r.users.length ? <p className="hint">{'Menampilkan ' + r.users.length + ' dari ' + num(r.matched) + ' hasil. Persempit pencarian untuk melihat yang lain.'}</p> : null}
-        <div style={{ marginTop: 8 }}>
-          {!r.users.length ? <p className="hint">Tidak ada pengguna yang cocok.</p> : null}
-          {r.users.map((u) => (
-            <div className="li" key={u.id}>
-              <div className="t stack">
-                <b>{u.email || '(tanpa email)'}</b>
-                <small>{'Daftar ' + dateOnly(u.created_at) + ' · login terakhir ' + (u.last_sign_in_at ? dayTime(u.last_sign_in_at) : 'belum pernah') + ' · ' + u.provider}</small>
-                <small>{u.shops.length ? u.shops.map((s) => s.name + (s.role === 'owner' ? ' (pemilik)' : ' (admin)')).join(', ') : 'Belum punya toko'}</small>
-              </div>
-              {!u.confirmed ? <span className="tag w">Belum konfirmasi</span> : null}
-              {!u.shops.length ? <span className="tag w">Tanpa toko</span> : null}
-            </div>
-          ))}
+
+      <section className="card">
+        <div className="toolbar">
+          <input type="search" placeholder="Cari email atau nama toko" aria-label="Cari pengguna" value={q} onChange={(e) => setQ(e.target.value)} />
+          <span className="hint">{num(r.matched) + ' akun'}</span>
         </div>
-      </div>
+        {st.error ? <p className="err" role="alert">{st.error}</p> : null}
+        {r.stats.capped ? <p className="hint note">{'Hanya sebagian akun yang dibaca dari total ' + num(r.stats.total) + '. Pakai kolom cari untuk akun tertentu.'}</p> : null}
+        {r.matched > r.users.length ? <p className="hint note">{'Menampilkan ' + r.users.length + ' dari ' + num(r.matched) + ' hasil. Persempit pencarian untuk melihat yang lain.'}</p> : null}
+
+        {!r.users.length ? <Empty title="Tidak ada pengguna yang cocok">Coba email atau nama toko yang lain.</Empty> : (
+          <div>
+            {r.users.map((u) => (
+              <div className="li urow" key={u.id}>
+                <span className="av" aria-hidden="true">{String(u.email || '?').charAt(0).toUpperCase()}</span>
+                <div className="t stack">
+                  <b>{u.email || '(tanpa email)'}</b>
+                  <small>{'Daftar ' + dateOnly(u.created_at) + ' · login terakhir ' + (u.last_sign_in_at ? dayTime(u.last_sign_in_at) : 'belum pernah') + ' · ' + u.provider}</small>
+                  {u.shops.length ? (
+                    <span className="chips">
+                      {u.shops.map((s, i) => <span className="tag" key={i}>{s.name + ' · ' + (s.role === 'owner' ? 'Pemilik' : 'Admin')}</span>)}
+                    </span>
+                  ) : null}
+                </div>
+                <span className="utags">
+                  {!u.confirmed ? <span className="tag w">Belum konfirmasi</span> : null}
+                  {!u.shops.length ? <span className="tag w">Tanpa toko</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </>
   );
 }
 
 export function PembayaranView() {
   const { data } = useAdmin();
+  const list = data.payments;
+  const paid = list.filter((p) => p.status === 'paid');
+  const pending = list.filter((p) => p.status === 'pending');
+  const failed = list.filter((p) => p.status === 'failed' || p.status === 'expired');
+  const sum = paid.reduce((a, p) => a + Number(p.amount || 0), 0);
   return (
-    <div className="card">
-      <PaymentRows payments={data.payments} />
-    </div>
+    <>
+      <div className="stats">
+        <Stat label="Lunas" value={rp(sum)} note={paid.length + ' pembayaran'} />
+        <Stat label="Menunggu" value={num(pending.length)} note="belum dibayar" />
+        <Stat label="Gagal atau kedaluwarsa" value={num(failed.length)} note="tidak berhasil" />
+      </div>
+      <section className="card">
+        <div className="chead">
+          <div><h2>Riwayat pembayaran</h2><p className="hint">{'Menampilkan ' + list.length + ' pembayaran terbaru dari semua toko. Angka di atas dihitung dari daftar ini.'}</p></div>
+        </div>
+        <PaymentRows payments={list} />
+      </section>
+    </>
   );
 }
 
@@ -245,6 +333,7 @@ export function PaketView() {
   });
   const [form, setForm] = useState(() => fromCfg(cfg));
   const [busy, setBusy] = useState('');
+  const [ask, confirmNode] = useConfirm();
   const setPlan = (id, k, v) => setForm((f) => ({ ...f, plans: { ...f.plans, [id]: { ...f.plans[id], [k]: v } } }));
   const setTerm = (m, v) => setForm((f) => ({ ...f, terms: { ...f.terms, [m]: v } }));
 
@@ -254,7 +343,7 @@ export function PaketView() {
     setBusy('');
   }
   async function reset() {
-    if (!window.confirm('Kembalikan semua paket, harga, kuota, dan diskon ke bawaan?')) return;
+    if (!(await ask({ title: 'Kembalikan ke bawaan?', message: 'Semua paket, harga, kuota, dan diskon akan dikembalikan ke nilai bawaan.', okLabel: 'Kembalikan' }))) return;
     setBusy('reset');
     const ok = await act({ action: 'reset_plans' }, 'Dikembalikan ke bawaan.');
     if (ok) setForm(fromCfg({ plans: cfg.defaults.plans, terms: cfg.defaults.terms }));
@@ -322,7 +411,7 @@ export function PaketView() {
         </div>
       </section>
 
-      <div className="row">
+      <div className="row savebar">
         <button className="btn sm" type="button" disabled={!!busy} onClick={save}>
           <Busy on={busy === 'save'} label="Menyimpan...">Simpan perubahan</Busy>
         </button>
@@ -330,15 +419,16 @@ export function PaketView() {
           <Busy on={busy === 'reset'} label="Mengembalikan...">Kembalikan ke bawaan</Busy>
         </button>
       </div>
+      {confirmNode}
     </>
   );
 }
 
 function Steps({ items }) {
-  return <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>{items.map((x, i) => <li key={i} style={{ margin: '0 0 8px' }}>{x}</li>)}</ol>;
+  return <ol className="olist">{items.map((x, i) => <li key={i}>{x}</li>)}</ol>;
 }
 function Code({ children }) {
-  return <code style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '1px 6px', wordBreak: 'break-all' }}>{children}</code>;
+  return <code className="code">{children}</code>;
 }
 
 const GATEWAYS = {
@@ -381,33 +471,37 @@ function GatewayCard({ g, origin }) {
   }
 
   return (
-    <div className="card">
-      <div className="li" style={{ border: 0, padding: 0 }}>
-        <div className="t"><b>{meta.name}</b><small>{meta.desc}</small></div>
-        {g.ready ? <span className="tag a">{'Terhubung · ' + (g.production ? 'production' : 'sandbox')}</span> : <span className="tag w">Belum diisi</span>}
+    <section className="card">
+      <div className="chead">
+        <div><h2>{meta.name}</h2><p className="hint">{meta.desc}</p></div>
+        {g.ready ? <span className="tag a">{'Terhubung · ' + (g.production ? 'Production' : 'Sandbox')}</span> : <span className="tag w">Belum diisi</span>}
       </div>
-      <Steps items={meta.steps(url)} />
 
-      <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+      <Panduan title={'Cara menghubungkan ' + meta.name}>
+        <Steps items={meta.steps(url)} />
+      </Panduan>
+
+      <div className="fgrid one">
         {meta.fields.map(([f, label, ph]) => {
           const cur = g.fields[f];
           return (
-            <label key={f} style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-              <span>{label}{cur && cur.source ? <span className="hint">{' · tersimpan ' + cur.hint + (cur.source === 'env' ? ' (dari Vercel)' : '')}</span> : null}</span>
+            <label key={f}>
+              <span className="flabel">{label}{cur && cur.source ? <span className="hint">{' · tersimpan ' + cur.hint + (cur.source === 'env' ? ' (dari Vercel)' : '')}</span> : null}</span>
               <input type="password" autoComplete="off" spellCheck="false" value={vals[f] || ''}
                 placeholder={cur && cur.source ? 'Kosongkan jika tidak diubah' : ph}
                 onChange={(e) => setVals((v) => Object.assign({}, v, { [f]: e.target.value }))} />
             </label>
           );
         })}
-        <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-          <span>Lingkungan</span>
+        <label>
+          <span className="flabel">Lingkungan</span>
           <select value={prod ? 'production' : 'sandbox'} onChange={(e) => setProd(e.target.value === 'production')}>
             <option value="sandbox">Sandbox (uji coba)</option>
             <option value="production">Production (uang asli)</option>
           </select>
         </label>
       </div>
+
       <div className="row">
         <button className="btn sm" type="button" disabled={!!busy}
           onClick={() => run('save', Object.assign({ action: 'save_gateway', production: prod }, vals), meta.name + ' disimpan.')}>
@@ -420,8 +514,8 @@ function GatewayCard({ g, origin }) {
           </button>
         ) : null}
       </div>
-      <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan.</p>
-    </div>
+      <p className="hint note">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan.</p>
+    </section>
   );
 }
 
@@ -431,19 +525,22 @@ export function PengaturanView() {
   useEffect(() => { setOrigin(window.location.origin); }, []);
   return (
     <>
-      <div className="card">
-        <h2>Pembayaran</h2>
-        <p className="hint">Isi key pembayaran langsung di sini, tanpa deploy ulang. Pakai salah satu provider, atau keduanya: pemilik toko memilih metode saat membayar. Kalau key juga diisi di Vercel, isian dari halaman ini yang dipakai.</p>
-      </div>
+      <p className="lead">Isi key pembayaran langsung di sini, tanpa deploy ulang. Pakai salah satu penyedia, atau keduanya: pemilik toko memilih metode saat membayar. Kalau key juga diisi di Vercel, isian dari halaman ini yang dipakai.</p>
+
+      <h2 className="sect">Penyedia pembayaran</h2>
       {(data.gateways || []).map((g) => <GatewayCard key={g.id} g={g} origin={origin} />)}
-      <div className="card">
-        <h2>Cek hasilnya</h2>
+
+      <h2 className="sect">Uji coba</h2>
+      <section className="card">
+        <div className="chead">
+          <div><h2>Cek hasilnya</h2><p className="hint">Pastikan pembayaran sandbox tercatat di halaman Pembayaran.</p></div>
+        </div>
         <Steps items={[
           <>Buka <b>Dashboard toko → Langganan</b> dengan akun pemilik toko, pilih paket, lalu bayar memakai akun uji coba (sandbox).</>,
           <>Kembali ke <Link href="/admin/pembayaran">Pembayaran</Link>: pembayaran muncul sebagai “Menunggu”, lalu berubah “Lunas” setelah notifikasi masuk.</>,
-          <>Kalau tetap “Menunggu”, periksa lagi Notification URL di dashboard provider.</>
+          <>Kalau tetap “Menunggu”, periksa lagi Notification URL di dashboard penyedia.</>
         ]} />
-      </div>
+      </section>
     </>
   );
 }

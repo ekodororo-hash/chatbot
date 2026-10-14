@@ -126,7 +126,13 @@ export default function AdminShell({ supabaseUrl, supabaseAnonKey, error, childr
   const waiting = loading && !fatal;
 
   let body;
-  if (fatal) body = <div className="card"><p className="err" role="alert">{fatal}</p></div>;
+  if (fatal) body = (
+    <section className="card">
+      <h2>Data tidak bisa dimuat</h2>
+      <p className="err" role="alert">{fatal}</p>
+      <div className="row"><button className="btn sm" type="button" onClick={() => window.location.reload()}>Muat ulang</button></div>
+    </section>
+  );
   else if (!verified) body = <div className="card"><SkForm fields={3} /></div>;
   else body = children;
 
