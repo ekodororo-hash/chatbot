@@ -228,6 +228,110 @@ export function PembayaranView() {
   );
 }
 
+const PLAN_ORDER = ['free', 'starter', 'bisnis'];
+const TERM_ORDER = ['1', '3', '12'];
+
+// Hitung harga untuk pratinjau (rumus sama dengan lib/plans.js priceFor; yang berlaku tetap dihitung server).
+function previewPrice(p, discount) {
+  return Math.round(Number(p.price) * (100 - Number(p.promo || 0)) / 100 * (100 - Number(discount || 0)) / 100);
+}
+
+export function PaketView() {
+  const { data, act } = useAdmin();
+  const cfg = data.planConfig;
+  const fromCfg = (c) => ({
+    plans: Object.fromEntries(PLAN_ORDER.map((id) => [id, { name: c.plans[id].name, price: String(c.plans[id].price), quota: String(c.plans[id].quota), promo: String(c.plans[id].promo || 0) }])),
+    terms: Object.fromEntries(TERM_ORDER.map((m) => [m, String(c.terms[m])]))
+  });
+  const [form, setForm] = useState(() => fromCfg(cfg));
+  const [busy, setBusy] = useState('');
+  const setPlan = (id, k, v) => setForm((f) => ({ ...f, plans: { ...f.plans, [id]: { ...f.plans[id], [k]: v } } }));
+  const setTerm = (m, v) => setForm((f) => ({ ...f, terms: { ...f.terms, [m]: v } }));
+
+  async function save() {
+    setBusy('save');
+    await act({ action: 'save_plans', plans: form.plans, terms: form.terms }, 'Paket disimpan. Langsung berlaku untuk semua toko.');
+    setBusy('');
+  }
+  async function reset() {
+    if (!window.confirm('Kembalikan semua paket, harga, kuota, dan diskon ke bawaan?')) return;
+    setBusy('reset');
+    const ok = await act({ action: 'reset_plans' }, 'Dikembalikan ke bawaan.');
+    if (ok) setForm(fromCfg({ plans: cfg.defaults.plans, terms: cfg.defaults.terms }));
+    setBusy('');
+  }
+
+  return (
+    <>
+      <div className="card">
+        <h2>Paket dan harga</h2>
+        <p className="hint">Ubah jumlah chat (balasan bot per bulan), harga per bulan, dan diskon. Perubahan langsung berlaku untuk semua toko, tanpa deploy ulang. Langganan yang sudah dibayar tidak berubah masa berlakunya, tetapi kuota chat mengikuti angka terbaru.</p>
+      </div>
+
+      {PLAN_ORDER.map((id) => {
+        const p = form.plans[id];
+        const free = id === 'free';
+        return (
+          <div className="card" key={id}>
+            <div className="li" style={{ border: 0, padding: 0 }}>
+              <div className="t"><b>{p.name || id}</b><small>{free ? 'Paket gratis: tanpa harga dan tanpa masa berlaku.' : 'Paket berbayar'}</small></div>
+              {!free && Number(p.promo) > 0 ? <span className="tag a">{'Diskon ' + p.promo + '%'}</span> : null}
+            </div>
+            <div className="grid2" style={{ marginTop: 10 }}>
+              <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+                <span>Nama paket</span>
+                <input value={p.name} maxLength={30} onChange={(e) => setPlan(id, 'name', e.target.value)} />
+              </label>
+              <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+                <span>Jumlah chat per bulan</span>
+                <input type="number" min="1" inputMode="numeric" value={p.quota} onChange={(e) => setPlan(id, 'quota', e.target.value)} />
+              </label>
+              {!free ? (
+                <>
+                  <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+                    <span>Harga per bulan (Rp)</span>
+                    <input type="number" min="1000" inputMode="numeric" value={p.price} onChange={(e) => setPlan(id, 'price', e.target.value)} />
+                  </label>
+                  <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+                    <span>Diskon paket (%)</span>
+                    <input type="number" min="0" max="90" inputMode="numeric" value={p.promo} onChange={(e) => setPlan(id, 'promo', e.target.value)} />
+                  </label>
+                </>
+              ) : null}
+            </div>
+            {!free ? (
+              <small className="hint" style={{ display: 'block', marginTop: 8 }}>
+                {'Harga yang dibayar pelanggan: ' + TERM_ORDER.map((m) => m + ' bulan ' + rp(previewPrice(p, form.terms[m]) * Number(m))).join(' · ')}
+              </small>
+            ) : null}
+          </div>
+        );
+      })}
+
+      <div className="card">
+        <h2>Diskon lama langganan</h2>
+        <p className="hint">Potongan tambahan kalau pelanggan membayar beberapa bulan sekaligus. Ditumpuk dengan diskon paket di atas.</p>
+        <div className="grid2">
+          {TERM_ORDER.map((m) => (
+            <label key={m} style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+              <span>{m + ' bulan (%)'}</span>
+              <input type="number" min="0" max="90" inputMode="numeric" value={form.terms[m]} onChange={(e) => setTerm(m, e.target.value)} />
+            </label>
+          ))}
+        </div>
+        <div className="row">
+          <button className="btn sm" type="button" disabled={!!busy} onClick={save}>
+            <Busy on={busy === 'save'} label="Menyimpan...">Simpan perubahan</Busy>
+          </button>
+          <button className="btn ghost sm" type="button" disabled={!!busy} onClick={reset}>
+            <Busy on={busy === 'reset'} label="Mengembalikan...">Kembalikan ke bawaan</Busy>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Steps({ items }) {
   return <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>{items.map((x, i) => <li key={i} style={{ margin: '0 0 8px' }}>{x}</li>)}</ol>;
 }

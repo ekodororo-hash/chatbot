@@ -21,10 +21,19 @@ async function count(q) {
   return c || 0;
 }
 
+// Terapkan paket/harga/diskon buatan admin sebelum angka paket dipakai (sama seperti yang dilakukan lib/billing.js).
+async function applyPlanConfig() {
+  const v = await settings.getAll();
+  let parsed = null;
+  try { parsed = v.PLANS_CONFIG ? JSON.parse(v.PLANS_CONFIG) : null; } catch (e) { parsed = null; }
+  plans.configure(parsed);
+}
+
 // Ringkasan seluruh layanan: semua toko, paket, pemakaian bulan ini, dan pembayaran terbaru.
 export async function GET(request) {
   try {
     const { sb } = await admin.requireSuperAdmin(request);
+    await applyPlanConfig();
     const now = new Date();
     const monthStart = plans.startOfMonthWIB(now).toISOString();
 
@@ -72,10 +81,17 @@ export async function GET(request) {
       shops: rows,
       payments: (pays || []).map((p) => Object.assign({}, p, { shop_name: nameBy[p.shop_id] || '' })),
       plans: Object.values(plans.PLANS).map((p) => ({ id: p.id, name: p.name })),
+      planConfig: planConfig(),
       // Hanya status dan 4 karakter terakhir; isi key tidak pernah dikirim ke browser.
       gateways: gateways(await settings.describe())
     });
   } catch (e) { return fail(e); }
+}
+
+// Paket yang sedang berlaku (sudah termasuk pengaturan admin), untuk halaman /admin/paket.
+function planConfig() {
+  const c = plans.current();
+  return { plans: c.plans, terms: c.terms, defaults: { plans: c.defaults.plans, terms: c.defaults.terms } };
 }
 
 function gateways(m) {
@@ -100,6 +116,13 @@ export async function POST(request) {
     let b;
     try { b = await request.json(); } catch (e) { return json({ error: 'Format permintaan salah' }, 400); }
     b = b || {};
+
+    // Paket, harga, kuota chat, dan diskon: berlaku untuk semua toko.
+    if (b.action === 'save_plans' || b.action === 'reset_plans') {
+      if (b.action === 'reset_plans') await settings.save({ PLANS_CONFIG: '' });
+      else await settings.save({ PLANS_CONFIG: JSON.stringify(plans.sanitize({ plans: b.plans, terms: b.terms })) });
+      return json({ ok: true });
+    }
 
     // Pengaturan pembayaran: tidak terkait satu toko.
     if (b.action === 'save_gateway' || b.action === 'clear_gateway') {

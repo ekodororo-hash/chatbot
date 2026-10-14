@@ -45,7 +45,7 @@ app/chat/[slug]/route.js     menyajikan /chat/:slug + header CSP frame-ancestors
 app/globals.css              gaya seluruh halaman
 lib/bot.js                   alur percakapan, batas laju, batas harian, prompt, handoff
 lib/gemini.js                pemanggil Gemini (model dari env GEMINI_MODEL)
-lib/plans.js                 paket, harga, kuota, perhitungan masa berlaku
+lib/plans.js                 paket, harga, kuota, diskon, perhitungan masa berlaku (bisa diubah dari /admin/paket)
 lib/billing.js               Midtrans Snap dan DOKU Checkout, verifikasi webhook, perpanjangan paket
 lib/notify.js                notifikasi admin (Telegram) dan perintah /admin KODE
 lib/auth.js                  pemeriksaan anggota/pemilik toko untuk API dashboard (header X-Shop-Id)
@@ -123,7 +123,7 @@ Hal yang perlu diketahui:
 
 **Persiapan database (sekali):** jalankan `supabase/migrations/langganan.sql` (tabel `shop_billing` dan `payments`, RLS tanpa policy sehingga hanya server yang bisa menulis). Toko yang sudah ada diberi masa percobaan paket Bisnis 30 hari supaya tidak mendadak terbatas; hapus blok itu di file migrasi kalau tidak diinginkan.
 
-**Paket** (ubah di `lib/plans.js`, satu-satunya tempat angka paket): Gratis 100 balasan/bulan, Starter Rp49.000 (1.500/bulan), Bisnis Rp149.000 (6.000/bulan). Lama 1, 3 (hemat 5%), atau 12 bulan (hemat 15%). Angka ini contoh, sesuaikan dengan hitungan biaya Gemini dan harga pasarmu. Kuota dihitung per bulan kalender WIB per toko; setelah habis, pesan masuk ke admin tanpa memanggil AI. Batas harian di halaman Bot tetap berlaku.
+**Paket** (ubah lewat menu **Admin → Paket**: nama, jumlah chat per bulan, harga per bulan, diskon paket, dan diskon lama langganan; langsung berlaku tanpa deploy. Disimpan di tabel `app_settings` kunci `PLANS_CONFIG`. Nilai bawaan ada di `lib/plans.js`, dipakai kalau belum pernah diubah atau setelah klik "Kembalikan ke bawaan"). Bawaan: Gratis 100 balasan/bulan, Starter Rp49.000 (1.500/bulan), Bisnis Rp149.000 (6.000/bulan). Lama 1, 3 (hemat 5%), atau 12 bulan (hemat 15%). Diskon paket (0 sampai 90%) ditumpuk dengan diskon lama langganan, dan pelanggan melihat harga normal dicoret di halaman Langganan. Angka ini contoh, sesuaikan dengan hitungan biaya Gemini dan harga pasarmu. Kuota dihitung per bulan kalender WIB per toko; setelah habis, pesan masuk ke admin tanpa memanggil AI. Batas harian di halaman Bot tetap berlaku.
 
 **Pasang Midtrans:**
 1. Daftar di dashboard.midtrans.com. Mulai dari mode Sandbox: ambil Server Key di Settings > Access Keys.
@@ -144,7 +144,7 @@ Midtrans dan DOKU boleh aktif bersamaan: pemilik toko memilih metode di halaman 
 **Catatan DOKU:** tanda tangan dan alur ini ditulis dari dokumentasi DOKU dan diuji dengan tes otomatis, tapi belum pernah dicoba ke server DOKU sungguhan. Uji sekali di sandbox sebelum meluncur (bayar satu paket, lihat status berubah lunas). DOKU hanya mengirim SUCCESS atau FAILED; FAILED diabaikan karena pelanggan boleh mencoba metode lain, dan tagihan yang tidak dibayar dalam 24 jam tetap berstatus menunggu bayar di riwayat. API cek status DOKU untuk Checkout hanya aktif untuk merchant yang mendaftar sejak Desember 2024 (yang lama perlu minta ke DOKU); kalau belum aktif, tombol Periksa tidak menemukan apa pun dan kamu mengandalkan webhook. DOKU menyarankan cek status minimal 60 detik setelah pembayaran.
 
 **Cara kerjanya:**
-- Jumlah dan harga selalu dihitung server dari `lib/plans.js`; browser hanya mengirim nama paket dan lama.
+- Jumlah dan harga selalu dihitung server dari pengaturan paket (`lib/plans.js` + isian admin); browser hanya mengirim nama paket dan lama.
 - Notifikasi diverifikasi dengan tanda tangan (Midtrans: SHA-512 dengan Server Key; DOKU: HMAC-SHA256 dengan Secret Key atas Client-Id, Request-Id, timestamp, path, dan Digest body) dan jumlahnya dicocokkan dengan tagihan. Pembayaran ditandai lunas lewat satu update atomik, jadi notifikasi yang dikirim ulang tidak memperpanjang dua kali. Kalau perpanjangan gagal, status dikembalikan ke pending dan webhook membalas error supaya Midtrans mengirim ulang.
 - Tombol **Periksa** di riwayat (dan otomatis saat kembali dari halaman bayar) menanyakan status langsung ke Midtrans, jadi paket tetap aktif walau webhook terlambat.
 - Memperpanjang paket yang sama menyambung dari tanggal berakhir. Pindah ke paket lain dihitung dari hari pembayaran (sisa masa paket lama tidak dikompensasi). Turun paket saat paket lebih tinggi masih aktif ditolak.

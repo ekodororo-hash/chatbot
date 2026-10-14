@@ -783,6 +783,29 @@ t('status halaman Langganan: daftar metode bayar hanya yang aktif, tanpa rahasia
   });
 });
 
+t('paket dari admin: harga, kuota, diskon paket + diskon lama, ditolak bila tidak masuk akal, reset ke bawaan', async () => {
+  try {
+    plans.configure({ plans: { free: { name: 'Gratis', quota: 250 }, starter: { name: 'Mulai', price: 60000, quota: 2000, promo: 20 }, bisnis: { name: 'Bisnis', price: 200000, quota: 9000, promo: 0 } }, terms: { 1: 0, 3: 10, 12: 20 } });
+    assert.strictEqual(plans.PLANS.free.quota, 250);
+    assert.strictEqual(plans.PLANS.starter.name, 'Mulai');
+    assert.strictEqual(plans.priceFor('starter', 1), 48000);                       // 60.000 - 20%
+    assert.strictEqual(plans.priceFor('starter', 3), Math.round(60000 * 0.8 * 3 * 0.9));
+    assert.strictEqual(plans.listPriceFor('starter', 3), 180000);
+    assert.strictEqual(plans.priceFor('bisnis', 12), Math.round(200000 * 12 * 0.8));
+    assert.strictEqual(plans.PLANS.free.price, 0);
+    assert.strictEqual(plans.priceFor('free', 1), null);
+    for (const bad of [
+      { plans: { starter: { price: 10 } } }, { plans: { starter: { promo: 95 } } }, { plans: { starter: { quota: 0 } } },
+      { plans: { starter: { name: '' } } }, { plans: { starter: { price: 'abc' } } }, { terms: { 3: -1 } }, { terms: { 12: 100 } }
+    ]) assert.throws(() => plans.sanitize(bad), (e) => e.httpStatus === 400);
+    plans.configure({ plans: { starter: { price: 5 } } });                          // tidak sah: seluruhnya diabaikan, kembali ke bawaan
+    assert.strictEqual(plans.PLANS.starter.price, 49000);
+    assert.strictEqual(plans.PLANS.starter.name, 'Starter');
+  } finally { plans.configure(null); }
+  assert.strictEqual(plans.priceFor('starter', 3), Math.round(49000 * 3 * 0.95));
+  assert.strictEqual(plans.PLANS.free.quota, 100);
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

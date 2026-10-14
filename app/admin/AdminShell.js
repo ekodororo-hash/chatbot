@@ -15,6 +15,7 @@ const TABS = [
   ['/admin', 'Ringkasan', 'ringkasan'],
   ['/admin/toko', 'Toko', 'toko'],
   ['/admin/pengguna', 'Pengguna', 'pengguna'],
+  ['/admin/paket', 'Paket', 'paket'],
   ['/admin/pembayaran', 'Pembayaran', 'pembayaran'],
   ['/admin/pengaturan', 'Pengaturan', 'pengaturan']
 ];
@@ -23,6 +24,7 @@ const ICON = {
   ringkasan: 'M3 3v18h18M7 15l4-4 3 3 5-6',
   toko: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M9 20v-6h6v6',
   pengguna: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  paket: 'M21 8 12 3 3 8v8l9 5 9-5ZM3 8l9 5 9-5M12 13v8',
   pembayaran: 'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2ZM2 10h20M6 15h4',
   pengaturan: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z',
   dashboard: 'M3 3h7v9H3ZM14 3h7v5h-7ZM14 12h7v9h-7ZM3 16h7v5H3Z'

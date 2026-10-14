@@ -89,8 +89,13 @@ export default function LanggananTab({ sb, shop, fail, toast }) {
           return (
             <div key={p.id} className="li" style={{ alignItems: 'center' }}>
               <div className="t">
-                <b>{p.name}{st.plan === p.id ? ' (paket kamu)' : ''}</b>
-                <small>{p.quota.toLocaleString('id-ID') + ' balasan per bulan. ' + rp(term.prices[p.id]) + ' untuk ' + months + ' bulan'}</small>
+                <b>{p.name}{st.plan === p.id ? ' (paket kamu)' : ''}{p.promo ? <span className="tag a" style={{ marginLeft: 8 }}>{'Diskon ' + p.promo + '%'}</span> : null}</b>
+                <small>
+                  {p.quota.toLocaleString('id-ID') + ' balasan per bulan. '}
+                  {term.listPrices[p.id] > term.prices[p.id] ? <s style={{ opacity: 0.6 }}>{rp(term.listPrices[p.id])}</s> : null}
+                  {term.listPrices[p.id] > term.prices[p.id] ? ' ' : ''}
+                  {rp(term.prices[p.id]) + ' untuk ' + months + ' bulan'}
+                </small>
               </div>
               <button className="btn sm" type="button" disabled={!st.ready || lower || !!busy} onClick={() => buy(p.id)}>
                 <Busy on={busy === p.id} label="Membuka pembayaran...">{st.plan === p.id ? 'Perpanjang' : lower ? 'Paket lebih rendah' : 'Pilih'}</Busy>
