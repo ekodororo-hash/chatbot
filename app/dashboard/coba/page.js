@@ -56,7 +56,7 @@ export default function CobaPage() {
 
       <div className="card">
         <h2>Bot tidak menjawab?</h2>
-        <p className="hint">Periksa pengaturan bot, kuota, data toko, dan koneksi ke Gemini. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
+        <p className="hint">Periksa pengaturan bot, kuota, data toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
         <div className="row">
           <button className="btn" type="button" disabled={checking} onClick={diagnose}>
             <Busy on={checking} label="Memeriksa...">Cek kesiapan bot</Busy>
@@ -70,6 +70,7 @@ export default function CobaPage() {
                 <div className="t">
                   <b style={{ whiteSpace: 'normal' }}>{c.label}</b>
                   <small style={{ whiteSpace: 'normal' }}>{c.detail}</small>
+                  {c.tech ? <small style={{ whiteSpace: 'normal', marginTop: 4 }}>{'Teknis (hanya pengembang): ' + c.tech}</small> : null}
                 </div>
                 <span className={'tag ' + (c.ok ? '' : 'w')}>{c.ok ? 'Beres' : 'Perlu diperbaiki'}</span>
               </div>

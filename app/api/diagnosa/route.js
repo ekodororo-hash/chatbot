@@ -8,8 +8,9 @@ export const maxDuration = 30;
 const HEADERS = { 'Cache-Control': 'no-store' };
 const json = (body, status = 200) => Response.json(body, { status, headers: HEADERS });
 
-// Cek kesiapan bot untuk pemilik toko yang sedang login. Hanya melaporkan ada/tidaknya kunci,
-// tidak pernah menampilkan isi kunci rahasia.
+// Cek kesiapan bot untuk pemilik toko yang sedang login. Klien hanya mendapat pesan bahasa awam.
+// Detail teknis (nama env, model, pesan error) hanya dikirim untuk email di DEVELOPER_EMAILS
+// (pisahkan dengan koma). Isi kunci rahasia tidak pernah ditampilkan.
 export async function POST(request) {
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!token) return json({ error: 'Belum login' }, 401);
@@ -23,8 +24,11 @@ export async function POST(request) {
   const { data: shop } = await sb.from('shops').select('*').eq('owner_id', u.user.id).maybeSingle();
   if (!shop) return json({ error: 'Toko belum dibuat' }, 404);
 
+  const devs = String(process.env.DEVELOPER_EMAILS || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const isDev = devs.includes(String(u.user.email || '').toLowerCase());
+
   const checks = [];
-  const add = (id, label, ok, detail) => checks.push({ id, label, ok, detail });
+  const add = (id, label, ok, detail, tech) => checks.push({ id, label, ok, detail, tech: isDev ? tech : undefined });
 
   add('aktif', 'Bot aktif di database', !!shop.bot_on,
     shop.bot_on ? 'Tersimpan aktif.' : 'Di database bot masih nonaktif. Buka halaman Bot, centang "Bot aktif", lalu klik Simpan.');
@@ -47,21 +51,23 @@ export async function POST(request) {
       np + ' produk, ' + nf + ' FAQ.' + (np + nf > 0 ? '' : ' Isi produk atau FAQ supaya bot punya bahan menjawab.'));
   } catch (e) { add('data', 'Data toko', false, 'Gagal membaca: ' + e.message); }
 
-  const hasKey = !!process.env.GEMINI_API_KEY;
-  add('kunci', 'GEMINI_API_KEY di server', hasKey,
-    hasKey ? 'Terisi.' : 'Belum diisi. Tambahkan di Vercel > Settings > Environment Variables (atau .env.local), lalu deploy ulang / restart.');
-
-  if (hasKey) {
+  const AI_LABEL = 'Layanan AI';
+  if (!process.env.GEMINI_API_KEY) {
+    add('ai', AI_LABEL, false, 'Layanan AI belum terhubung. Hubungi penyedia layananmu.',
+      'GEMINI_API_KEY belum diisi di server. Isi di Vercel > Settings > Environment Variables (atau .env.local), lalu deploy ulang / restart.');
+  } else {
     try {
       const raw = await gemini.generate({
         system: 'Balas HANYA dengan JSON: {"reply":"ok"}',
         contents: [{ role: 'user', parts: [{ text: 'tes' }] }]
       });
       const parsed = bot._internal.parseModelOutput(raw);
-      add('gemini', 'Panggilan ke Gemini (' + gemini.MODEL + ')', !!parsed,
-        parsed ? 'Berhasil dibalas.' : 'Terhubung, tapi format jawaban tidak terbaca: ' + String(raw).slice(0, 120));
+      add('ai', AI_LABEL, !!parsed,
+        parsed ? 'Terhubung dan berfungsi.' : 'Layanan AI membalas dengan format yang tidak terbaca. Coba lagi nanti atau hubungi penyedia layananmu.',
+        'Model ' + gemini.MODEL + (parsed ? ': OK.' : '. Jawaban mentah: ' + String(raw).slice(0, 120)));
     } catch (e) {
-      add('gemini', 'Panggilan ke Gemini (' + gemini.MODEL + ')', false, String(e && e.message || e).slice(0, 300));
+      add('ai', AI_LABEL, false, 'Layanan AI sedang bermasalah. Coba lagi nanti atau hubungi penyedia layananmu.',
+        'Model ' + gemini.MODEL + ': ' + String((e && e.message) || e).slice(0, 300));
     }
   }
 
