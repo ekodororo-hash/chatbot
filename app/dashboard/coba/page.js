@@ -1,13 +1,17 @@
 'use client';
 import { useState } from 'react';
 import { useDash } from '../context';
+import { Busy } from '../helpers';
 import { Sk } from '../../components/Skeleton';
 
 /* Halaman Coba bot: /dashboard/coba. Judul tab browser diatur di coba/layout.js. */
 export default function CobaPage() {
-  const { shop, toast } = useDash();
+  const { sb, shop, toast } = useDash();
   const [ready, setReady] = useState(false);
   const [run, setRun] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState(null);
+  const [problem, setProblem] = useState('');
   const link = '/chat/' + shop.slug;
 
   // Percakapan disimpan di browser (kunci "chat:slug"). Setelah diteruskan ke admin, bot diam
@@ -19,18 +23,63 @@ export default function CobaPage() {
     toast('Percakapan baru dimulai.');
   }
 
+  async function diagnose() {
+    setChecking(true); setProblem('');
+    try {
+      const { data } = await sb.auth.getSession();
+      const token = data.session && data.session.access_token;
+      const r = await fetch('/api/diagnosa', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Gagal memeriksa bot.');
+      setResult(j);
+    } catch (e) {
+      setResult(null);
+      setProblem(e.message || 'Gagal memeriksa bot.');
+    }
+    setChecking(false);
+  }
+
   return (
-    <div className="card">
-      <h2>Coba bot</h2>
-      <p className="hint">Chat seperti pelanggan untuk melihat jawaban bot dari data tokomu. Percakapan percobaan ikut muncul di halaman Percakapan. Kalau bot berhenti menjawab karena percakapan sudah diteruskan ke admin, mulai percakapan baru.</p>
-      <div className="preview-box">
-        <iframe key={run} className="preview" style={{ height: 'min(680px, 72vh)' }} src={link} title="Pratinjau chat" onLoad={() => setReady(true)} />
-        {!ready && <Sk h="100%" r={12} style={{ position: 'absolute', inset: 0 }} />}
+    <>
+      <div className="card">
+        <h2>Coba bot</h2>
+        <p className="hint">Chat seperti pelanggan untuk melihat jawaban bot dari data tokomu. Percakapan percobaan ikut muncul di halaman Percakapan. Kalau bot berhenti menjawab karena percakapan sudah diteruskan ke admin, mulai percakapan baru.</p>
+        <div className="preview-box">
+          <iframe key={run} className="preview" style={{ height: 'min(680px, 72vh)' }} src={link} title="Pratinjau chat" onLoad={() => setReady(true)} />
+          {!ready && <Sk h="100%" r={12} style={{ position: 'absolute', inset: 0 }} />}
+        </div>
+        <div className="row">
+          <button className="btn sm" type="button" onClick={restart}>Mulai percakapan baru</button>
+          <a className="btn ghost sm" href={link} target="_blank" rel="noopener">Buka di tab baru</a>
+        </div>
       </div>
-      <div className="row">
-        <button className="btn sm" type="button" onClick={restart}>Mulai percakapan baru</button>
-        <a className="btn ghost sm" href={link} target="_blank" rel="noopener">Buka di tab baru</a>
+
+      <div className="card">
+        <h2>Bot tidak menjawab?</h2>
+        <p className="hint">Periksa pengaturan bot, kuota, data toko, dan koneksi ke Gemini. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
+        <div className="row">
+          <button className="btn" type="button" disabled={checking} onClick={diagnose}>
+            <Busy on={checking} label="Memeriksa...">Cek kesiapan bot</Busy>
+          </button>
+        </div>
+        <div className="err" role="alert">{problem}</div>
+        {result && (
+          <div role="status">
+            {result.checks.map((c) => (
+              <div className="li" key={c.id} style={{ alignItems: 'flex-start' }}>
+                <div className="t">
+                  <b style={{ whiteSpace: 'normal' }}>{c.label}</b>
+                  <small style={{ whiteSpace: 'normal' }}>{c.detail}</small>
+                </div>
+                <span className={'tag ' + (c.ok ? '' : 'w')}>{c.ok ? 'Beres' : 'Perlu diperbaiki'}</span>
+              </div>
+            ))}
+            <p className="hint" style={{ marginTop: 12 }}>
+              {result.ok ? 'Semua beres. Kalau chat masih diam, klik "Mulai percakapan baru" lalu coba lagi.' : 'Perbaiki yang bertanda merah, lalu klik "Mulai percakapan baru" dan coba lagi.'}
+            </p>
+          </div>
+        )}
       </div>
-    </div>
+    </>
   );
 }
