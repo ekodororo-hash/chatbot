@@ -22,7 +22,7 @@ Pelanggan tidak pernah menyentuh database. Semua lewat `app/api/chat/route.js` y
    - Authentication > URL Configuration: isi Site URL dengan domainmu.
 2. **Gemini**: buat API key di Google AI Studio.
 3. **Vercel**: import folder ini sebagai project (Framework Preset: Next.js, terdeteksi otomatis; `vercel.json` juga mengaturnya). Isi Environment Variables seperti di `.env.example`:
-   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL` (opsional), `DEVELOPER_EMAILS` (opsional, email pengembang yang boleh melihat detail teknis di halaman Coba bot), `APP_URL`, `RESEND_API_KEY`, dan `NOTIFY_FROM` (opsional, untuk notifikasi email), `MIDTRANS_SERVER_KEY` / `MIDTRANS_IS_PRODUCTION` dan/atau `DOKU_CLIENT_ID` / `DOKU_SECRET_KEY` / `DOKU_IS_PRODUCTION` (opsional, untuk langganan berbayar).
+   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL` (opsional), `DEVELOPER_EMAILS` (opsional, email pengembang yang boleh melihat detail teknis di halaman Coba bot), `APP_URL` (opsional, untuk tautan di notifikasi), `MIDTRANS_SERVER_KEY` / `MIDTRANS_IS_PRODUCTION` dan/atau `DOKU_CLIENT_ID` / `DOKU_SECRET_KEY` / `DOKU_IS_PRODUCTION` (opsional, untuk langganan berbayar).
    Nama variabel tidak berubah dari versi lama dan tidak perlu awalan `NEXT_PUBLIC_`. URL dan kunci publik diteruskan ke browser lewat server component.
    `SUPABASE_ANON_KEY` boleh diisi Publishable key (`sb_publishable_...`), `SUPABASE_SERVICE_ROLE_KEY` boleh diisi Secret key (`sb_secret_...`).
 4. **Domain**: tambahkan domain, misalnya `chat.isengin.site`, di Vercel > Settings > Domains lalu arahkan DNS-nya.
@@ -47,7 +47,7 @@ lib/bot.js                   alur percakapan, batas laju, batas harian, prompt, 
 lib/gemini.js                pemanggil Gemini (model dari env GEMINI_MODEL)
 lib/plans.js                 paket, harga, kuota, perhitungan masa berlaku
 lib/billing.js               Midtrans Snap dan DOKU Checkout, verifikasi webhook, perpanjangan paket
-lib/notify.js                notifikasi admin (email lewat Resend, Telegram) dan perintah /admin KODE
+lib/notify.js                notifikasi admin (Telegram) dan perintah /admin KODE
 lib/auth.js                  pemeriksaan anggota/pemilik toko untuk API dashboard (header X-Shop-Id)
 lib/domains.js               validasi domain dan pembuat CSP
 lib/chatTemplate.js          halaman chat pelanggan (dokumen mandiri, lihat catatan di bawah)
@@ -93,9 +93,8 @@ Hal yang perlu diketahui:
 
 **Peran.** Pemilik (`shops.owner_id`) bisa semuanya. Admin tambahan hanya bisa mengurus Percakapan, Produk, FAQ, dan Coba bot. Pembatasan ini dipaksa di database (RLS) dan di API, bukan hanya disembunyikan di menu. Pemilik mengundang admin dari halaman **Tim** dengan email; undangan diterima otomatis saat orang itu masuk dengan email yang sama (fungsi `accept_invites`). Aktifkan "Confirm email" di Supabase supaya undangan tidak bisa diambil orang yang mendaftar dengan email milik orang lain.
 
-**Notifikasi ke admin** (halaman Notifikasi). Dikirim saat bot meneruskan percakapan ke admin, saat ada pesanan, dan saat pelanggan menulis lagi di percakapan yang sudah dipegang admin. Satu percakapan paling sering dikabari sekali tiap 15 menit (diatur atomik lewat `conversations.notified_at`, jadi dua pesan bersamaan tidak mengirim dobel). Gagal kirim hanya dicatat di log dan tidak mengganggu balasan ke pelanggan.
+**Notifikasi ke admin** (halaman Notifikasi, lewat Telegram). Dikirim saat bot meneruskan percakapan ke admin, saat ada pesanan, dan saat pelanggan menulis lagi di percakapan yang sudah dipegang admin. Satu percakapan paling sering dikabari sekali tiap 15 menit (diatur atomik lewat `conversations.notified_at`, jadi dua pesan bersamaan tidak mengirim dobel). Gagal kirim hanya dicatat di log dan tidak mengganggu balasan ke pelanggan.
 - **Telegram:** hubungkan bot toko, lalu tiap admin mengirim `/admin KODE` ke bot itu dari akun Telegram-nya (kode ada di halaman Notifikasi, maksimal 10 chat). `/admin stop` mencabut. Kode salah diproses seperti pesan pelanggan biasa.
-- **Email:** lewat Resend. Isi `RESEND_API_KEY`, `NOTIFY_FROM`, dan `APP_URL`, lalu deploy ulang. Email dikirim ke semua anggota tim toko. Tombol **Kirim tes** memeriksa kedua jalur.
 
 **Realtime.** Daftar percakapan, isi percakapan, dan angka "butuh admin" di menu diperbarui lewat Supabase Realtime (dibatasi RLS), bukan polling 10 detik. Sebagai jaring pengaman, data juga dimuat ulang tiap 60 detik dan saat tab dibuka kembali. Penghapusan percakapan oleh admin lain baru terlihat di jaring pengaman itu, karena event DELETE tidak bisa difilter per toko. Halaman chat pelanggan masih polling 6 detik hanya saat menunggu admin.
 

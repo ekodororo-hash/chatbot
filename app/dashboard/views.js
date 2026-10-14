@@ -14,7 +14,7 @@ import AdminNotif from './AdminNotif';
 import TimTab from './TimTab';
 import LanggananTab from './LanggananTab';
 
-const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange });
+const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange, onShopDeleted: d.onShopDeleted });
 
 export function ChatView() {
   const d = useDash();

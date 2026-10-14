@@ -136,6 +136,17 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
     setShops((list) => list.map((x) => (x.id === activeId ? { ...x, ...patch } : x)));
   }, [activeId]);
 
+  // Toko dihapus: keluarkan dari daftar lalu pindah ke toko lain (atau ke form buat toko kalau sudah tidak ada).
+  const onShopDeleted = useCallback((id) => {
+    setShops((list) => {
+      const rest = list.filter((x) => x.id !== id);
+      setActiveId((cur) => (cur === id ? (rest[0] ? rest[0].id : null) : cur));
+      return rest;
+    });
+    setHumanCount(0);
+    router.push('/dashboard');
+  }, [router]);
+
   const switchShop = useCallback((id) => {
     setActiveId(id); setHumanCount(0); setAdding(false);
   }, []);
@@ -158,9 +169,9 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   }
 
   const ctx = useMemo(() => ({
-    sb, user, shop, shops, role, fail, toast, onShopChange,
+    sb, user, shop, shops, role, fail, toast, onShopChange, onShopDeleted,
     humanCount, setHumanCount, refreshHumanCount, prefillQ, setPrefillQ
-  }), [sb, user, shop, shops, role, fail, toast, onShopChange, humanCount, refreshHumanCount, prefillQ]);
+  }), [sb, user, shop, shops, role, fail, toast, onShopChange, onShopDeleted, humanCount, refreshHumanCount, prefillQ]);
 
   const current = activeTab(pathname || '');
   const showNav = !!shop && !fatal;

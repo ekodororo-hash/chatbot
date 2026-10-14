@@ -337,7 +337,7 @@ t('notifikasi: isi pesan memuat toko, pelanggan, kutipan pesan, dan tautan ke pe
 });
 t('notifikasi: handoff dikabari ke Telegram admin, dibatasi sekali per 15 menit per percakapan', async () => {
   const s = seedShop(); geminiImpl = reply('Saya teruskan ke admin.', true);
-  db.shop_notify.push({ shop_id: s.id, email_on: false, tg_on: true, tg_code: 'abc123', tg_chat_ids: ['777'] });
+  db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'abc123', tg_chat_ids: ['777'] });
   db.shop_channels.push({ shop_id: s.id, telegram_token: '123:TOKEN' });
   const calls = []; const realFetch = global.fetch;
   global.fetch = async (url, opt) => { calls.push({ url, body: JSON.parse(opt.body) }); return { ok: true, json: async () => ({ ok: true }) }; };
@@ -359,7 +359,7 @@ t('notifikasi: handoff dikabari ke Telegram admin, dibatasi sekali per 15 menit 
 });
 t('notifikasi: pesanan baru dikabari, balasan bot biasa tidak', async () => {
   const s = seedShop();
-  db.shop_notify.push({ shop_id: s.id, email_on: false, tg_on: true, tg_code: 'x', tg_chat_ids: ['5'] });
+  db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'x', tg_chat_ids: ['5'] });
   db.shop_channels.push({ shop_id: s.id, telegram_token: '9:T' });
   const calls = []; const realFetch = global.fetch;
   global.fetch = async (url, opt) => { calls.push(JSON.parse(opt.body)); return { ok: true, json: async () => ({ ok: true }) }; };
@@ -375,7 +375,7 @@ t('notifikasi: pesanan baru dikabari, balasan bot biasa tidak', async () => {
 });
 t('notifikasi: kegagalan kirim tidak mengganggu balasan ke pelanggan', async () => {
   const s = seedShop(); geminiImpl = reply('Saya teruskan ke admin.', true);
-  db.shop_notify.push({ shop_id: s.id, email_on: false, tg_on: true, tg_code: 'x', tg_chat_ids: ['5'] });
+  db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'x', tg_chat_ids: ['5'] });
   db.shop_channels.push({ shop_id: s.id, telegram_token: '9:T' });
   const realFetch = global.fetch; const oldErr = console.error; console.error = () => {};
   global.fetch = async () => { throw new Error('jaringan putus'); };
@@ -387,7 +387,7 @@ t('notifikasi: kegagalan kirim tidak mengganggu balasan ke pelanggan', async () 
 });
 t('notifikasi: "/admin KODE" mendaftarkan chat Telegram; kode salah diproses sebagai pesan biasa; "/admin stop" mencabut', async () => {
   const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo juga');
-  db.shop_notify.push({ shop_id: s.id, email_on: true, tg_on: true, tg_code: 'kode123456', tg_chat_ids: [] });
+  db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'kode123456', tg_chat_ids: [] });
   const ctx = { shop: s }; const sent = []; const send = async (x) => { sent.push(x); };
   const row = () => db.shop_notify.find(r => r.shop_id === s.id);
   await channels.handleInbound('telegram', ctx, { kind: 'text', text: '/admin salah', externalId: '55', name: 'X', messageId: 'tg:a1' }, send);
@@ -409,7 +409,7 @@ t('notifikasi: "/admin KODE" mendaftarkan chat Telegram; kode salah diproses seb
 t('notifikasi: penerima Telegram dibatasi 10 chat', async () => {
   const s = seedShop();
   const ids = Array.from({ length: notify.MAX_CHATS }, (_, i) => String(1000 + i));
-  db.shop_notify.push({ shop_id: s.id, email_on: true, tg_on: true, tg_code: 'penuh', tg_chat_ids: ids.slice() });
+  db.shop_notify.push({ shop_id: s.id, tg_on: true, tg_code: 'penuh', tg_chat_ids: ids.slice() });
   const r = await notify.handleTelegramAdminCommand(s, '/admin penuh', '5000');
   assert.ok(/penuh/.test(r));
   assert.strictEqual(db.shop_notify.find(x => x.shop_id === s.id).tg_chat_ids.length, notify.MAX_CHATS);

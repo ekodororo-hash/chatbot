@@ -10,15 +10,9 @@ const json = (body, status = 200) => Response.json(body, { status, headers: { 'C
 // Yang dikirim ke browser: status dan kode pendaftaran Telegram (kode ini hanya untuk pemilik toko).
 async function status(sb, shop) {
   const st = await notify.ensureSettings(sb, shop.id);
-  const m = await sb.from('shop_members').select('email').eq('shop_id', shop.id);
-  if (m.error) throw m.error;
   const ch = await sb.from('shop_channels').select('telegram_token,telegram_username').eq('shop_id', shop.id).maybeSingle();
   if (ch.error) throw ch.error;
   return {
-    email: {
-      on: !!st.email_on, ready: notify.emailReady(),
-      recipients: Array.from(new Set((m.data || []).map((x) => x.email).filter(Boolean)))
-    },
     telegram: {
       on: !!st.tg_on, code: st.tg_code,
       botConnected: !!(ch.data && ch.data.telegram_token), botUsername: (ch.data && ch.data.telegram_username) || '',
@@ -48,7 +42,6 @@ export async function POST(request) {
 
     if (b.action === 'set') {
       const patch = {};
-      if (typeof b.emailOn === 'boolean') patch.email_on = b.emailOn;
       if (typeof b.tgOn === 'boolean') patch.tg_on = b.tgOn;
       if (!Object.keys(patch).length) return json({ error: 'Tidak ada yang diubah' }, 400);
       await put(patch);

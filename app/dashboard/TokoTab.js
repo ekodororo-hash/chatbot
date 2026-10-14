@@ -1,12 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { Busy, Field } from './helpers';
+import { Busy, Field, authFetch } from './helpers';
 
-export default function TokoTab({ sb, shop, onShopChange, fail, toast }) {
+export default function TokoTab({ sb, shop, onShopChange, onShopDeleted, fail, toast }) {
   const [f, setF] = useState({
     name: shop.name, hours: shop.hours, address: shop.address, shipping: shop.shipping, payment: shop.payment
   });
   const [busy, setBusy] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
+  const [delName, setDelName] = useState('');
+  const [delBusy, setDelBusy] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
 
   async function save() {
@@ -23,7 +26,17 @@ export default function TokoTab({ sb, shop, onShopChange, fail, toast }) {
     toast('Info toko disimpan.');
   }
 
+  async function removeShop() {
+    setDelBusy(true);
+    try {
+      await authFetch(sb, shop.id, '/api/toko', 'DELETE', { confirm: delName.trim() });
+      toast('Toko dihapus.');
+      onShopDeleted(shop.id);
+    } catch (e) { fail(e); setDelBusy(false); }
+  }
+
   return (
+    <>
     <div className="card">
       <h2>Info toko</h2>
       <p className="hint">Bot hanya menjawab dari data toko, produk, dan FAQ. Semakin lengkap, semakin jarang bot meneruskan ke admin.</p>
@@ -34,5 +47,26 @@ export default function TokoTab({ sb, shop, onShopChange, fail, toast }) {
       <Field id="t5" label="Pembayaran"><textarea id="t5" maxLength={500} value={f.payment} onChange={set('payment')} /></Field>
       <div className="row"><button className="btn" type="button" disabled={busy} onClick={save}><Busy on={busy} label="Menyimpan...">Simpan</Busy></button></div>
     </div>
+
+    <div className="card">
+      <h2>Hapus toko</h2>
+      <p className="hint">Menghapus toko ini beserta semua produk, FAQ, percakapan, anggota tim, saluran Telegram/WhatsApp, dan riwayat pembayaran. Paket berbayar yang masih aktif ikut hangus tanpa pengembalian dana. Tindakan ini tidak bisa dibatalkan.</p>
+      {!delOpen ? (
+        <div className="row"><button className="btn danger sm" type="button" onClick={() => setDelOpen(true)}>Hapus toko ini</button></div>
+      ) : (
+        <>
+          <Field id="t-del" label={'Ketik nama toko (' + shop.name + ') untuk konfirmasi'}>
+            <input id="t-del" autoComplete="off" value={delName} onChange={(e) => setDelName(e.target.value)} />
+          </Field>
+          <div className="row">
+            <button className="btn danger solid sm" type="button" disabled={delBusy || delName.trim() !== shop.name.trim()} onClick={removeShop}>
+              <Busy on={delBusy} label="Menghapus...">Hapus permanen</Busy>
+            </button>
+            <button className="btn ghost sm" type="button" disabled={delBusy} onClick={() => { setDelOpen(false); setDelName(''); }}>Batal</button>
+          </div>
+        </>
+      )}
+    </div>
+    </>
   );
 }
