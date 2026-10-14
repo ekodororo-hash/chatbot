@@ -2,8 +2,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Busy, readCount, rp, saveCount, toInt } from './helpers';
 import { Sk, SkItems } from '../components/Skeleton';
+import { useConfirm } from '../components/useConfirm';
 
-function ProductRow({ sb, pr, no, fail, toast, onDeleted }) {
+function ProductRow({ sb, pr, no, ask, fail, toast, onDeleted }) {
   const [cur, setCur] = useState(pr);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pr.name);
@@ -32,7 +33,8 @@ function ProductRow({ sb, pr, no, fail, toast, onDeleted }) {
   }
 
   async function remove() {
-    if (!confirm('Hapus produk "' + cur.name + '"?')) return;
+    const ok = await ask({ title: 'Hapus produk?', message: '"' + cur.name + '" akan dihapus permanen.' });
+    if (!ok) return;
     setRemoving(true);
     const { error } = await sb.from('products').delete().eq('id', cur.id);
     if (error) { setRemoving(false); fail(error); return; }
@@ -85,6 +87,7 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
   const [k, setK] = useState('');
   const [d, setD] = useState('');
   const [busy, setBusy] = useState(false);
+  const [ask, confirmNode] = useConfirm();
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
   const [guess] = useState(() => readCount('produk:' + shop.id));
 
@@ -114,6 +117,7 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
 
   return (
     <>
+      {confirmNode}
       <div className="card">
         <h2>Tambah produk</h2>
         <div className="item">
@@ -142,7 +146,7 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
             <p className="hint">Belum ada produk. Bot hanya bisa menjawab dari data yang kamu isi di sini.</p>
           )}
           {items.map((pr, i) => (
-            <ProductRow key={pr.id} sb={sb} pr={pr} no={i + 1} fail={fail} toast={toast} onDeleted={load} />
+            <ProductRow key={pr.id} sb={sb} pr={pr} no={i + 1} ask={ask} fail={fail} toast={toast} onDeleted={load} />
           ))}
         </div>
       )}

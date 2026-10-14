@@ -1,9 +1,10 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sk, SkItems } from '../components/Skeleton';
+import { useConfirm } from '../components/useConfirm';
 import { Busy, readCount, saveCount } from './helpers';
 
-function FaqRow({ sb, f, no, fail, toast, onDeleted }) {
+function FaqRow({ sb, f, no, ask, fail, toast, onDeleted }) {
   const [cur, setCur] = useState(f);
   const [editing, setEditing] = useState(false);
   const [q, setQ] = useState(f.question);
@@ -29,7 +30,8 @@ function FaqRow({ sb, f, no, fail, toast, onDeleted }) {
   }
 
   async function remove() {
-    if (!confirm('Hapus FAQ ini?')) return;
+    const ok = await ask({ title: 'Hapus FAQ?', message: '"' + cur.question + '" akan dihapus permanen.' });
+    if (!ok) return;
     setRemoving(true);
     const { error } = await sb.from('faqs').delete().eq('id', cur.id);
     if (error) { setRemoving(false); fail(error); return; }
@@ -76,6 +78,7 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
   const [a, setA] = useState('');
   const [busy, setBusy] = useState(false);
   const answerRef = useRef(null);
+  const [ask, confirmNode] = useConfirm();
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
   const [guess] = useState(() => readCount('faq:' + shop.id));
 
@@ -110,6 +113,7 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
 
   return (
     <>
+      {confirmNode}
       <div className="card">
         <h2>Tambah FAQ</h2>
         <input id="fq" maxLength={200} placeholder="Pertanyaan pelanggan" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -132,7 +136,7 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
             <p className="hint">Belum ada FAQ. Contoh: kebijakan retur, cara reseller, lama pengemasan.</p>
           )}
           {items.map((f, i) => (
-            <FaqRow key={f.id} sb={sb} f={f} no={i + 1} fail={fail} toast={toast} onDeleted={load} />
+            <FaqRow key={f.id} sb={sb} f={f} no={i + 1} ask={ask} fail={fail} toast={toast} onDeleted={load} />
           ))}
         </div>
       )}

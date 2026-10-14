@@ -40,10 +40,11 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding
 .li{display:flex;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit}
 button.li{cursor:pointer}
 .li:first-child{border-top:0}
-.li .no{flex:0 0 28px;text-align:right;font-weight:600;color:var(--mute);font-variant-numeric:tabular-nums}
+.li .no{flex:0 0 28px;align-self:flex-start;text-align:right;font-weight:600;color:var(--mute);font-variant-numeric:tabular-nums}
 .li .open{flex:1;min-width:0;display:flex;gap:10px;align-items:center;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .li .t.wrap b,.li .t.wrap small{white-space:normal;overflow:visible}
 .li.edit{align-items:flex-start}
+.li.edit .no{padding-top:11px}
 .li.edit .t .row:last-child{margin-top:10px}
 .li .t .grid3{display:grid;gap:8px;grid-template-columns:2fr 1fr 1fr}
 @media(max-width:560px){.li .t .grid3{grid-template-columns:1fr}}
@@ -194,3 +195,9 @@ iframe.preview{width:100%;height:520px;border:1px solid var(--line);border-radiu
 a.nav-i{text-decoration:none}
 .hint .spin{width:11px;height:11px;margin-right:6px}
 .btn.sm .spin{width:12px;height:12px;margin-right:6px}
+
+.btn.danger.solid{background:var(--warn);color:var(--panel);border-color:var(--warn)}
+.modal-bg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:20px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.modal h3{margin:0 0 6px;font-size:18px}
+.modal p{margin:0;color:var(--mute);font-size:14px}

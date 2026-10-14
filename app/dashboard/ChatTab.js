@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Busy, dayTime, hhmm, readCount, saveCount } from './helpers';
 import { SkConvRows, SkMsgs } from '../components/Skeleton';
+import { useConfirm } from '../components/useConfirm';
 
 const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at';
@@ -11,6 +12,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
   const [convs, setConvs] = useState(null);
   const [prev, setPrev] = useState({});
   const [deleting, setDeleting] = useState('');
+  const [ask, confirmNode] = useConfirm();
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
   const [guess] = useState(() => readCount('conv:' + shop.id));
 
@@ -38,7 +40,8 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
   }, [load]);
 
   async function remove(c) {
-    if (!confirm('Hapus percakapan dengan "' + c.customer_name + '"? Semua pesannya ikut terhapus.')) return;
+    const ok = await ask({ title: 'Hapus percakapan?', message: 'Percakapan dengan "' + c.customer_name + '" beserta semua pesannya akan dihapus permanen.' });
+    if (!ok) return;
     setDeleting(c.id);
     const { data, error } = await sb.from('conversations').delete().eq('id', c.id).select('id');
     setDeleting('');
@@ -54,6 +57,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
 
   return (
     <div className="card">
+      {confirmNode}
       <h2>Percakapan terbaru</h2>
       <div>
         {!convs && <SkConvRows rows={guess === null ? 4 : Math.min(guess, 6)} />}
