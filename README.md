@@ -108,6 +108,12 @@ Hal yang perlu diketahui:
 - **Notifikasi kuota** (`lib/quotaAlert.js`): lewat Telegram admin toko, sekali saat kuota balasan bulan ini terpakai 80% dan sekali saat habis, per bulan kalender (WIB). Tidak ada penerima Telegram berarti tidak ada kiriman dan jatah bulan itu tidak terpakai. Batas 80% diatur di `WARN_AT`.
 - **Pengingat masa aktif** sudah ada sebelumnya (`lib/reminder.js`, tahap 7, 3, 1 hari dan habis) dan butuh `CRON_SECRET` serta cron-job.org seperti di bagian langganan.
 
+## Bahasa
+
+Asisten **memahami pesan dalam bahasa apa pun** tetapi **selalu membalas dalam bahasa Indonesia** (aturan 5a di `buildSystem`, `lib/bot.js`). Pesan otomatis non-AI (kuota habis, gangguan, tulisan widget) juga tetap Indonesia.
+
+Pada toko berkatalog besar (lebih dari 100 produk atau FAQ), nama produk dicari dengan kata kunci a-z. Kalau pencarian biasa kosong, pesan pelanggan diterjemahkan dulu menjadi kata kunci Indonesia (`translateKeywords`, satu panggilan Gemini kecil) lalu dicari sekali lagi. Ini hanya terjadi saat pencarian kosong, dan tidak untuk sapaan biasa seperti "halo kak". Toko berkatalog kecil tidak butuh langkah ini karena seluruh produk dikirim ke AI.
+
 ## Keamanan: yang sudah ada dan batasnya
 
 - **RLS di semua tabel.** Pemilik toko hanya bisa membaca dan mengubah data tokonya. Pelanggan (anon) tidak punya akses langsung.

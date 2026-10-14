@@ -982,6 +982,60 @@ t('status langganan mode ringkas: paket dan kuota tetap ada, riwayat pembayaran 
   for (const k of ['plan', 'expiresAt', 'used', 'quota', 'plans']) assert.deepStrictEqual(brief[k], full[k], k);
 });
 
+/* ---------- Bahasa: paham bahasa apa pun, selalu balas Indonesia ---------- */
+t('bahasa: prompt menyuruh paham bahasa apa pun tetapi selalu membalas Indonesia', async () => {
+  const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
+  for (const sys of [I.buildSystem(Object.assign({}, base), [], [], false), I.buildSystem(Object.assign({}, base, { general_on: true, general_topic: 'hijab' }), [], [], true)]) {
+    assert.ok(sys.includes('dalam bahasa apa pun') && sys.includes('SELALU balas dalam bahasa Indonesia'));
+  }
+});
+t('bahasa: katalog besar, pesan berbahasa asing diterjemahkan ke kata kunci Indonesia lalu dicari', async () => {
+  const s = seedShop(); bigCatalog(s, 120); geminiCalls = [];
+  geminiImpl = async () => JSON.stringify({ kata_kunci: ['Kerudung', 'voal'] });
+  const tr = (txt) => I.translateKeywords(txt, 'free');
+  const c = await I.loadCatalog(fake, s.id, 'do you have a voile scarf?', { translate: tr });
+  assert.strictEqual(geminiCalls.length, 1, 'satu panggilan terjemahan');
+  assert.ok(c.products.some(p => p.name === 'Kerudung Voal Premium'), 'produk ketemu lewat kata kunci terjemahan');
+  assert.ok(geminiCalls[0].system.includes('bahasa Indonesia') && geminiCalls[0].contents[0].parts[0].text === 'do you have a voile scarf?');
+  // Pencarian biasa sudah ketemu: tidak perlu terjemahan
+  geminiCalls = [];
+  const c2 = await I.loadCatalog(fake, s.id, 'kerudung voal', { translate: tr });
+  assert.strictEqual(geminiCalls.length, 0); assert.ok(c2.products.some(p => p.name === 'Kerudung Voal Premium'));
+});
+t('bahasa: aksara non-Latin memicu terjemahan; sapaan Indonesia biasa tidak; gagal menerjemahkan tidak mematikan bot', async () => {
+  const s = seedShop(); bigCatalog(s, 120);
+  geminiImpl = async () => JSON.stringify({ kata_kunci: ['voal'] });
+  const tr = (txt) => I.translateKeywords(txt, 'free');
+  geminiCalls = [];
+  const zh = await I.loadCatalog(fake, s.id, '你好，我想买头巾', { translate: tr });
+  assert.strictEqual(geminiCalls.length, 1); assert.ok(zh.products.some(p => p.name === 'Kerudung Voal Premium'));
+  geminiCalls = [];
+  const hi = await I.loadCatalog(fake, s.id, 'halo kak', { translate: tr });
+  assert.strictEqual(geminiCalls.length, 0, 'sapaan biasa tidak membuang panggilan Gemini');
+  assert.ok(hi.products.length > 0 && hi.products.length <= 15);
+  // Terjemahan gagal / keluaran rusak / kata kunci berbahaya: tetap dapat contoh produk, tanpa error
+  const oldErr = console.error; console.error = () => {};
+  try {
+    geminiImpl = async () => { throw new Error('gemini mati'); };
+    const bad = await I.loadCatalog(fake, s.id, 'wireless charger', { translate: tr });
+    assert.ok(bad.products.length > 0 && bad.partial === true);
+    geminiImpl = async () => 'bukan json';
+    assert.deepStrictEqual(await I.translateKeywords('x y z', 'free'), []);
+    geminiImpl = async () => JSON.stringify({ kata_kunci: ["100%'; drop--table", 5, 'A_B'] });
+    assert.deepStrictEqual(await I.translateKeywords('apa saja', 'free'), ['100', 'drop', 'table']);
+  } finally { console.error = oldErr; }
+});
+t('bahasa: percakapan penuh dari pelanggan berbahasa Inggris pada toko besar tetap menghasilkan balasan bot', async () => {
+  const s = seedShop(); bigCatalog(s, 120); geminiCalls = [];
+  geminiImpl = async (a) => (a.system.includes('kata_kunci')
+    ? JSON.stringify({ kata_kunci: ['voal'] })
+    : JSON.stringify({ reply: 'Ada kak, Kerudung Voal Premium Rp85.000.', handoff: false, order: false }));
+  const r = await bot.handleMessage({ slug: s.slug, text: 'How much is the voile hijab?' });
+  const last = r.messages[r.messages.length - 1];
+  assert.strictEqual(last.role, 'bot'); assert.ok(last.content.includes('85.000'));
+  assert.ok(geminiCalls[geminiCalls.length - 1].system.includes('Kerudung Voal Premium'), 'produk hasil terjemahan masuk ke prompt jawaban');
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
