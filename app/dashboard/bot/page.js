@@ -10,7 +10,10 @@ export default function BotPage() {
   const [used, setUsed] = useState(null);
   const [f, setF] = useState({
     bot_on: shop.bot_on, bot_name: shop.bot_name, tone: shop.tone, greeting: shop.greeting,
-    fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent
+    fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent,
+    widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || '\uD83D\uDCAC',
+    widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
+    widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat'
   });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
@@ -27,10 +30,16 @@ export default function BotPage() {
     const limit = toInt(f.daily_limit);
     if (!f.bot_name.trim()) return toast('Isi nama asisten.');
     if (!(limit >= 1 && limit <= 5000)) return toast('Batas harian: 1 sampai 5000.');
+    const icon = f.widget_icon.trim();
+    if (!icon || Array.from(icon).length > 8) return toast('Ikon tombol: 1 sampai 8 karakter (boleh emoji).');
+    if (f.widget_label.trim().length > 30) return toast('Teks tombol maksimal 30 karakter.');
+    if (f.widget_teaser.trim().length > 100) return toast('Pesan pop-up maksimal 100 karakter.');
     setBusy(true);
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
-      fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent
+      fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent,
+      widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
+      widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape
     };
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -38,6 +47,13 @@ export default function BotPage() {
     onShopChange(patch);
     toast('Pengaturan bot disimpan.');
   }
+
+  const px = { kecil: 48, sedang: 58, besar: 70 }[f.widget_size] || 58;
+  const hex = /^#[0-9a-fA-F]{6}$/.test(f.accent) ? f.accent : '#0b7a75';
+  const lum = (0.299 * parseInt(hex.slice(1, 3), 16) + 0.587 * parseInt(hex.slice(3, 5), 16) + 0.114 * parseInt(hex.slice(5, 7), 16)) / 255;
+  const side = f.widget_pos === 'left' ? 'left' : 'right';
+  const label = f.widget_label.trim();
+  const teaser = f.widget_teaser.trim();
 
   const pct = Math.min(100, Math.round((used || 0) / shop.daily_limit * 100));
 
@@ -120,6 +136,64 @@ export default function BotPage() {
               <input id="b6" type="color" value={f.accent} onChange={set('accent')} />
               <code className="code">{f.accent}</code>
             </div>
+          </div>
+        </div>
+
+        <h3 className="fsec">Tombol chat di website</h3>
+        <p className="hint">Perubahan di sini langsung berlaku di website klien tanpa perlu menempel ulang kode (paling lambat 1 menit).</p>
+        <div className="fgrid">
+          <div>
+            <label htmlFor="w1">Posisi tombol</label>
+            <select id="w1" value={f.widget_pos} onChange={set('widget_pos')}>
+              <option value="right">Kanan bawah</option>
+              <option value="left">Kiri bawah</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="w2">Ukuran</label>
+            <select id="w2" value={f.widget_size} onChange={set('widget_size')}>
+              <option value="kecil">Kecil</option>
+              <option value="sedang">Sedang</option>
+              <option value="besar">Besar</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="w3">Bentuk</label>
+            <select id="w3" value={f.widget_shape} onChange={set('widget_shape')}>
+              <option value="bulat">Bulat</option>
+              <option value="kotak">Kotak membulat</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="w4">Ikon (emoji atau huruf)</label>
+            <input id="w4" maxLength={16} list="w4l" value={f.widget_icon} onChange={set('widget_icon')} />
+            <datalist id="w4l">
+              {['\uD83D\uDCAC', '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16', '\uD83D\uDC4B', '\u2753', '\uD83D\uDCDE'].map((e) => <option key={e} value={e} />)}
+            </datalist>
+          </div>
+          <div>
+            <label htmlFor="w5">Teks di samping ikon (opsional)</label>
+            <input id="w5" maxLength={30} placeholder="Tanya kami" value={f.widget_label} onChange={set('widget_label')} />
+          </div>
+          <div>
+            <label htmlFor="w6">Pesan pop-up (opsional)</label>
+            <input id="w6" maxLength={100} placeholder="Halo, ada yang bisa dibantu?" value={f.widget_teaser} onChange={set('widget_teaser')} />
+            <p className="hint field-hint">Muncul sekali di atas tombol setelah beberapa detik, tidak muncul lagi setelah ditutup.</p>
+          </div>
+        </div>
+        <div aria-hidden="true" style={{ position: 'relative', height: teaser ? 150 : 110, marginTop: 12, border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg)', overflow: 'hidden' }}>
+          <small style={{ position: 'absolute', top: 8, left: 12, color: 'var(--mute)' }}>Pratinjau</small>
+          {teaser ? (
+            <div style={{ position: 'absolute', [side]: 14, bottom: px + 26, maxWidth: '70%', background: '#fff', color: '#12262b', borderRadius: 14, padding: '8px 12px', fontSize: 13, boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>{teaser}</div>
+          ) : null}
+          <div style={{
+            position: 'absolute', [side]: 14, bottom: 14, height: px, minWidth: px, padding: label ? '0 18px' : 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: hex,
+            color: lum > 0.62 ? '#111' : '#fff', fontSize: Math.round(px * 0.45),
+            borderRadius: f.widget_shape === 'kotak' ? 16 : (label ? 999 : '50%'), boxShadow: '0 4px 14px rgba(0,0,0,.25)'
+          }}>
+            <span>{f.widget_icon || '\uD83D\uDCAC'}</span>
+            {label ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span> : null}
           </div>
         </div>
 

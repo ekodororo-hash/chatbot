@@ -1,6 +1,7 @@
 import supabase from '@/lib/supabase';
 import domains from '@/lib/domains';
 import TEMPLATE from '@/lib/chatTemplate';
+import widgetConfig from '@/lib/widgetConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export async function GET(request, context) {
   let shop;
   try {
     const r = await supabase.getAdmin().from('shops')
-      .select('slug,name,bot_name,greeting,tone,accent,allowed_domains')
+      .select('*')
       .eq('slug', slug).maybeSingle();
     if (r.error) throw r.error;
     shop = r.data;
@@ -36,13 +37,15 @@ export async function GET(request, context) {
   }
   if (!shop) return text(404, 'Bot tidak ditemukan');
 
+  const wc = widgetConfig.clean(shop);
   const cfg = {
     slug: shop.slug,
     shopName: shop.name,
     botName: shop.bot_name,
     greeting: shop.greeting,
     tone: shop.tone,
-    accent: /^#[0-9a-fA-F]{6}$/.test(shop.accent) ? shop.accent : '#0b7a75'
+    accent: wc.color,
+    icon: wc.icon
   };
   const html = TEMPLATE.replace('__CONFIG__', () => safeJson(cfg));
 

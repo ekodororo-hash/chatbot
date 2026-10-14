@@ -53,7 +53,7 @@ lib/domains.js               validasi domain dan pembuat CSP
 lib/chatTemplate.js          halaman chat pelanggan (dokumen mandiri, lihat catatan di bawah)
 lib/supabase.js              klien server (Secret/service role key)
 lib/supabaseBrowser.js       klien browser (Publishable/anon key)
-public/widget.js             widget yang ditempel di website klien
+public/widget.js             widget yang ditempel di website klien (tampilan dibaca dari /api/widget/slug)
 supabase/schema.sql          tabel, indeks, dan aturan keamanan (RLS)
 tests/bot.test.js            60 tes untuk otak bot, saluran, notifikasi, pencarian katalog, dan langganan (npm test)
 ```
