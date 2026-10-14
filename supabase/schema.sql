@@ -384,3 +384,7 @@ create table if not exists public.app_settings (
   updated_at timestamptz not null default now()
 );
 alter table public.app_settings enable row level security;
+
+-- Pengingat masa langganan habis (sama dengan supabase/migrations/pengingat_langganan.sql).
+alter table public.shop_billing add column if not exists reminded_stage int not null default 0;
+alter table public.shop_billing add column if not exists reminded_for timestamptz;

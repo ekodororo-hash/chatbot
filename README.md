@@ -152,11 +152,17 @@ Midtrans dan DOKU boleh aktif bersamaan: pemilik toko memilih metode di halaman 
 - Kalau tabel paket bermasalah, bot tetap menjawab (hanya batas harian yang berlaku) dan error dicatat di log.
 - Aktivasi manual (misalnya klien bayar transfer): lihat contoh SQL di bagian bawah `langganan.sql`.
 
-Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), faktur/PPN, pengingat email sebelum masa habis, dan pembatasan fitur per paket selain kuota balasan (jumlah toko, saluran Telegram/WhatsApp).
+**Pengingat langganan:** toko berbayar dikabari lewat Telegram admin toko pada 7 hari, 3 hari, dan 1 hari sebelum masa berlaku habis, dan sekali setelah habis (sampai 3 hari sesudahnya). Tiap tahap dikirim satu kali per masa berlaku; setelah perpanjangan hitungannya mulai lagi. Toko yang belum menghubungkan Telegram dicoba lagi pada jadwal berikutnya, jadi baru dikabari setelah terhubung.
+1. Jalankan `supabase/migrations/pengingat_langganan.sql` di Supabase SQL Editor, lalu deploy.
+2. Isi `CRON_SECRET` di Vercel (string acak panjang) dan deploy ulang.
+3. Di cron-job.org buat cron job: URL `https://DOMAINMU/api/cron/langganan`, jadwal sehari sekali (misalnya 09.00 WIB), metode GET. Di Advanced > Headers tambahkan `Authorization` dengan nilai `Bearer ISI_CRON_SECRET`. Kalau tidak mau memakai header, boleh `https://DOMAINMU/api/cron/langganan?key=ISI_CRON_SECRET`, tapi header lebih aman karena parameter URL bisa tercatat di log.
+4. Uji sekali dengan tombol "Test run" di cron-job.org. Balasannya ringkasan: `checked` (toko yang masuk jendela pengingat), `sent` (terkirim), `noChannel` (Telegram belum terhubung), `failed`.
+
+Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), faktur/PPN, pengingat lewat email (yang ada baru lewat Telegram), dan pembatasan fitur per paket selain kuota balasan (jumlah toko, saluran Telegram/WhatsApp).
 
 ## Yang belum ada (tahap berikutnya)
 
-- Perpanjangan otomatis dan pengingat masa langganan habis (lihat bagian Langganan).
+- Perpanjangan otomatis (kartu tersimpan/langganan berulang). Pengingat masa langganan habis sudah ada, lihat bagian Pengingat langganan.
 - Pencarian produk berbasis makna (embedding) untuk katalog yang pelanggannya sering memakai sinonim.
 
 ## Catatan Gemini
