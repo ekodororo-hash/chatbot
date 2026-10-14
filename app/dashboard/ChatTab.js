@@ -66,18 +66,20 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
           <p className="hint">Belum ada percakapan. Coba chat lewat halaman Coba bot untuk melihat hasilnya di sini.</p>
         )}
         {(convs || []).map((c, i) => (
-          <div key={c.id} className="li">
+          <div key={c.id} className="li conv">
             <span className="no" aria-label={'Nomor ' + (i + 1)}>{i + 1}</span>
             <button className="open" type="button" onClick={() => onOpen(c)}>
               <div className="t">
-                <b>{c.customer_name + ' - ' + dayTime(c.updated_at)}</b>
+                <div className="nm"><b>{c.customer_name}</b><time dateTime={c.updated_at}>{dayTime(c.updated_at)}</time></div>
                 <small>{prev[c.id] || '(belum ada pesan)'}</small>
               </div>
-              {CHANNEL[c.channel] ? <span className="tag">{CHANNEL[c.channel]}</span> : null}
-              {c.flag ? <span className="tag a">{c.flag}</span> : null}
-              <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
+              <span className="tags">
+                {CHANNEL[c.channel] ? <span className="tag">{CHANNEL[c.channel]}</span> : null}
+                {c.flag ? <span className="tag a">{c.flag}</span> : null}
+                <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
+              </span>
             </button>
-            <button className="btn danger sm" type="button" disabled={deleting === c.id} onClick={() => remove(c)}>
+            <button className="btn danger sm del" type="button" disabled={deleting === c.id} onClick={() => remove(c)}>
               <Busy on={deleting === c.id} label="Menghapus...">Hapus</Busy>
             </button>
           </div>
