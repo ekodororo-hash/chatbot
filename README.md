@@ -36,7 +36,7 @@ Tes otomatis otak bot: `npm test` (tanpa jaringan).
 ```
 app/page.js                  beranda
 app/login/                   halaman masuk dan daftar
-app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShell.js, satu route per menu: /dashboard, /produk, /faq, /toko, /bot, /pasang)
+app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShell.js, satu route per menu: /dashboard, /produk, /faq, /toko, /bot, /pasang, /notifikasi)
 app/api/chat/route.js        POST pesan pelanggan, GET polling balasan admin
 app/chat/[slug]/route.js     menyajikan /chat/:slug + header CSP frame-ancestors per toko
 app/globals.css              gaya seluruh halaman
@@ -61,12 +61,12 @@ Bot yang sama (`lib/bot.js`) sekarang bisa melayani Telegram dan WhatsApp selain
 
 **Persiapan database (sekali):** jalankan `supabase/migrations/saluran_telegram_whatsapp.sql` di Supabase SQL Editor (proyek baru sudah tercakup di `schema.sql`).
 
-**Telegram:** di dashboard buka Pasang > Telegram, tempel token dari @BotFather, klik Hubungkan. Webhook dipasang otomatis dan dilindungi secret token acak.
+**Telegram:** di dashboard buka Notifikasi > Telegram, tempel token dari @BotFather, klik Hubungkan. Webhook dipasang otomatis dan dilindungi secret token acak.
 
 **WhatsApp (Cloud API Meta):**
 1. Buat app di developers.facebook.com, tambahkan produk WhatsApp, siapkan nomor.
 2. Buat System User dan access token permanen (token sementara hanya berlaku 24 jam).
-3. Di dashboard buka Pasang > WhatsApp, isi Phone number ID, Access token, dan App Secret, lalu Simpan.
+3. Di dashboard buka Notifikasi > WhatsApp, isi Phone number ID, Access token, dan App Secret, lalu Simpan.
 4. Di dashboard Meta (WhatsApp > Configuration > Webhook) tempel Callback URL dan Verify token yang muncul, klik Verify and save, lalu subscribe ke field `messages`.
 
 Hal yang perlu diketahui:

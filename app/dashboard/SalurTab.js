@@ -23,7 +23,7 @@ function copy(text, toast) {
   } else toast('Tekan lama pada teks untuk menyalin.');
 }
 
-// Dua kartu di halaman Pasang: sambungkan bot Telegram dan nomor WhatsApp Business.
+// Dua kartu di halaman Notifikasi: sambungkan bot Telegram dan nomor WhatsApp Business.
 export default function SalurTab({ sb, fail, toast }) {
   const [st, setSt] = useState(null);
   const [ask, confirmNode] = useConfirm();
@@ -76,7 +76,7 @@ export default function SalurTab({ sb, fail, toast }) {
     <>
       {confirmNode}
       <div className="card">
-        <h2>4. Telegram</h2>
+        <h2>Telegram</h2>
         {tg.connected ? (
           <>
             <p className="hint">{'Terhubung ke '}<b>{'@' + tg.username}</b>{'. Pelanggan yang chat ke bot itu dibalas otomatis. Kalau bot tidak tahu jawabannya, percakapan masuk ke tab Percakapan dan kamu bisa membalas dari sana.'}</p>
@@ -96,7 +96,7 @@ export default function SalurTab({ sb, fail, toast }) {
       </div>
 
       <div className="card">
-        <h2>5. WhatsApp</h2>
+        <h2>WhatsApp</h2>
         <p className="hint">{'Memakai WhatsApp Business Platform (Cloud API) dari Meta. Buat app di developers.facebook.com, tambahkan produk WhatsApp, lalu salin tiga data di bawah.'}</p>
         <label htmlFor="wpi">Phone number ID</label>
         <input id="wpi" inputMode="numeric" autoComplete="off" placeholder="Contoh 109876543210987" value={phoneId} onChange={(e) => setPhoneId(e.target.value)} />

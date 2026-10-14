@@ -9,6 +9,7 @@ import ProdukTab from './ProdukTab';
 import FaqTab from './FaqTab';
 import TokoTab from './TokoTab';
 import PasangTab from './PasangTab';
+import SalurTab from './SalurTab';
 
 const common = (d) => ({ sb: d.sb, shop: d.shop, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange });
 
@@ -29,3 +30,4 @@ export function FaqView() {
 }
 export function TokoView() { return <TokoTab {...common(useDash())} />; }
 export function PasangView() { return <PasangTab {...common(useDash())} />; }
+export function NotifikasiView() { return <SalurTab {...common(useDash())} />; }

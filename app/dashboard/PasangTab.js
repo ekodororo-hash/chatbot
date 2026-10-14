@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import domains from '@/lib/domains';
 import { Busy, useOrigin } from './helpers';
-import SalurTab from './SalurTab';
 
 export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
   const origin = useOrigin();
@@ -67,8 +66,6 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
           <a className="btn ghost sm" href={link} target="_blank" rel="noopener">Buka</a>
         </div>
       </div>
-
-      <SalurTab sb={sb} fail={fail} toast={toast} />
     </>
   );
 }
