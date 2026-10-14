@@ -236,9 +236,11 @@ a.nav-i{text-decoration:none}
 .guide-body li{margin:0 0 8px}
 .guide-body li:last-child{margin-bottom:0}
 .guide-body .hint{margin:10px 0 0}
-.shopbox select{padding:6px 8px;font-size:14px;font-weight:500;margin-bottom:4px}
-.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:12px;padding:6px 0 0;cursor:pointer;text-align:left}
-.linkbtn:hover{text-decoration:underline}
+.shopbox select{appearance:none;-webkit-appearance:none;background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23587278' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;padding:8px 30px 8px 10px;font-size:14px;font-weight:550;margin-bottom:6px;cursor:pointer;text-overflow:ellipsis}
+.shopbox{display:grid;gap:2px}
+.shopbox b{font-size:15px;font-weight:600}
+.linkbtn{display:flex;align-items:center;gap:6px;width:100%;margin-top:8px;padding:7px 8px;background:var(--panel);border:1px dashed var(--line);border-radius:8px;color:var(--accent);font:inherit;font-size:13px;font-weight:500;cursor:pointer;text-align:left}
+.linkbtn:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
 .mem{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .mem:first-of-type{border-top:0}
 .mem .t{flex:1;min-width:0}
@@ -445,3 +447,21 @@ a.nav-i{text-decoration:none}
 .diag .t small.tech{margin-top:4px}
 .diag .tag{flex:none}
 @media (max-width:560px){.diag{flex-wrap:wrap}.diag .tag{margin-left:36px}}
+
+/* ===== Paket di halaman depan ===== */
+.navlink{color:var(--ink);text-decoration:none;font-size:14px;font-weight:500;padding:6px 10px}
+.navlink:hover{color:var(--accent)}
+.prices{display:grid;gap:16px;margin-bottom:16px}
+@media (min-width:760px){.prices{grid-template-columns:repeat(3,1fr);gap:20px}}
+.price-c{display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px}
+.price-c.feat{border:2px solid var(--accent)}
+.price-c .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.price-c .ph b{font-size:18px}
+.price-c .amt{font-size:32px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
+.price-c .amt small{font-size:14px;font-weight:400;color:var(--mute);letter-spacing:0}
+.price-c .was{font-size:13px;color:var(--mute);margin-top:-6px}
+.price-c ul{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;flex:1;color:var(--mute);font-size:15px}
+.price-c li::before{content:"\2713";color:var(--accent);font-weight:700;margin-right:8px}
+.price-c li b{color:var(--ink);font-weight:550}
+.price-c .btn{width:100%}
+html{scroll-behavior:smooth}

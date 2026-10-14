@@ -233,7 +233,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
                 </select>
               ) : <b>{shop.name}</b>}
               <small>{'/chat/' + shop.slug + (role !== 'owner' ? ' · admin' : '')}</small>
-              <button className="linkbtn" type="button" onClick={() => { setAdding(true); setMenuOpen(false); }}>+ Tambah toko</button>
+              <button className="linkbtn" type="button" onClick={() => { setAdding(true); setMenuOpen(false); }}><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>Tambah toko</button>
             </div>
           )}
           {waiting && <Sk h={52} r={12} style={{ margin: '0 4px' }} />}

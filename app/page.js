@@ -1,4 +1,33 @@
 import Link from 'next/link';
+import plans from '@/lib/plans';
+import settings from '@/lib/settings';
+
+// Harga dibaca dari pengaturan admin (/admin/paket), jadi halaman depan selalu sama dengan halaman Langganan.
+export const revalidate = 60;
+
+const rp = (n) => 'Rp' + Number(n).toLocaleString('id-ID');
+const chat = (n) => Number(n).toLocaleString('id-ID') + ' balasan bot per bulan';
+
+async function loadPlans() {
+  try {
+    const v = await settings.getAll();
+    plans.configure(v.PLANS_CONFIG ? JSON.parse(v.PLANS_CONFIG) : null);
+  } catch (e) { plans.configure(null); }
+  const P = plans.PLANS, T = plans.TERMS;
+  const disc = Object.keys(T).map(Number).filter((m) => m > 1 && T[m] > 0).sort((a, b) => a - b);
+  return {
+    list: [
+      { id: 'free', name: P.free.name, price: 'Rp0', per: 'selamanya', quota: chat(P.free.quota), pts: ['Semua fitur dasar', 'Tidak perlu kartu kredit'], cta: 'Coba gratis', feat: false },
+      ...['starter', 'bisnis'].map((id) => ({
+        id, name: P[id].name, promo: P[id].promo,
+        price: rp(plans.priceFor(id, 1)), was: P[id].promo ? rp(plans.listPriceFor(id, 1)) : '', per: 'per bulan',
+        quota: chat(P[id].quota), pts: ['Semua fitur dasar', id === 'bisnis' ? 'Cocok untuk toko ramai' : 'Cocok untuk toko yang mulai tumbuh'],
+        cta: 'Pilih ' + P[id].name, feat: id === 'starter'
+      }))
+    ],
+    note: disc.length ? 'Langganan lebih lama lebih hemat: ' + disc.map((m) => m + ' bulan hemat ' + T[m] + '%').join(', ') + '.' : ''
+  };
+}
 
 const DEMO = [
   ['c', 'Pashmina ceruty dusty pink masih ada?'],
@@ -9,12 +38,14 @@ const DEMO = [
   ['h', 'Harga grosir belum ada di data toko, jadi saya teruskan ke admin ya kak.']
 ];
 
-export default function Beranda() {
+export default async function Beranda() {
+  const { list, note } = await loadPlans();
   return (
     <>
       <header className="nav">
         <Link className="brand" href="/">Asisten<span>Toko</span></Link>
         <span className="grow"></span>
+        <a className="navlink" href="#paket">Paket</a>
         <Link className="btn ghost sm" href="/login">Masuk</Link>
         <Link className="btn sm" href="/login#daftar">Daftar</Link>
       </header>
@@ -25,10 +56,10 @@ export default function Beranda() {
             <h1>Chatbot yang menjawab pelangganmu saat kamu sibuk</h1>
             <p className="lead">Isi produk, stok, dan FAQ tokomu sekali. Asisten menjawab dari data itu, dan menyerahkan ke kamu kalau ada yang tidak diketahui.</p>
             <div className="row">
-              <Link className="btn lg" href="/login#daftar">Buat asisten tokomu</Link>
+              <Link className="btn lg" href="/login#daftar">Coba gratis</Link>
               <Link className="btn ghost lg" href="/login">Sudah punya akun</Link>
             </div>
-            <p className="note">Tanpa coding. Cukup isi data toko, lalu tempel satu baris kode.</p>
+            <p className="note">Gratis tanpa kartu kredit. Tanpa coding: isi data toko, lalu tempel satu baris kode.</p>
           </div>
 
           <div className="demo" role="img" aria-label="Contoh percakapan pelanggan dengan asisten toko, berakhir dengan pertanyaan harga grosir yang diteruskan ke admin">
@@ -66,10 +97,29 @@ export default function Beranda() {
           </dl>
         </section>
 
+        <section className="sec" aria-labelledby="paket-h" id="paket">
+          <h2 id="paket-h">Mulai gratis, naik paket kalau toko makin ramai</h2>
+          <div className="prices">
+            {list.map((p) => (
+              <div key={p.id} className={'price-c' + (p.feat ? ' feat' : '')}>
+                <div className="ph"><b>{p.name}</b>{p.feat ? <span className="tag a">Terpopuler</span> : null}{p.promo ? <span className="tag w">{'Diskon ' + p.promo + '%'}</span> : null}</div>
+                <div className="amt">{p.price}<small>{' ' + p.per}</small></div>
+                {p.was ? <div className="was"><s>{p.was}</s></div> : null}
+                <ul>
+                  <li><b>{p.quota}</b></li>
+                  {p.pts.map((t) => <li key={t}>{t}</li>)}
+                </ul>
+                <Link className={'btn' + (p.id === 'free' ? '' : ' ghost')} href="/login#daftar">{p.cta}</Link>
+              </div>
+            ))}
+          </div>
+          <p className="hint">{'Setelah batas balasan bulanan, pesan baru masuk ke admin dan kamu tetap bisa membalas sendiri. ' + note}</p>
+        </section>
+
         <section className="cta">
           <h2>Biarkan asisten menjaga toko, kamu fokus jualan</h2>
-          <p>Buat akun, isi data tokomu, dan coba chat-nya langsung di dashboard.</p>
-          <Link className="btn inv lg" href="/login#daftar">Buat asisten tokomu</Link>
+          <p>Buat akun gratis, isi data tokomu, dan coba chat-nya langsung di dashboard.</p>
+          <Link className="btn inv lg" href="/login#daftar">Coba gratis</Link>
         </section>
       </main>
 
