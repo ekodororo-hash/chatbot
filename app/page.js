@@ -45,6 +45,7 @@ export default async function Beranda() {
   const { list, note } = await loadPlans();
   return (
     <>
+      <noscript><style>{'.rv .flow li,.rv .price-c{opacity:1!important;transform:none!important}'}</style></noscript>
       <header className="nav">
         <Link className="brand" href="/">Asisten<span>Toko</span></Link>
         <span className="grow"></span>

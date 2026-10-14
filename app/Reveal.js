@@ -1,19 +1,17 @@
 'use client';
-// Anak-anaknya masuk satu per satu saat bagian ini terlihat di layar. Tanpa JS atau dengan "kurangi gerakan", semuanya langsung tampil.
+// Anak-anaknya masuk satu per satu saat bagian ini terlihat di layar.
+// Awalnya disembunyikan dari server (class "arm") supaya tidak berkedip; tanpa JS, <noscript> di page.js menampilkannya.
 import { useEffect, useRef, useState } from 'react';
 
 export default function Reveal({ className = '', children }) {
   const ref = useRef(null);
-  const [st, setSt] = useState('');   // '' = tampil biasa, 'arm' = siap animasi, 'in' = sudah masuk
+  const [st, setSt] = useState('arm');
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (el.getBoundingClientRect().top < window.innerHeight * 0.9) return;   // sudah terlihat saat dibuka: tidak perlu animasi
-    setSt('arm');
+    if (!el || typeof IntersectionObserver === 'undefined') { setSt('in'); return; }
     const io = new IntersectionObserver((es) => {
       if (es.some((e) => e.isIntersecting)) { setSt('in'); io.disconnect(); }
-    }, { threshold: 0.2 });
+    }, { threshold: 0.15 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
