@@ -175,60 +175,107 @@ function Code({ children }) {
   return <code style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '1px 6px', wordBreak: 'break-all' }}>{children}</code>;
 }
 
+const GATEWAYS = {
+  midtrans: {
+    name: 'Midtrans', desc: 'Kartu, e-wallet, transfer bank, QRIS', path: '/api/midtrans',
+    fields: [['server_key', 'Server Key', 'SB-Mid-server-...']],
+    steps: (url) => [
+      <>Buka <b>dashboard.midtrans.com</b> dan masuk. Untuk uji coba, ganti mode ke <b>Sandbox</b> (pojok kiri atas).</>,
+      <>Masuk ke <b>Settings → Access Keys</b>, salin <b>Server Key</b>, lalu tempel di kolom di bawah.</>,
+      <>Di <b>Settings → Configuration</b>, isi <b>Payment Notification URL</b> dengan <Code>{url}</Code>, lalu simpan.</>,
+      <>Pilih lingkungan <b>Sandbox</b> di bawah (ganti ke <b>Production</b> hanya setelah akun lolos verifikasi dan Server Key diganti yang production), lalu klik <b>Simpan</b>.</>
+    ]
+  },
+  doku: {
+    name: 'DOKU', desc: 'DOKU Checkout (VA, e-wallet, QRIS, kartu)', path: '/api/doku',
+    fields: [['client_id', 'Client ID', 'BRN-...'], ['secret_key', 'Secret Key', 'SK-...']],
+    steps: (url) => [
+      <>Buka <b>dashboard.doku.com</b> dan masuk. Pilih lingkungan <b>Sandbox</b> untuk uji coba.</>,
+      <>Masuk ke <b>Integration → API Keys</b>, salin <b>Client ID</b> dan <b>Secret Key</b>, lalu tempel di kolom di bawah.</>,
+      <>Di DOKU Back Office (<b>Settings → Payment Channels</b>), isi <b>Notification URL</b> dengan <Code>{url}</Code> untuk setiap channel yang dipakai.</>,
+      <>Pilih lingkungan <b>Sandbox</b> atau <b>Production</b> sesuai key yang ditempel, lalu klik <b>Simpan</b>.</>
+    ]
+  }
+};
+
+function GatewayCard({ g, origin }) {
+  const { act } = useAdmin();
+  const meta = GATEWAYS[g.id];
+  const [vals, setVals] = useState({});
+  const [prod, setProd] = useState(g.production);
+  const [busy, setBusy] = useState('');
+  const url = (origin || 'https://DOMAINMU') + meta.path;
+  const web = Object.values(g.fields).some((f) => f.source === 'web');
+
+  async function run(key, body, msg) {
+    setBusy(key);
+    const ok = await act(Object.assign({ provider: g.id }, body), msg);
+    setBusy('');
+    if (ok) setVals({});
+  }
+
+  return (
+    <div className="card">
+      <div className="li" style={{ border: 0, padding: 0 }}>
+        <div className="t"><b>{meta.name}</b><small>{meta.desc}</small></div>
+        {g.ready ? <span className="tag a">{'Terhubung · ' + (g.production ? 'production' : 'sandbox')}</span> : <span className="tag w">Belum diisi</span>}
+      </div>
+      <Steps items={meta.steps(url)} />
+
+      <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+        {meta.fields.map(([f, label, ph]) => {
+          const cur = g.fields[f];
+          return (
+            <label key={f} style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+              <span>{label}{cur && cur.source ? <span className="hint">{' · tersimpan ' + cur.hint + (cur.source === 'env' ? ' (dari Vercel)' : '')}</span> : null}</span>
+              <input type="password" autoComplete="off" spellCheck="false" value={vals[f] || ''}
+                placeholder={cur && cur.source ? 'Kosongkan jika tidak diubah' : ph}
+                onChange={(e) => setVals((v) => Object.assign({}, v, { [f]: e.target.value }))} />
+            </label>
+          );
+        })}
+        <label style={{ display: 'grid', gap: 4, fontSize: 14 }}>
+          <span>Lingkungan</span>
+          <select value={prod ? 'production' : 'sandbox'} onChange={(e) => setProd(e.target.value === 'production')}>
+            <option value="sandbox">Sandbox (uji coba)</option>
+            <option value="production">Production (uang asli)</option>
+          </select>
+        </label>
+      </div>
+      <div className="row">
+        <button className="btn sm" type="button" disabled={!!busy}
+          onClick={() => run('save', Object.assign({ action: 'save_gateway', production: prod }, vals), meta.name + ' disimpan.')}>
+          <Busy on={busy === 'save'} label="Menyimpan...">Simpan</Busy>
+        </button>
+        {web ? (
+          <button className="btn ghost sm" type="button" disabled={!!busy}
+            onClick={() => run('clear', { action: 'clear_gateway' }, 'Isian ' + meta.name + ' dihapus.')}>
+            <Busy on={busy === 'clear'} label="Menghapus...">Hapus isian</Busy>
+          </button>
+        ) : null}
+      </div>
+      <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan.</p>
+    </div>
+  );
+}
+
 export function PengaturanView() {
   const { data } = useAdmin();
   const [origin, setOrigin] = useState('');
   useEffect(() => { setOrigin(window.location.origin); }, []);
-  const gw = {}; (data.gateways || []).forEach((g) => { gw[g.id] = g; });
-  const base = origin || 'https://DOMAINMU';
-  const state = (g) => (g && g.ready
-    ? <span className="tag a">{'Terhubung · ' + (g.production ? 'production' : 'sandbox')}</span>
-    : <span className="tag w">Belum diisi</span>);
-
   return (
     <>
       <div className="card">
-        <h2>Cara kerja</h2>
-        <p className="hint">Key pembayaran disimpan sebagai Environment Variable di Vercel (bukan di database), jadi tidak pernah tampil di browser. Setelah mengubah variabel, <b>deploy ulang</b> supaya terbaca. Pakai salah satu provider, atau keduanya: pemilik toko memilih metode saat membayar.</p>
-        <p className="hint">Status di bawah membaca server langsung, jadi kalau sudah berubah jadi “Terhubung” berarti key sudah terbaca.</p>
+        <h2>Pembayaran</h2>
+        <p className="hint">Isi key pembayaran langsung di sini, tanpa deploy ulang. Pakai salah satu provider, atau keduanya: pemilik toko memilih metode saat membayar. Kalau key juga diisi di Vercel, isian dari halaman ini yang dipakai.</p>
       </div>
-
-      <div className="card">
-        <div className="li" style={{ border: 0, padding: 0 }}>
-          <div className="t"><b>Midtrans</b><small>Kartu, e-wallet, transfer bank, QRIS</small></div>
-          {state(gw.midtrans)}
-        </div>
-        <Steps items={[
-          <>Buka <b>dashboard.midtrans.com</b> dan masuk. Untuk uji coba, ganti mode ke <b>Sandbox</b> (pojok kiri atas).</>,
-          <>Masuk ke <b>Settings → Access Keys</b>, salin <b>Server Key</b> (sandbox diawali <Code>SB-Mid-server-</Code>).</>,
-          <>Di <b>Settings → Configuration</b>, isi <b>Payment Notification URL</b> dengan <Code>{base + '/api/midtrans'}</Code>, lalu simpan.</>,
-          <>Di Vercel: <b>Project → Settings → Environment Variables</b>, tambahkan <Code>MIDTRANS_SERVER_KEY</Code> berisi Server Key tadi.</>,
-          <>Tambahkan <Code>MIDTRANS_IS_PRODUCTION</Code> = <Code>false</Code> untuk sandbox. Ganti ke <Code>true</Code> hanya setelah akun lolos verifikasi dan Server Key diganti yang production.</>,
-          <>Buka tab <b>Deployments</b> di Vercel, <b>Redeploy</b>, lalu muat ulang halaman ini sampai statusnya “Terhubung”.</>
-        ]} />
-      </div>
-
-      <div className="card">
-        <div className="li" style={{ border: 0, padding: 0 }}>
-          <div className="t"><b>DOKU</b><small>DOKU Checkout (VA, e-wallet, QRIS, kartu)</small></div>
-          {state(gw.doku)}
-        </div>
-        <Steps items={[
-          <>Buka <b>dashboard.doku.com</b> dan masuk. Pilih lingkungan <b>Sandbox</b> untuk uji coba.</>,
-          <>Masuk ke <b>Integration → API Keys</b>, salin <b>Client ID</b> dan <b>Secret Key</b>.</>,
-          <>Di DOKU Back Office (<b>Settings → Payment Channels</b>), isi <b>Notification URL</b> dengan <Code>{base + '/api/doku'}</Code> untuk setiap channel yang dipakai.</>,
-          <>Di Vercel: <b>Settings → Environment Variables</b>, tambahkan <Code>DOKU_CLIENT_ID</Code> dan <Code>DOKU_SECRET_KEY</Code>.</>,
-          <>Tambahkan <Code>DOKU_IS_PRODUCTION</Code> = <Code>false</Code> untuk sandbox, <Code>true</Code> hanya untuk key production.</>,
-          <><b>Redeploy</b> di Vercel, lalu muat ulang halaman ini sampai statusnya “Terhubung”.</>
-        ]} />
-      </div>
-
+      {(data.gateways || []).map((g) => <GatewayCard key={g.id} g={g} origin={origin} />)}
       <div className="card">
         <h2>Cek hasilnya</h2>
         <Steps items={[
           <>Buka <b>Dashboard toko → Langganan</b> dengan akun pemilik toko, pilih paket, lalu bayar memakai akun uji coba (sandbox).</>,
           <>Kembali ke <Link href="/admin/pembayaran">Pembayaran</Link>: pembayaran muncul sebagai “Menunggu”, lalu berubah “Lunas” setelah notifikasi masuk.</>,
-          <>Kalau tetap “Menunggu”, periksa lagi Notification URL di dashboard provider dan pastikan sudah redeploy.</>
+          <>Kalau tetap “Menunggu”, periksa lagi Notification URL di dashboard provider.</>
         ]} />
       </div>
     </>

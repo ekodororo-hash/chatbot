@@ -374,3 +374,11 @@ language sql stable set search_path = public, extensions as $$
   limit least(greatest(n, 1), 100)
 $$;
 revoke all on function public.search_faqs(uuid, text[], int) from public, anon, authenticated;
+
+-- Pengaturan layanan (key pembayaran dari halaman admin). Hanya server; RLS tanpa policy.
+create table if not exists public.app_settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.app_settings enable row level security;

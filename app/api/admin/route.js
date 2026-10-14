@@ -1,6 +1,7 @@
 import admin from '@/lib/admin';
 import plans from '@/lib/plans';
 import shops from '@/lib/shops';
+import settings from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -71,14 +72,26 @@ export async function GET(request) {
       shops: rows,
       payments: (pays || []).map((p) => Object.assign({}, p, { shop_name: nameBy[p.shop_id] || '' })),
       plans: Object.values(plans.PLANS).map((p) => ({ id: p.id, name: p.name })),
-      // Hanya status (terisi atau belum), isi key tidak pernah dikirim ke browser.
-      gateways: [
-        { id: 'midtrans', ready: !!process.env.MIDTRANS_SERVER_KEY, production: String(process.env.MIDTRANS_IS_PRODUCTION || '').toLowerCase() === 'true' },
-        { id: 'doku', ready: !!(process.env.DOKU_CLIENT_ID && process.env.DOKU_SECRET_KEY), production: String(process.env.DOKU_IS_PRODUCTION || '').toLowerCase() === 'true' }
-      ]
+      // Hanya status dan 4 karakter terakhir; isi key tidak pernah dikirim ke browser.
+      gateways: gateways(await settings.describe())
     });
   } catch (e) { return fail(e); }
 }
+
+function gateways(m) {
+  const g = (k) => m[k] || { source: null, hint: '' };
+  return [
+    { id: 'midtrans', ready: !!g('MIDTRANS_SERVER_KEY').source, production: g('MIDTRANS_IS_PRODUCTION').hint === 'true',
+      fields: { server_key: g('MIDTRANS_SERVER_KEY') } },
+    { id: 'doku', ready: !!(g('DOKU_CLIENT_ID').source && g('DOKU_SECRET_KEY').source), production: g('DOKU_IS_PRODUCTION').hint === 'true',
+      fields: { client_id: g('DOKU_CLIENT_ID'), secret_key: g('DOKU_SECRET_KEY') } }
+  ];
+}
+
+const FIELD_KEYS = {
+  midtrans: { server_key: 'MIDTRANS_SERVER_KEY', production: 'MIDTRANS_IS_PRODUCTION' },
+  doku: { client_id: 'DOKU_CLIENT_ID', secret_key: 'DOKU_SECRET_KEY', production: 'DOKU_IS_PRODUCTION' }
+};
 
 // Aksi admin: ubah paket toko secara manual (misalnya klien bayar transfer) nyalakan/matikan bot toko, dan hapus toko.
 export async function POST(request) {
@@ -87,6 +100,26 @@ export async function POST(request) {
     let b;
     try { b = await request.json(); } catch (e) { return json({ error: 'Format permintaan salah' }, 400); }
     b = b || {};
+
+    // Pengaturan pembayaran: tidak terkait satu toko.
+    if (b.action === 'save_gateway' || b.action === 'clear_gateway') {
+      const map = Object.prototype.hasOwnProperty.call(FIELD_KEYS, b.provider) ? FIELD_KEYS[b.provider] : null;
+      if (!map) return json({ error: 'Penyedia pembayaran tidak dikenal.' }, 400);
+      const patch = {};
+      if (b.action === 'clear_gateway') Object.values(map).forEach((k) => { patch[k] = ''; });
+      else {
+        Object.keys(map).forEach((f) => {
+          if (f === 'production') return;
+          const v = String(b[f] || '').trim();
+          if (v.length > 500) throw Object.assign(new Error('Isian terlalu panjang.'), { httpStatus: 400 });
+          if (v) patch[map[f]] = v;   // kosong = tidak diubah
+        });
+        patch[map.production] = b.production ? 'true' : 'false';
+      }
+      await settings.save(patch);
+      return json({ ok: true });
+    }
+
     const shopId = String(b.shopId || '');
     if (!UUID.test(shopId)) return json({ error: 'Toko tidak valid.' }, 400);
     const shop = await must(sb.from('shops').select('id').eq('id', shopId).maybeSingle());
