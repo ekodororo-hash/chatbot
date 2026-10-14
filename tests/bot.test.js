@@ -1000,6 +1000,18 @@ t('bahasa: pengaturan "ikuti bahasa pelanggan" membuat bot membalas dengan bahas
     assert.ok(id.includes('SELALU balas dalam bahasa Indonesia'));
   }
 });
+t('tawaran admin: setelah pernah ditawarkan, prompt melarang menawarkan lagi; sebelum itu tidak ada larangan', async () => {
+  const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
+  assert.ok(!I.buildSystem(base, [], [], false, { adminOffered: false }).includes('LARANGAN KERAS'));
+  assert.ok(!I.buildSystem(base, [], [], false).includes('LARANGAN KERAS'));
+  assert.ok(I.buildSystem(base, [], [], false, { adminOffered: true }).includes('LARANGAN KERAS'));
+  const s = seedShop(); geminiCalls = [];
+  geminiImpl = async () => JSON.stringify({ reply: 'Apakah Anda ingin saya sambungkan ke admin?', handoff: false, order: false });
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'halo' });
+  assert.ok(!geminiCalls[0].system.includes('LARANGAN KERAS'), 'pesan pertama belum ada larangan');
+  await bot.handleMessage({ slug: s.slug, text: 'kenapa?', conversationId: r1.conversationId, token: r1.token, after: 0 });
+  assert.ok(geminiCalls[1].system.includes('LARANGAN KERAS'), 'setelah tawaran admin, larangan masuk prompt');
+});
 t('bahasa: katalog besar, pesan berbahasa asing diterjemahkan ke kata kunci Indonesia lalu dicari', async () => {
   const s = seedShop(); bigCatalog(s, 120); geminiCalls = [];
   geminiImpl = async () => JSON.stringify({ kata_kunci: ['Kerudung', 'voal'] });
