@@ -55,6 +55,29 @@ tests/bot.test.js            13 tes untuk otak bot (npm test)
 header CSP yang berbeda untuk tiap toko (daftar domain yang boleh memasangnya). Dengan dokumen mandiri tanpa script eksternal,
 CSP bisa dibuat sangat ketat (`default-src 'none'`). Isinya hanya berubah lewat `lib/chatTemplate.js`.
 
+## Telegram dan WhatsApp
+
+Bot yang sama (`lib/bot.js`) sekarang bisa melayani Telegram dan WhatsApp selain widget web. Semua percakapan masuk ke tab Percakapan, dengan label saluran, dan admin membalas dari sana seperti biasa.
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/saluran_telegram_whatsapp.sql` di Supabase SQL Editor (proyek baru sudah tercakup di `schema.sql`).
+
+**Telegram:** di dashboard buka Pasang > Telegram, tempel token dari @BotFather, klik Hubungkan. Webhook dipasang otomatis dan dilindungi secret token acak.
+
+**WhatsApp (Cloud API Meta):**
+1. Buat app di developers.facebook.com, tambahkan produk WhatsApp, siapkan nomor.
+2. Buat System User dan access token permanen (token sementara hanya berlaku 24 jam).
+3. Di dashboard buka Pasang > WhatsApp, isi Phone number ID, Access token, dan App Secret, lalu Simpan.
+4. Di dashboard Meta (WhatsApp > Configuration > Webhook) tempel Callback URL dan Verify token yang muncul, klik Verify and save, lalu subscribe ke field `messages`.
+
+Hal yang perlu diketahui:
+- Kunci akses disimpan di tabel `shop_channels`. RLS aktif tanpa policy, jadi hanya server yang bisa membacanya; dashboard tidak pernah menerima token kembali.
+- Webhook memverifikasi pengirim: header secret token (Telegram) dan tanda tangan `X-Hub-Signature-256` dengan App Secret (WhatsApp). Pesan yang dikirim ulang diabaikan lewat `messages.external_id`.
+- Satu pelanggan = satu percakapan yang berlanjut. Setelah 200 pesan, otomatis dibuat percakapan baru.
+- Aturan WhatsApp: balasan bebas hanya boleh dikirim dalam 24 jam setelah pelanggan terakhir menulis. Di luar itu admin akan melihat pesan gagal kirim dan butuh message template (belum didukung).
+- Bot hanya membaca pesan teks. Foto, stiker, dan voice note dibalas permintaan maaf. Grup Telegram diabaikan.
+- Webhook memproses pesan sebelum menjawab 200, jadi `maxDuration` di route diset 30 detik.
+- Versi Graph API diatur lewat `WHATSAPP_API_VERSION` (default `v26.0`). Versi lama dihentikan Meta secara berkala, jadi cek developers.facebook.com sebelum meluncur.
+
 ## Keamanan: yang sudah ada dan batasnya
 
 - **RLS di semua tabel.** Pemilik toko hanya bisa membaca dan mengubah data tokonya. Pelanggan (anon) tidak punya akses langsung.
@@ -68,7 +91,6 @@ CSP bisa dibuat sangat ketat (`default-src 'none'`). Isinya hanya berubah lewat 
 ## Yang belum ada (tahap berikutnya)
 
 - **Pembayaran langganan** (Midtrans/Xendit). Saat ini belum ada kolom paket atau kuota bulanan; aktivasi klien dilakukan manual.
-- **Telegram dan WhatsApp.** `lib/bot.js` sudah dipisah dari halaman web, jadi tinggal dibuatkan endpoint webhook yang memanggil `handleMessage`.
 - **Banyak toko per akun** (sekarang satu akun satu toko) dan peran admin tambahan.
 - **Notifikasi** saat ada percakapan butuh admin (email atau Telegram). Dashboard sekarang polling tiap 10 detik.
 - **Realtime** pengganti polling kalau pengguna sudah banyak.

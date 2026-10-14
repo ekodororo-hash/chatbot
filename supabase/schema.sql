@@ -49,6 +49,8 @@ create table public.conversations (
   flag text check (flag in ('Pesanan')),
   unanswered boolean not null default false,
   last_question text,
+  channel text not null default 'web' check (channel in ('web','telegram','whatsapp')),
+  external_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -59,6 +61,7 @@ create table public.messages (
   shop_id uuid not null references public.shops(id) on delete cascade,
   role text not null check (role in ('customer','bot','admin')),
   content text not null check (char_length(content) between 1 and 2000),
+  external_id text,
   created_at timestamptz not null default now()
 );
 
@@ -67,6 +70,8 @@ create index on public.faqs (shop_id);
 create index on public.conversations (shop_id, updated_at desc);
 create index on public.messages (conversation_id, id);
 create index on public.messages (shop_id, role, created_at);
+create index conversations_channel_ext on public.conversations (shop_id, channel, external_id, created_at desc) where external_id is not null;
+create unique index messages_shop_external on public.messages (shop_id, external_id) where external_id is not null;
 
 -- Perbarui waktu percakapan setiap ada pesan baru
 create or replace function public.touch_conversation() returns trigger
@@ -121,3 +126,19 @@ create policy msg_insert_admin on public.messages for insert to authenticated
     public.owns_shop(shop_id) and role = 'admin'
     and exists (select 1 from public.conversations c where c.id = conversation_id and c.shop_id = messages.shop_id)
   );
+
+-- Kunci akses Telegram/WhatsApp per toko. RLS aktif TANPA policy: hanya server (service role) yang bisa membaca/menulis.
+create table public.shop_channels (
+  shop_id uuid primary key references public.shops(id) on delete cascade,
+  telegram_token text,
+  telegram_secret text,
+  telegram_username text,
+  wa_phone_id text,
+  wa_number text,
+  wa_token text,
+  wa_app_secret text,
+  wa_verify_token text,
+  updated_at timestamptz not null default now()
+);
+alter table public.shop_channels enable row level security;
+revoke all on public.shop_channels from anon, authenticated;

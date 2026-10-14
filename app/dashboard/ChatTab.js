@@ -6,7 +6,8 @@ import { SkConvRows, SkMsgs } from '../components/Skeleton';
 import { useConfirm } from '../components/useConfirm';
 
 const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
-const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at';
+const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at,channel';
+const CHANNEL = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
 
 function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
   const [convs, setConvs] = useState(null);
@@ -72,6 +73,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
                 <b>{c.customer_name + ' - ' + dayTime(c.updated_at)}</b>
                 <small>{prev[c.id] || '(belum ada pesan)'}</small>
               </div>
+              {CHANNEL[c.channel] ? <span className="tag">{CHANNEL[c.channel]}</span> : null}
               {c.flag ? <span className="tag a">{c.flag}</span> : null}
               <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
             </button>
@@ -137,7 +139,21 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     if (!t || sending) return;
     setText('');
     setSending(true);
-    const { error } = await sb.from('messages').insert({ conversation_id: c.id, shop_id: shop.id, role: 'admin', content: t });
+    let error = null;
+    if (CHANNEL[c.channel]) {
+      // Telegram/WhatsApp: dikirim lewat server ke pelanggan, baru disimpan.
+      try {
+        const { data } = await sb.auth.getSession();
+        const res = await fetch('/api/channels/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (data && data.session && data.session.access_token) },
+          body: JSON.stringify({ conversationId: c.id, text: t })
+        });
+        if (!res.ok) { const j = await res.json().catch(() => ({})); error = new Error(j.error || 'Gagal mengirim pesan.'); }
+      } catch (e) { error = new Error('Gagal mengirim pesan. Cek koneksi internetmu.'); }
+    } else {
+      ({ error } = await sb.from('messages').insert({ conversation_id: c.id, shop_id: shop.id, role: 'admin', content: t }));
+    }
     if (error) { setSending(false); fail(error); setText(t); return; }
     if (c.status !== 'human') await setStatus('human', true);
     await pull();
@@ -148,7 +164,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     <>
       <button className="btn ghost sm" type="button" onClick={onBack}>← Semua percakapan</button>
       <div className="card" style={{ marginTop: 12 }}>
-        <h2>{c.customer_name}</h2>
+        <h2>{c.customer_name}{CHANNEL[c.channel] ? <span className="tag" style={{ marginLeft: 8, verticalAlign: 'middle' }}>{CHANNEL[c.channel]}</span> : null}</h2>
         {!loaded && <SkMsgs />}
         <div className="msgs" aria-live="polite" ref={listRef} hidden={!loaded}>
           {msgs.map((m) => (
