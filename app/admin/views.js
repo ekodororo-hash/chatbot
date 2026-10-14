@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Busy, rp, dayTime } from '../dashboard/helpers';
+import { SkForm } from '../components/Skeleton';
 import { useAdmin } from './context';
 
 const dateOnly = (iso) => (iso ? new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
@@ -156,6 +157,65 @@ export function TokoView() {
         })}
       </div>
     </div>
+  );
+}
+
+export function PenggunaView() {
+  const { sb } = useAdmin();
+  const [q, setQ] = useState('');
+  const [st, setSt] = useState({ loading: true, error: '', res: null });
+
+  useEffect(() => {
+    if (!sb) return undefined;
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const { data: s } = await sb.auth.getSession();
+        const tok = s && s.session && s.session.access_token;
+        const res = await fetch('/api/admin/pengguna?q=' + encodeURIComponent(q.trim()), { headers: { Authorization: 'Bearer ' + tok } });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || 'Gagal memuat pengguna.');
+        if (alive) setSt({ loading: false, error: '', res: j });
+      } catch (e) {
+        if (alive) setSt((p) => ({ loading: false, error: e.message || 'Gagal memuat pengguna.', res: p.res }));
+      }
+    }, q ? 300 : 0);
+    return () => { alive = false; clearTimeout(t); };
+  }, [sb, q]);
+
+  const r = st.res;
+  if (!r && st.error) return <div className="card"><p className="err" role="alert">{st.error}</p></div>;
+  if (!r) return <div className="card"><SkForm fields={3} /></div>;
+
+  return (
+    <>
+      <div className="grid2" style={{ marginBottom: 14 }}>
+        <Stat label="Total pengguna" value={num(r.stats.total)} note="akun yang mendaftar" />
+        <Stat label="Daftar 7 hari terakhir" value={num(r.stats.new7)} note="pengguna baru" />
+        <Stat label="Aktif 30 hari terakhir" value={num(r.stats.active30)} note="pernah login" />
+        <Stat label="Belum punya toko" value={num(r.stats.noShop)} note="daftar tapi belum membuat toko" />
+      </div>
+      <div className="card">
+        <input type="search" placeholder="Cari email atau nama toko" aria-label="Cari pengguna" value={q} onChange={(e) => setQ(e.target.value)} />
+        {st.error ? <p className="err" role="alert">{st.error}</p> : null}
+        {r.stats.capped ? <p className="hint">{'Hanya sebagian akun yang dibaca dari total ' + num(r.stats.total) + '. Pakai kolom cari untuk akun tertentu.'}</p> : null}
+        {r.matched > r.users.length ? <p className="hint">{'Menampilkan ' + r.users.length + ' dari ' + num(r.matched) + ' hasil. Persempit pencarian untuk melihat yang lain.'}</p> : null}
+        <div style={{ marginTop: 8 }}>
+          {!r.users.length ? <p className="hint">Tidak ada pengguna yang cocok.</p> : null}
+          {r.users.map((u) => (
+            <div className="li" key={u.id}>
+              <div className="t stack">
+                <b>{u.email || '(tanpa email)'}</b>
+                <small>{'Daftar ' + dateOnly(u.created_at) + ' · login terakhir ' + (u.last_sign_in_at ? dayTime(u.last_sign_in_at) : 'belum pernah') + ' · ' + u.provider}</small>
+                <small>{u.shops.length ? u.shops.map((s) => s.name + (s.role === 'owner' ? ' (pemilik)' : ' (admin)')).join(', ') : 'Belum punya toko'}</small>
+              </div>
+              {!u.confirmed ? <span className="tag w">Belum konfirmasi</span> : null}
+              {!u.shops.length ? <span className="tag w">Tanpa toko</span> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
