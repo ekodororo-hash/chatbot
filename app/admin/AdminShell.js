@@ -21,6 +21,16 @@ const TABS = [
   ['/admin/pengaturan', 'Pengaturan', 'pengaturan']
 ];
 
+const SUBTITLE = {
+  ringkasan: 'Gambaran seluruh layanan: toko, pemakaian, dan pendapatan.',
+  toko: 'Kelola paket, status bot, dan data semua toko.',
+  pengguna: 'Daftar akun pemilik dan anggota tim.',
+  paket: 'Atur harga, kuota chat, dan diskon paket langganan.',
+  pembayaran: 'Riwayat pembayaran langganan dari semua toko.',
+  ai: 'API key dan model Gemini untuk tiap paket.',
+  pengaturan: 'Koneksi penyedia pembayaran.'
+};
+
 const ICON = {
   ringkasan: 'M3 3v18h18M7 15l4-4 3 3 5-6',
   toko: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M9 20v-6h6v6',
@@ -161,7 +171,12 @@ export default function AdminShell({ supabaseUrl, supabaseAnonKey, error, childr
 
         <div className="app-main">
           <main className="wrap" style={{ maxWidth: 1000 }}>
-            {current && verified && <h1 className="ptitle">{current[1]}</h1>}
+            {current && verified && (
+              <header className="phead">
+                <h1 className="ptitle">{current[1]}</h1>
+                {SUBTITLE[current[2]] ? <p className="psub">{SUBTITLE[current[2]]}</p> : null}
+              </header>
+            )}
             {body}
           </main>
         </div>

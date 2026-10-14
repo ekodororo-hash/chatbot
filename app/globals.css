@@ -235,3 +235,29 @@ a.nav-i{text-decoration:none}
 .mem .t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mem .t small{color:var(--mute);font-size:12px}
 .sw{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:15px;margin:10px 0 0}
+
+/* ===== Admin: tampilan rapi ===== */
+.lead{margin:-6px 0 16px;color:var(--mute);font-size:14px;line-height:1.55;max-width:720px}
+.stats{display:grid;gap:10px;grid-template-columns:repeat(3,1fr);margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:2px;min-width:0}
+.stat b{font-size:18px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat small{font-size:12px;color:var(--mute)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px!important}
+.sect{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:22px 2px 10px}
+.chead{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.chead h2{margin:0 0 2px;font-size:17px}
+.chead p{margin:0}
+.chead .tag{flex:none}
+.fgrid{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.fgrid.one{grid-template-columns:1fr}
+.fgrid label{margin:0;font-size:14px;color:var(--ink)}
+.flabel{display:block;margin-bottom:5px;font-size:13px;font-weight:500}
+.test{font-size:13px}
+.test.ok{color:var(--ok)}
+.test.bad{color:var(--warn)}
+.card.plan{border-left:4px solid var(--accent)}
+@media (max-width:640px){
+  .stats,.fgrid{grid-template-columns:1fr}
+  .chead{flex-direction:column;gap:8px}
+}
+.phead{margin-bottom:18px}.phead .ptitle{margin:0}.psub{margin:4px 0 0;font-size:14px;color:var(--mute)}

@@ -47,6 +47,23 @@ test('sanitizeModels: kosong dilewati, nama tidak sah ditolak 400', async () => 
   assert.throws(() => gemini.sanitizeModels({ starter: '../x' }), (e) => e.httpStatus === 400);
 });
 
+test('key per paket dipakai, paket tanpa key sendiri ikut key bawaan', async () => {
+  store = { GEMINI_API_KEY: 'k-bawaan', GEMINI_API_KEY_STARTER: 'k-starter', GEMINI_API_KEY_BISNIS: 'k-bisnis' };
+  fetched = [];
+  for (const plan of ['free', 'starter', 'bisnis']) await gemini.generate({ system: 's', contents: [], plan });
+  assert.deepStrictEqual(fetched.map((f) => f.key), ['k-bawaan', 'k-starter', 'k-bisnis']);
+  assert.strictEqual((await gemini.resolve('free')).keySource, 'default');
+  assert.strictEqual((await gemini.resolve('starter')).keySource, 'plan');
+});
+
+test('tanpa key bawaan, paket yang punya key sendiri tetap jalan; yang lain gagal jelas', async () => {
+  store = { GEMINI_API_KEY_BISNIS: 'k-bisnis' };
+  fetched = [];
+  await gemini.generate({ system: 's', contents: [], plan: 'bisnis' });
+  assert.strictEqual(fetched[0].key, 'k-bisnis');
+  await assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /GEMINI_API_KEY/);
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

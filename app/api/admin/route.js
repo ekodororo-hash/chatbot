@@ -88,9 +88,10 @@ export async function GET(request) {
       planConfig: planConfig(),
       // Hanya status dan 4 karakter terakhir; isi key tidak pernah dikirim ke browser.
       gateways: gateways(meta),
-      // Key Gemini: hanya status dan 4 karakter terakhir. Model per paket (kosong = bawaan).
+      // Key Gemini: hanya status dan 4 karakter terakhir. Key bawaan + key per paket (kosong = ikut bawaan). Model per paket (kosong = bawaan).
       ai: {
         key: meta.GEMINI_API_KEY || { source: null, hint: '' },
+        planKeys: Object.fromEntries(Object.keys(plans.PLANS).map((id) => [id, meta[gemini.keyName(id)] || { source: null, hint: '' }])),
         models: gemini.parseModels(allSettings.AI_CONFIG),
         defaultModel: gemini.DEFAULT_MODEL
       }
@@ -134,14 +135,18 @@ export async function POST(request) {
       return json({ ok: true });
     }
 
-    // AI: key Gemini dan model per paket. Berlaku untuk semua toko.
+    // AI: key Gemini (bawaan atau khusus satu paket) dan model per paket.
     if (b.action === 'save_ai_key' || b.action === 'clear_ai_key') {
-      if (b.action === 'clear_ai_key') await settings.save({ GEMINI_API_KEY: '' });
+      // plan kosong = key bawaan; selain itu harus salah satu paket (maksimal 3 key khusus).
+      const planId = String(b.plan || '');
+      if (planId && !Object.prototype.hasOwnProperty.call(plans.PLANS, planId)) return json({ error: 'Paket tidak dikenal.' }, 400);
+      const name = planId ? gemini.keyName(planId) : 'GEMINI_API_KEY';
+      if (b.action === 'clear_ai_key') await settings.save({ [name]: '' });
       else {
         const v = String(b.key || '').trim();
         if (!v) return json({ error: 'Isi API key Gemini dulu.' }, 400);
         if (v.length > 500 || /\s/.test(v)) return json({ error: 'API key tidak valid.' }, 400);
-        await settings.save({ GEMINI_API_KEY: v });
+        await settings.save({ [name]: v });
       }
       return json({ ok: true });
     }
@@ -153,7 +158,7 @@ export async function POST(request) {
     if (b.action === 'test_ai') {
       const planId = String(b.plan || '');
       if (!Object.prototype.hasOwnProperty.call(plans.PLANS, planId)) return json({ error: 'Paket tidak dikenal.' }, 400);
-      const { model } = await gemini.resolve(planId);
+      const { model, keySource } = await gemini.resolve(planId);
       const t0 = Date.now();
       try {
         await gemini.generate({
@@ -161,9 +166,9 @@ export async function POST(request) {
           contents: [{ role: 'user', parts: [{ text: 'tes' }] }],
           plan: planId
         });
-        return json({ ok: true, model, ms: Date.now() - t0 });
+        return json({ ok: true, model, keySource, ms: Date.now() - t0 });
       } catch (e) {
-        return json({ ok: false, model, error: String((e && e.message) || e).slice(0, 300) });
+        return json({ ok: false, model, keySource, error: String((e && e.message) || e).slice(0, 300) });
       }
     }
 

@@ -65,7 +65,7 @@ export async function POST(request) {
   const ai = await gemini.resolve(planId);
   if (!ai.key) {
     add('ai', AI_LABEL, false, 'Layanan AI belum terhubung. Hubungi penyedia layananmu.',
-      'API key Gemini belum diisi. Isi di Admin > AI (atau GEMINI_API_KEY di Vercel > Settings > Environment Variables).');
+      'API key Gemini belum diisi. Isi di Admin > AI (key bawaan atau key paket ' + planId + ', atau GEMINI_API_KEY di Vercel > Settings > Environment Variables).');
   } else {
     try {
       const raw = await gemini.generate({
