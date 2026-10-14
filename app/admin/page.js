@@ -1,8 +1,5 @@
-import AdminClient from './AdminClient';
-import { getPublicConfig } from '@/lib/publicConfig';
+import { RingkasanView } from './views';
 
-export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Ringkasan' };
 
-export default function AdminPage() {
-  return <AdminClient {...getPublicConfig()} />;
-}
+export default function Page() { return <RingkasanView />; }
