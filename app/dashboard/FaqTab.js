@@ -77,6 +77,8 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
   const [q, setQ] = useState(prefillQ || '');
   const [a, setA] = useState('');
   const [busy, setBusy] = useState(false);
+  // Form tertutup sampai tombol ditekan; terbuka langsung kalau datang dari "Jadikan FAQ".
+  const [open, setOpen] = useState(!!prefillQ);
   const answerRef = useRef(null);
   const [ask, confirmNode] = useConfirm();
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
@@ -108,20 +110,35 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
     if (error) return fail(error);
     toast('FAQ ditambahkan.');
     setQ(''); setA('');
+    setOpen(false);
     load();
+  }
+
+  function cancel() {
+    setQ(''); setA('');
+    setOpen(false);
   }
 
   return (
     <>
       {confirmNode}
-      <div className="card">
-        <h2>Tambah FAQ</h2>
-        <input id="fq" maxLength={200} placeholder="Pertanyaan pelanggan" value={q} onChange={(e) => setQ(e.target.value)} />
-        <div style={{ marginTop: 8 }}>
-          <textarea id="fa" ref={answerRef} maxLength={1000} placeholder="Jawaban" value={a} onChange={(e) => setA(e.target.value)} />
+      {!open ? (
+        <div className="addbar">
+          <button className="btn" type="button" onClick={() => setOpen(true)}>+ Tambah FAQ</button>
         </div>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}><Busy on={busy} label="Menambah...">Tambah FAQ</Busy></button></div>
-      </div>
+      ) : (
+        <div className="card">
+          <h2>Tambah FAQ</h2>
+          <input id="fq" autoFocus={!prefillQ} maxLength={200} placeholder="Pertanyaan pelanggan" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div style={{ marginTop: 8 }}>
+            <textarea id="fa" ref={answerRef} maxLength={1000} placeholder="Jawaban" value={a} onChange={(e) => setA(e.target.value)} />
+          </div>
+          <div className="row">
+            <button className="btn" type="button" disabled={busy} onClick={add}><Busy on={busy} label="Menambah...">Simpan FAQ</Busy></button>
+            <button className="btn ghost" type="button" disabled={busy} onClick={cancel}>Batal</button>
+          </div>
+        </div>
+      )}
 
       {!items && (
         <div className="card">

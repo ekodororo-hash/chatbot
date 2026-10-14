@@ -342,3 +342,6 @@ a.nav-i{text-decoration:none}
   .cta{padding:28px 20px;border-radius:20px}
   .land,.nav{padding-left:16px;padding-right:16px}
 }
+
+.addbar{margin:0 0 14px}
+@media (max-width:560px){.addbar .btn{display:block;width:100%}}

@@ -87,6 +87,7 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
   const [k, setK] = useState('');
   const [d, setD] = useState('');
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const [ask, confirmNode] = useConfirm();
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
   const [guess] = useState(() => readCount('produk:' + shop.id));
@@ -112,26 +113,41 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
     if (error) return fail(error);
     toast('Produk ditambahkan.');
     setN(''); setP(''); setK(''); setD('');
+    setOpen(false);
     load();
+  }
+
+  function cancel() {
+    setN(''); setP(''); setK(''); setD('');
+    setOpen(false);
   }
 
   return (
     <>
       {confirmNode}
-      <div className="card">
-        <h2>Tambah produk</h2>
-        <div className="item">
-          <div className="grid3">
-            <input id="pn" maxLength={100} placeholder="Nama produk" value={n} onChange={(e) => setN(e.target.value)} />
-            <input id="pp" type="number" inputMode="numeric" min="0" placeholder="Harga (Rp)" value={p} onChange={(e) => setP(e.target.value)} />
-            <input id="pk" type="number" inputMode="numeric" min="0" placeholder="Stok" value={k} onChange={(e) => setK(e.target.value)} />
+      {!open ? (
+        <div className="addbar">
+          <button className="btn" type="button" onClick={() => setOpen(true)}>+ Tambah produk</button>
+        </div>
+      ) : (
+        <div className="card">
+          <h2>Tambah produk</h2>
+          <div className="item">
+            <div className="grid3">
+              <input id="pn" autoFocus maxLength={100} placeholder="Nama produk" value={n} onChange={(e) => setN(e.target.value)} />
+              <input id="pp" type="number" inputMode="numeric" min="0" placeholder="Harga (Rp)" value={p} onChange={(e) => setP(e.target.value)} />
+              <input id="pk" type="number" inputMode="numeric" min="0" placeholder="Stok" value={k} onChange={(e) => setK(e.target.value)} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <input id="pd" maxLength={300} placeholder="Deskripsi singkat (boleh kosong)" value={d} onChange={(e) => setD(e.target.value)} />
+            </div>
           </div>
-          <div style={{ marginTop: 8 }}>
-            <input id="pd" maxLength={300} placeholder="Deskripsi singkat (boleh kosong)" value={d} onChange={(e) => setD(e.target.value)} />
+          <div className="row">
+            <button className="btn" type="button" disabled={busy} onClick={add}><Busy on={busy} label="Menambah...">Simpan produk</Busy></button>
+            <button className="btn ghost" type="button" disabled={busy} onClick={cancel}>Batal</button>
           </div>
         </div>
-        <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}><Busy on={busy} label="Menambah...">Tambah produk</Busy></button></div>
-      </div>
+      )}
 
       {!items && (
         <div className="card">
