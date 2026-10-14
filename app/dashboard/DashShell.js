@@ -11,6 +11,7 @@ import { useToast } from '../components/useToast';
 import { Sk, SkConvRows, SkForm, SkItems, SkNav } from '../components/Skeleton';
 import { DashCtx } from './context';
 import Onboarding from './Onboarding';
+import ExpiryBanner from './ExpiryBanner';
 import { useRealtime } from './useRealtime';
 
 const TABS = [
@@ -259,6 +260,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
         <div className="app-main">
           <main className="wrap">
             {current && (showNav || waiting) && !adding && <h1 className="ptitle">{current[1]}</h1>}
+            {showNav && role === 'owner' && sb && !adding && !(current && current[0] === '/dashboard/langganan') && <ExpiryBanner key={shop.id} sb={sb} shopId={shop.id} />}
             {body}
           </main>
         </div>

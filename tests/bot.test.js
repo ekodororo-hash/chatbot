@@ -727,6 +727,14 @@ t('status halaman Langganan: paket, pemakaian bulan ini, dan riwayat', async () 
   assert.strictEqual(st.plan, 'bisnis'); assert.strictEqual(st.quota, plans.PLANS.bisnis.quota); assert.strictEqual(st.used, 7);
   assert.strictEqual(st.payments[0].status, 'paid');
   assert.ok(!JSON.stringify(st).includes(KEY));
+  assert.strictEqual(st.endedAt, null);
+  // masa berlaku lewat: kini Gratis, tapi spanduk tahu paket apa yang berakhir kapan
+  const row = db.shop_billing.find(b => b.shop_id === s.id); const was = row.expires_at;
+  row.expires_at = new Date(Date.now() - 86400000).toISOString();
+  const ended = await billing.status(fake, s);
+  assert.strictEqual(ended.plan, 'free'); assert.strictEqual(ended.expiresAt, null);
+  assert.strictEqual(ended.endedAt, row.expires_at); assert.strictEqual(ended.endedPlan, 'bisnis');
+  row.expires_at = was;
 });
 
 /* ---------- DOKU ---------- */

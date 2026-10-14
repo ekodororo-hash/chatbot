@@ -479,3 +479,4 @@ html{scroll-behavior:smooth}
 @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 @keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media (prefers-reduced-motion:reduce){.rv .flow li,.rv .price-c{animation:none!important;opacity:1!important;transform:none!important}}
+.expiry{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--warnbg);border:1px solid var(--warn);color:var(--ink);border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:14px}.expiry span{flex:1 1 220px}
