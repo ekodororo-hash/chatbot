@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { dayTime, hhmm } from './helpers';
+import { SkConvRows, SkMsgs } from '../components/Skeleton';
 
 const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 
@@ -34,6 +35,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
     <div className="card">
       <h2>Percakapan terbaru</h2>
       <div>
+        {!convs && <SkConvRows rows={5} />}
         {convs && !convs.length && (
           <p className="hint">Belum ada percakapan. Coba chat lewat tab Pasang untuk melihat hasilnya di sini.</p>
         )}
@@ -56,13 +58,15 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   const [c, setC] = useState(conv);
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const lastId = useRef(0);
   const listRef = useRef(null);
 
   const pull = useCallback(async () => {
     const { data, error } = await sb.from('messages').select('id,role,content,created_at')
       .eq('conversation_id', conv.id).gt('id', lastId.current).order('id', { ascending: true }).limit(200);
-    if (error) { fail(error); return; }
+    if (error) { fail(error); setLoaded(true); return; }
+    setLoaded(true);
     if (data && data.length) {
       lastId.current = Math.max(lastId.current, ...data.map((m) => m.id));
       setMsgs((prev) => {
@@ -108,7 +112,8 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
       <button className="btn ghost sm" type="button" onClick={onBack}>← Semua percakapan</button>
       <div className="card" style={{ marginTop: 12 }}>
         <h2>{c.customer_name}</h2>
-        <div className="msgs" aria-live="polite" ref={listRef}>
+        {!loaded && <SkMsgs />}
+        <div className="msgs" aria-live="polite" ref={listRef} hidden={!loaded}>
           {msgs.map((m) => (
             <div key={m.id} className={'m ' + m.role}>
               {m.role === 'admin' ? <em>Kamu (admin)</em> : (m.role === 'bot' ? <em>Bot</em> : null)}

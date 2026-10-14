@@ -17,6 +17,7 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
   const [reg, setReg] = useState(false);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [msg, setMsg] = useState(error || '');
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,11 +32,10 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
     return () => { alive = false; };
   }, [error, supabaseUrl, supabaseAnonKey, router]);
 
-  function toggle(e) {
-    e.preventDefault();
-    const next = !reg;
+  function mode(next) {
+    if (next === reg) return;
     setReg(next);
-    setMsg('');
+    setMsg(''); setOk(false);
     window.history.replaceState(null, '', next ? '#daftar' : '#');
   }
 
@@ -69,26 +69,48 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
   }
 
   return (
-    <>
-      <div className="top"><Link className="brand" href="/">Asisten<span>Toko</span></Link></div>
-      <main className="wrap">
-        <div className="narrow">
-          <h1 style={{ fontSize: 32, marginTop: 12 }}>{reg ? 'Buat akun' : 'Masuk'}</h1>
-          <div className="card">
-            <form onSubmit={submit} noValidate>
-              <label htmlFor="e">Email</label>
-              <input id="e" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-              <label htmlFor="p">Password</label>
-              <input id="p" type="password" autoComplete={reg ? 'new-password' : 'current-password'} minLength={8} required value={pass} onChange={(e) => setPass(e.target.value)} />
-              <div className={'err' + (ok ? ' ok' : '')} role="alert">{msg}</div>
-              <button className="btn" type="submit" disabled={busy || !!error} style={{ width: '100%', marginTop: 12 }}>{reg ? 'Daftar' : 'Masuk'}</button>
-            </form>
+    <div className="auth">
+      <aside className="auth-art" aria-hidden="true">
+        <Link className="brand" href="/" tabIndex={-1}>Asisten<span>Toko</span></Link>
+        <div>
+          <h2>Pelanggan bertanya, asistenmu menjawab.</h2>
+          <div className="art-chat" style={{ marginTop: 28 }}>
+            <span className="l">Kak, ongkir ke Bandung berapa?</span>
+            <span className="r">Reguler Rp18.000, estimasi 2 hari kak.</span>
+            <span className="l">Oke, aku pesan ya</span>
           </div>
-          <p className="hint" style={{ textAlign: 'center' }}>
-            <a href="#" onClick={toggle}>{reg ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar'}</a>
-          </p>
         </div>
-      </main>
-    </>
+        <span style={{ fontSize: 14, opacity: 0.85 }}>Kamu tinggal ambil alih kalau ada yang perlu dijawab sendiri.</span>
+      </aside>
+
+      <div className="auth-form">
+        <Link className="brand" href="/">Asisten<span>Toko</span></Link>
+        <div className="auth-box">
+          <h1>{reg ? 'Buat akun' : 'Masuk ke dashboard'}</h1>
+          <p className="sub">{reg ? 'Daftar, lalu isi data tokomu.' : 'Masuk untuk melihat percakapan dan mengatur bot.'}</p>
+
+          <div className="seg" role="group" aria-label="Pilih masuk atau daftar">
+            <button type="button" aria-pressed={!reg} onClick={() => mode(false)}>Masuk</button>
+            <button type="button" aria-pressed={reg} onClick={() => mode(true)}>Daftar</button>
+          </div>
+
+          <form onSubmit={submit} noValidate>
+            <label htmlFor="e">Email</label>
+            <input id="e" type="email" autoComplete="email" inputMode="email" placeholder="nama@tokomu.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label htmlFor="p">Password</label>
+            <div className="pw">
+              <input id="p" type={showPw ? 'text' : 'password'} autoComplete={reg ? 'new-password' : 'current-password'} minLength={8} required value={pass} onChange={(e) => setPass(e.target.value)} />
+              <button type="button" onClick={() => setShowPw((v) => !v)} aria-pressed={showPw}>{showPw ? 'Sembunyikan' : 'Tampilkan'}</button>
+            </div>
+            {reg && <p className="field-hint">Minimal 8 karakter.</p>}
+            <div className={'err' + (ok ? ' ok' : '')} role="alert">{msg}</div>
+            <button className="btn lg" type="submit" disabled={busy || !!error} style={{ width: '100%', marginTop: 12 }}>
+              {busy ? <span className="spin" aria-hidden="true" /> : null}
+              {busy ? 'Memproses...' : (reg ? 'Daftar' : 'Masuk')}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }

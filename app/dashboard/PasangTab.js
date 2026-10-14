@@ -2,12 +2,14 @@
 import { useState } from 'react';
 import domains from '@/lib/domains';
 import { useOrigin } from './helpers';
+import { Sk } from '../components/Skeleton';
 
 export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
   const origin = useOrigin();
   const [dom, setDom] = useState((shop.allowed_domains || []).join('\n'));
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [frameReady, setFrameReady] = useState(false);
 
   const link = origin + '/chat/' + shop.slug;
   const snippet = '<script src="' + origin + '/widget.js" data-bot="' + shop.slug +
@@ -70,7 +72,10 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
       <div className="card">
         <h2>Coba bot</h2>
         <p className="hint">Percakapan percobaan ikut muncul di tab Percakapan.</p>
-        <iframe className="preview" src={'/chat/' + shop.slug} title="Pratinjau chat" />
+        <div className="preview-box">
+          <iframe className="preview" src={'/chat/' + shop.slug} title="Pratinjau chat" onLoad={() => setFrameReady(true)} />
+          {!frameReady && <Sk h="100%" r={12} style={{ position: 'absolute', inset: 0 }} />}
+        </div>
       </div>
     </>
   );

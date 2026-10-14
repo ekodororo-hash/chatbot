@@ -1,9 +1,10 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { Field, startOfTodayWIB, toInt } from './helpers';
+import { SkUsage } from '../components/Skeleton';
 
 export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
-  const [used, setUsed] = useState(0);
+  const [used, setUsed] = useState(null);
   const [f, setF] = useState({
     bot_on: shop.bot_on, bot_name: shop.bot_name, tone: shop.tone, greeting: shop.greeting,
     fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent
@@ -35,14 +36,18 @@ export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
     toast('Pengaturan bot disimpan.');
   }
 
-  const pct = Math.min(100, Math.round(used / shop.daily_limit * 100));
+  const pct = Math.min(100, Math.round((used || 0) / shop.daily_limit * 100));
 
   return (
     <>
       <div className="card">
         <h2>Pemakaian hari ini</h2>
-        <div className="hint">{'Balasan bot: ' + used + ' dari batas ' + shop.daily_limit}</div>
-        <div className={'bar' + (pct > 80 ? ' hot' : '')}><i style={{ width: pct + '%' }} /></div>
+        {used === null ? <SkUsage /> : (
+          <>
+            <div className="hint">{'Balasan bot: ' + used + ' dari batas ' + shop.daily_limit}</div>
+            <div className={'bar' + (pct > 80 ? ' hot' : '')}><i style={{ width: pct + '%' }} /></div>
+          </>
+        )}
         <p className="hint">Setelah batas tercapai, pesan baru diteruskan ke admin. Ini menjaga biaya AI tetap terkendali.</p>
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Sk, SkItems } from '../components/Skeleton';
 
 function FaqRow({ sb, f, fail, toast, onDeleted }) {
   const [q, setQ] = useState(f.question);
@@ -81,6 +82,12 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
         <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}>Tambah FAQ</button></div>
       </div>
 
+      {!items && (
+        <div className="card">
+          <Sk w={130} h={20} style={{ marginBottom: 14 }} />
+          <SkItems rows={3} variant="faq" />
+        </div>
+      )}
       {items && (
         <div className="card">
           <h2>{'Daftar FAQ (' + items.length + ')'}</h2>

@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { rp, toInt } from './helpers';
+import { Sk, SkItems } from '../components/Skeleton';
 
 function ProductRow({ sb, pr, fail, toast, onDeleted }) {
   const [name, setName] = useState(pr.name);
@@ -98,6 +99,12 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
         <div className="row"><button className="btn" type="button" disabled={busy} onClick={add}>Tambah produk</button></div>
       </div>
 
+      {!items && (
+        <div className="card">
+          <Sk w={150} h={20} style={{ marginBottom: 14 }} />
+          <SkItems rows={3} variant="produk" />
+        </div>
+      )}
       {items && (
         <div className="card">
           <h2>{'Daftar produk (' + items.length + ')'}</h2>
