@@ -42,30 +42,54 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
 
   return (
     <>
-      <div className="card">
-        <h2>1. Pasang di website</h2>
-        <p className="hint">{'Tempel kode ini sebelum penutup </body> di website klien (WordPress, Shopify, Wix, atau HTML biasa).'}</p>
-        <pre>{snippet}</pre>
-        <div className="row"><button className="btn sm" type="button" onClick={() => copy(snippet)}>Salin kode</button></div>
-      </div>
+      <section className="card pstep" aria-labelledby="ps1">
+        <header className="pstep-h">
+          <span className="pstep-no" aria-hidden="true">1</span>
+          <div>
+            <h2 id="ps1">Pasang di website</h2>
+            <p className="hint">{'Tempel kode ini sebelum penutup </body> di website klien (WordPress, Shopify, Wix, atau HTML biasa).'}</p>
+          </div>
+        </header>
+        <div className="codebox">
+          <div className="codebox-bar">
+            <span>Kode widget</span>
+            <button className="btn sm" type="button" onClick={() => copy(snippet)}>Salin kode</button>
+          </div>
+          <pre>{snippet}</pre>
+        </div>
+      </section>
 
-      <div className="card">
-        <h2>2. Domain yang boleh memasang widget</h2>
-        <p className="hint">Satu domain per baris. Browser hanya mau menampilkan chat di situs yang terdaftar, jadi orang lain tidak bisa menempelkan botmu di situs mereka. Subdomain ikut diizinkan. Kosong berarti widget tidak bisa dipasang di situs mana pun.</p>
-        <textarea id="pd" rows={4} placeholder={'tokoayu.com\nwww.tokoayu.com'} value={dom} onChange={(e) => setDom(e.target.value)} />
+      <section className="card pstep" aria-labelledby="ps2">
+        <header className="pstep-h">
+          <span className="pstep-no" aria-hidden="true">2</span>
+          <div>
+            <h2 id="ps2">Domain yang boleh memasang widget</h2>
+            <p className="hint">Satu domain per baris. Browser hanya menampilkan chat di situs yang terdaftar, jadi orang lain tidak bisa menempelkan botmu di situs mereka. Subdomain ikut diizinkan.</p>
+          </div>
+        </header>
+        <label className="sr" htmlFor="pd">Daftar domain</label>
+        <textarea id="pd" className="mono" rows={4} placeholder={'tokoayu.com\nwww.tokoayu.com'} value={dom} onChange={(e) => setDom(e.target.value)} />
+        <p className="hint pstep-note">Kosong berarti widget tidak bisa dipasang di situs mana pun. Maksimal 20 domain.</p>
         <div className="err" role="alert">{err}</div>
         <div className="row"><button className="btn" type="button" disabled={busy} onClick={saveDomains}><Busy on={busy} label="Menyimpan...">Simpan domain</Busy></button></div>
-      </div>
+      </section>
 
-      <div className="card">
-        <h2>3. Link chat (untuk bio Instagram, Tokopedia, Shopee)</h2>
-        <p className="hint">Marketplace tidak bisa dipasangi widget. Taruh link ini di bio atau deskripsi toko.</p>
-        <pre>{link}</pre>
-        <div className="row">
-          <button className="btn sm" type="button" onClick={() => copy(link)}>Salin link</button>
-          <a className="btn ghost sm" href={link} target="_blank" rel="noopener">Buka</a>
+      <section className="card pstep" aria-labelledby="ps3">
+        <header className="pstep-h">
+          <span className="pstep-no" aria-hidden="true">3</span>
+          <div>
+            <h2 id="ps3">Link chat</h2>
+            <p className="hint">Untuk bio Instagram, Tokopedia, atau Shopee. Marketplace tidak bisa dipasangi widget, jadi taruh link ini di bio atau deskripsi toko.</p>
+          </div>
+        </header>
+        <div className="linkbox">
+          <code className="linkbox-url">{link}</code>
+          <div className="linkbox-act">
+            <button className="btn sm" type="button" onClick={() => copy(link)}>Salin link</button>
+            <a className="btn ghost sm" href={link} target="_blank" rel="noopener">Buka</a>
+          </div>
         </div>
-      </div>
+      </section>
     </>
   );
 }
