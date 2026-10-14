@@ -30,7 +30,7 @@ const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pas
 
 // Ikon garis sederhana untuk menu sidebar.
 const ICON = {
-  chat: 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6Z',
+  chat: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8Z',
   produk: 'M21 8 12 3 3 8m18 0-9 5m9-5v8l-9 5m0-8L3 8m9 5v8M3 8v8l9 5',
   faq: 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z',
   toko: 'M4 9l1.5-5h13L20 9M4 9v11h16V9M9 20v-6h6v6',
@@ -214,7 +214,12 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
           </button>
           <Link className="brand" href="/">Asisten<span>Toko</span></Link>
           <span className="grow"></span>
-          {humanCount ? <i title="Percakapan butuh admin">{humanCount}</i> : null}
+          {humanCount ? (
+            <Link className="mbar-notif" href="/dashboard" title="Percakapan butuh admin" aria-label={humanCount + ' percakapan butuh admin'}>
+              <Icon k="chat" />
+              <b>{humanCount}</b>
+            </Link>
+          ) : null}
         </header>
         <div className={'scrim' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(false)} aria-hidden="true" />
 
