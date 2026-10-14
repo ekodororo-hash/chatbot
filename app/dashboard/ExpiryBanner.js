@@ -6,11 +6,20 @@ import { authFetch } from './helpers';
 // Spanduk pengingat masa langganan, cadangan untuk toko yang belum menghubungkan Telegram.
 // Muncul 7 hari sebelum habis sampai 3 hari sesudahnya (sama dengan pengingat Telegram). Khusus pemilik toko.
 const DAY = 86400000;
+// Tombol Tutup menyembunyikan spanduk sampai besok (tanggal WIB), per toko, disimpan di browser ini.
+const dismissKey = (shopId) => 'expiry:closed:' + shopId;
+const todayWIB = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+function closedToday(shopId) {
+  try { return window.localStorage.getItem(dismissKey(shopId)) === todayWIB(); } catch (e) { return false; }
+}
+function closeToday(shopId) {
+  try { window.localStorage.setItem(dismissKey(shopId), todayWIB()); } catch (e) { /* abaikan: tertutup untuk halaman ini saja */ }
+}
 const fmt = (d) => d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' });
 
 export default function ExpiryBanner({ sb, shopId }) {
   const [st, setSt] = useState(null);
-  const [closed, setClosed] = useState(false);
+  const [closed, setClosed] = useState(() => (typeof window !== 'undefined' ? closedToday(shopId) : false));
 
   useEffect(() => {
     let alive = true;
@@ -39,7 +48,7 @@ export default function ExpiryBanner({ sb, shopId }) {
     <div className="expiry" role="status">
       <span>{msg}</span>
       <Link className="btn sm" href="/dashboard/langganan">Perpanjang</Link>
-      <button className="btn ghost sm" type="button" onClick={() => setClosed(true)}>Tutup</button>
+      <button className="btn ghost sm" type="button" onClick={() => { closeToday(shopId); setClosed(true); }}>Tutup</button>
     </div>
   );
 }
