@@ -28,13 +28,15 @@ export function Field({ id, label, children }) {
   );
 }
 
-// Isi tombol: spinner + teks sementara saat proses berjalan. <Busy on={busy} label="Menyimpan...">Simpan</Busy>
+// Isi tombol saat proses berjalan: teks tetap di tempatnya (disembunyikan) dan spinner muncul di tengahnya,
+// jadi ukuran tombol tidak berubah. <Busy on={busy} label="Menyimpan...">Simpan</Busy>
 export function Busy({ on, label, children }) {
   return (
-    <>
+    <span className={'busy' + (on ? ' on' : '')}>
+      <span className="busy-t">{children}</span>
       {on ? <span className="spin" aria-hidden="true" /> : null}
-      {on && label ? label : children}
-    </>
+      {on && label ? <span className="sr" role="status">{label}</span> : null}
+    </span>
   );
 }
 
