@@ -7,7 +7,8 @@ export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
   const [used, setUsed] = useState(null);
   const [f, setF] = useState({
     bot_on: shop.bot_on, bot_name: shop.bot_name, tone: shop.tone, greeting: shop.greeting,
-    fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent
+    fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent,
+    reply_language: shop.reply_language === 'auto' ? 'auto' : 'id'
   });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
@@ -27,7 +28,7 @@ export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
     setBusy(true);
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
-      fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent
+      fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent, reply_language: f.reply_language
     };
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -63,6 +64,12 @@ export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
             <option value="ramah">Ramah (kak, boleh emoji)</option>
             <option value="santai">Santai (kak)</option>
             <option value="formal">Formal (Bapak/Ibu)</option>
+          </select>
+        </Field>
+        <Field id="b2b" label="Bahasa balasan">
+          <select id="b2b" value={f.reply_language} onChange={set('reply_language')}>
+            <option value="id">Selalu bahasa Indonesia</option>
+            <option value="auto">Ikuti bahasa pelanggan (semua bahasa)</option>
           </select>
         </Field>
         <Field id="b3" label="Sapaan pembuka (tulis {k} untuk panggilan otomatis)">

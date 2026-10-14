@@ -989,6 +989,16 @@ t('bahasa: prompt menyuruh paham bahasa apa pun tetapi selalu membalas Indonesia
     assert.ok(sys.includes('dalam bahasa apa pun') && sys.includes('SELALU balas dalam bahasa Indonesia'));
   }
 });
+t('bahasa: pengaturan "ikuti bahasa pelanggan" membuat bot membalas dengan bahasa pelanggan, bukan dipaksa Indonesia', async () => {
+  const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
+  for (const extra of [{}, { general_on: true, general_topic: 'hijab' }]) {
+    const auto = I.buildSystem(Object.assign({}, base, extra, { reply_language: 'auto' }), [], [], false);
+    assert.ok(auto.includes('bahasa yang SAMA dengan pesan terakhir pelanggan'));
+    assert.ok(!auto.includes('SELALU balas dalam bahasa Indonesia'));
+    const id = I.buildSystem(Object.assign({}, base, extra, { reply_language: 'id' }), [], [], false);
+    assert.ok(id.includes('SELALU balas dalam bahasa Indonesia'));
+  }
+});
 t('bahasa: katalog besar, pesan berbahasa asing diterjemahkan ke kata kunci Indonesia lalu dicari', async () => {
   const s = seedShop(); bigCatalog(s, 120); geminiCalls = [];
   geminiImpl = async () => JSON.stringify({ kata_kunci: ['Kerudung', 'voal'] });

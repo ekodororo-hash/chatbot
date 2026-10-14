@@ -17,6 +17,7 @@ function fromShop(shop) {
     bot_on: shop.bot_on, bot_name: shop.bot_name, tone: shop.tone, greeting: shop.greeting,
     fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent,
     general_on: shop.general_on === true, general_topic: shop.general_topic || '',
+    reply_language: shop.reply_language === 'auto' ? 'auto' : 'id',
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat'
@@ -79,7 +80,7 @@ export default function BotPage() {
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
       fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent,
-      general_on: f.general_on, general_topic: f.general_topic.trim(),
+      general_on: f.general_on, general_topic: f.general_topic.trim(), reply_language: f.reply_language,
       widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
       widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape
     };
@@ -169,6 +170,14 @@ export default function BotPage() {
               <option value="santai">Santai (kak)</option>
               <option value="formal">Formal (Bapak/Ibu)</option>
             </select>
+          </div>
+          <div>
+            <label htmlFor="b2b">Bahasa balasan</label>
+            <select id="b2b" value={f.reply_language} onChange={set('reply_language')}>
+              <option value="id">Selalu bahasa Indonesia</option>
+              <option value="auto">Ikuti bahasa pelanggan (semua bahasa)</option>
+            </select>
+            <p className="hint field-hint">Pelanggan boleh menulis dalam bahasa apa pun. Nama produk dan isi data toko tetap seperti yang kamu tulis.</p>
           </div>
         </div>
 

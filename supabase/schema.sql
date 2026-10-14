@@ -19,6 +19,7 @@ create table public.shops (
   bot_on boolean not null default true,
   general_on boolean not null default false,
   general_topic text not null default '' check (char_length(general_topic) <= 150),
+  reply_language text not null default 'id' check (reply_language in ('id','auto')),
   daily_limit int not null default 50 check (daily_limit between 1 and 5000),
   allowed_domains text[] not null default '{}' check (cardinality(allowed_domains) <= 20),
   created_at timestamptz not null default now()
