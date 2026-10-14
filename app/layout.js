@@ -1,0 +1,20 @@
+import './globals.css';
+
+export const metadata = {
+  title: { default: 'Asisten Toko - Chatbot untuk UMKM', template: '%s - Asisten Toko' },
+  description: 'Chatbot yang menjawab pertanyaan pelanggan dari data tokomu, 24 jam. Pasang di website dengan satu baris kode.'
+};
+
+export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' };
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="id">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}

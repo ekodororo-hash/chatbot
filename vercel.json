@@ -1,17 +1,4 @@
 {
-  "framework": null,
-  "outputDirectory": "public",
-  "rewrites": [
-    { "source": "/chat/:slug", "destination": "/api/embed?slug=:slug" }
-  ],
-  "functions": {
-    "api/embed.js": { "includeFiles": "lib/chat.html" }
-  },
-  "headers": [
-    { "source": "/widget.js", "headers": [ { "key": "Cache-Control", "value": "public, max-age=300" } ] },
-    { "source": "/(login|dashboard).html", "headers": [
-      { "key": "X-Frame-Options", "value": "DENY" },
-      { "key": "Referrer-Policy", "value": "same-origin" }
-    ] }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs"
 }
