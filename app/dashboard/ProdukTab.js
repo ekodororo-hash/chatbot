@@ -1,61 +1,79 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Busy, readCount, rp, saveCount, toInt } from './helpers';
 import { Sk, SkItems } from '../components/Skeleton';
 
-function ProductRow({ sb, pr, fail, toast, onDeleted }) {
+function ProductRow({ sb, pr, no, fail, toast, onDeleted }) {
+  const [cur, setCur] = useState(pr);
+  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(pr.name);
   const [price, setPrice] = useState(String(pr.price));
   const [stock, setStock] = useState(String(pr.stock));
   const [desc, setDesc] = useState(pr.description || '');
-  const [shownPrice, setShownPrice] = useState(pr.price);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const saved = useRef(JSON.stringify([pr.name, String(pr.price), String(pr.stock), pr.description || '']));
 
-  // Disimpan otomatis saat kolom ditinggalkan (blur), hanya kalau isinya berubah.
+  function startEdit() {
+    setName(cur.name); setPrice(String(cur.price)); setStock(String(cur.stock)); setDesc(cur.description || '');
+    setEditing(true);
+  }
+
   async function save() {
-    const snap = JSON.stringify([name, price, stock, desc]);
-    if (snap === saved.current) return;
     const pv = toInt(price), sv = toInt(stock);
     if (!name.trim() || !(pv >= 0) || !(sv >= 0)) { toast('Nama, harga, dan stok harus valid.'); return; }
     setSaving(true);
-    const { error } = await sb.from('products')
-      .update({ name: name.trim(), price: pv, stock: sv, description: desc.trim() }).eq('id', pr.id);
+    const patch = { name: name.trim(), price: pv, stock: sv, description: desc.trim() };
+    const { error } = await sb.from('products').update(patch).eq('id', cur.id);
     setSaving(false);
     if (error) { fail(error); return; }
-    saved.current = snap;
-    setShownPrice(pv);
+    setCur((p) => ({ ...p, ...patch }));
+    setEditing(false);
     toast('Tersimpan.');
   }
 
   async function remove() {
-    if (!confirm('Hapus produk "' + pr.name + '"?')) return;
+    if (!confirm('Hapus produk "' + cur.name + '"?')) return;
     setRemoving(true);
-    const { error } = await sb.from('products').delete().eq('id', pr.id);
+    const { error } = await sb.from('products').delete().eq('id', cur.id);
     if (error) { setRemoving(false); fail(error); return; }
     toast('Produk dihapus.');
     onDeleted();
   }
 
+  if (editing) {
+    return (
+      <div className="li edit">
+        <span className="no" aria-label={'Nomor ' + no}>{no}</span>
+        <div className="t">
+          <div className="grid3">
+            <input value={name} maxLength={100} placeholder="Nama produk" aria-label="Nama produk" onChange={(e) => setName(e.target.value)} />
+            <input value={price} type="number" inputMode="numeric" min="0" placeholder="Harga (Rp)" aria-label="Harga" onChange={(e) => setPrice(e.target.value)} />
+            <input value={stock} type="number" inputMode="numeric" min="0" placeholder="Stok" aria-label="Stok" onChange={(e) => setStock(e.target.value)} />
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <input value={desc} maxLength={300} placeholder="Deskripsi" aria-label="Deskripsi" onChange={(e) => setDesc(e.target.value)} />
+          </div>
+          <div className="row">
+            <button className="btn sm" type="button" disabled={saving} onClick={save}><Busy on={saving} label="Menyimpan...">Simpan</Busy></button>
+            <button className="btn ghost sm" type="button" disabled={saving} onClick={() => setEditing(false)}>Batal</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="item">
-      <div className="grid3">
-        <input value={name} maxLength={100} aria-label="Nama produk" onChange={(e) => setName(e.target.value)} onBlur={save} />
-        <input value={price} type="number" inputMode="numeric" min="0" aria-label="Harga" onChange={(e) => setPrice(e.target.value)} onBlur={save} />
-        <input value={stock} type="number" inputMode="numeric" min="0" aria-label="Stok" onChange={(e) => setStock(e.target.value)} onBlur={save} />
+    <div className="li">
+      <span className="no" aria-label={'Nomor ' + no}>{no}</span>
+      <div className="t wrap">
+        <b>{cur.name}</b>
+        <small>{rp(cur.price) + ' · Stok ' + cur.stock}</small>
+        {cur.description ? <small>{cur.description}</small> : null}
       </div>
-      <div style={{ marginTop: 8 }}>
-        <input value={desc} maxLength={300} placeholder="Deskripsi" aria-label="Deskripsi" onChange={(e) => setDesc(e.target.value)} onBlur={save} />
-      </div>
-      <div className="row">
-        <span className="hint" role="status">
-          {saving ? <><span className="spin" aria-hidden="true" />Menyimpan...</> : rp(shownPrice)}
-        </span>
-        <button className="btn danger sm" type="button" disabled={removing} onClick={remove}>
-          <Busy on={removing} label="Menghapus...">Hapus</Busy>
-        </button>
-      </div>
+      <button className="btn ghost sm" type="button" onClick={startEdit}>Edit</button>
+      <button className="btn danger sm" type="button" disabled={removing} onClick={remove}>
+        <Busy on={removing} label="Menghapus...">Hapus</Busy>
+      </button>
     </div>
   );
 }
@@ -123,12 +141,12 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
           {!items.length && (
             <p className="hint">Belum ada produk. Bot hanya bisa menjawab dari data yang kamu isi di sini.</p>
           )}
-          {items.map((pr) => (
-            <ProductRow key={pr.id} sb={sb} pr={pr} fail={fail} toast={toast} onDeleted={load} />
+          {items.map((pr, i) => (
+            <ProductRow key={pr.id} sb={sb} pr={pr} no={i + 1} fail={fail} toast={toast} onDeleted={load} />
           ))}
         </div>
       )}
-      <p className="hint">Perubahan tersimpan otomatis. Bot memakai data terbaru pada pesan berikutnya.</p>
+      <p className="hint">Klik Edit untuk mengubah produk, lalu Simpan. Bot memakai data terbaru pada pesan berikutnya.</p>
     </>
   );
 }

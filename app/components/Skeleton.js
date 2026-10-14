@@ -20,6 +20,7 @@ export function SkConvRows({ rows = 5 }) {
     <Status>
       {Array.from({ length: rows }, (_, i) => (
         <div className="li" key={i}>
+          <Sk w={20} h={15} />
           <div className="t">
             <Sk w={i % 2 ? '48%' : '58%'} h={15} />
             <Sk w={i % 2 ? '70%' : '84%'} h={12} style={{ marginTop: 8 }} />
@@ -40,15 +41,15 @@ export function SkItems({ rows = 3, variant = 'produk' }) {
         <div className="item" key={i}>
           {variant === 'produk' ? (
             <>
-              <div className="grid3"><Sk h={42} r={10} /><Sk h={42} r={10} /><Sk h={42} r={10} /></div>
-              <Sk h={42} r={10} style={{ marginTop: 8 }} />
-              <Sk w={90} h={14} style={{ marginTop: 14 }} />
+              <Sk w="50%" h={16} />
+              <Sk w="30%" h={12} style={{ marginTop: 8 }} />
+              <Sk w={110} h={28} r={10} style={{ marginTop: 12 }} />
             </>
           ) : (
             <>
-              <Sk h={42} r={10} />
-              <Sk h={74} r={10} style={{ marginTop: 8 }} />
-              <Sk w={64} h={28} r={10} style={{ marginTop: 12 }} />
+              <Sk w="60%" h={16} />
+              <Sk w="85%" h={12} style={{ marginTop: 8 }} />
+              <Sk w={110} h={28} r={10} style={{ marginTop: 12 }} />
             </>
           )}
         </div>

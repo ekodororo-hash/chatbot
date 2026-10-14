@@ -7,9 +7,10 @@ import { SkConvRows, SkMsgs } from '../components/Skeleton';
 const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at';
 
-function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
+function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
   const [convs, setConvs] = useState(null);
   const [prev, setPrev] = useState({});
+  const [deleting, setDeleting] = useState('');
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
   const [guess] = useState(() => readCount('conv:' + shop.id));
 
@@ -36,6 +37,21 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
     return () => clearInterval(t);
   }, [load]);
 
+  async function remove(c) {
+    if (!confirm('Hapus percakapan dengan "' + c.customer_name + '"? Semua pesannya ikut terhapus.')) return;
+    setDeleting(c.id);
+    const { data, error } = await sb.from('conversations').delete().eq('id', c.id).select('id');
+    setDeleting('');
+    if (error) { fail(error); return; }
+    // Tanpa policy delete di database, Supabase tidak error tapi tidak menghapus apa pun.
+    if (!data || !data.length) { toast('Gagal menghapus. Jalankan supabase/migrations/hapus_percakapan.sql dulu.'); return; }
+    const rest = convs.filter((x) => x.id !== c.id);
+    setConvs(rest);
+    saveCount('conv:' + shop.id, rest.length);
+    onHumanCount(rest.filter((x) => x.status === 'human').length);
+    toast('Percakapan dihapus.');
+  }
+
   return (
     <div className="card">
       <h2>Percakapan terbaru</h2>
@@ -44,15 +60,21 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail }) {
         {convs && !convs.length && (
           <p className="hint">Belum ada percakapan. Coba chat lewat halaman Coba bot untuk melihat hasilnya di sini.</p>
         )}
-        {(convs || []).map((c) => (
-          <button key={c.id} className="li" type="button" onClick={() => onOpen(c)}>
-            <div className="t">
-              <b>{c.customer_name + ' - ' + dayTime(c.updated_at)}</b>
-              <small>{prev[c.id] || '(belum ada pesan)'}</small>
-            </div>
-            {c.flag ? <span className="tag a">{c.flag}</span> : null}
-            <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
-          </button>
+        {(convs || []).map((c, i) => (
+          <div key={c.id} className="li">
+            <span className="no" aria-label={'Nomor ' + (i + 1)}>{i + 1}</span>
+            <button className="open" type="button" onClick={() => onOpen(c)}>
+              <div className="t">
+                <b>{c.customer_name + ' - ' + dayTime(c.updated_at)}</b>
+                <small>{prev[c.id] || '(belum ada pesan)'}</small>
+              </div>
+              {c.flag ? <span className="tag a">{c.flag}</span> : null}
+              <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
+            </button>
+            <button className="btn danger sm" type="button" disabled={deleting === c.id} onClick={() => remove(c)}>
+              <Busy on={deleting === c.id} label="Menghapus...">Hapus</Busy>
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -197,7 +219,7 @@ export default function ChatTab({ sb, shop, onHumanCount, refreshHumanCount, onM
     );
   }
   return (
-    <ConvList sb={sb} shop={shop} onHumanCount={onHumanCount} fail={fail}
+    <ConvList sb={sb} shop={shop} onHumanCount={onHumanCount} fail={fail} toast={toast}
       onOpen={(c) => { setConv(c); router.push('/dashboard?c=' + c.id); }} />
   );
 }

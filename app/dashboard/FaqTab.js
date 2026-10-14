@@ -3,46 +3,69 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sk, SkItems } from '../components/Skeleton';
 import { Busy, readCount, saveCount } from './helpers';
 
-function FaqRow({ sb, f, fail, toast, onDeleted }) {
+function FaqRow({ sb, f, no, fail, toast, onDeleted }) {
+  const [cur, setCur] = useState(f);
+  const [editing, setEditing] = useState(false);
   const [q, setQ] = useState(f.question);
   const [a, setA] = useState(f.answer);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const saved = useRef(JSON.stringify([f.question, f.answer]));
+
+  function startEdit() {
+    setQ(cur.question); setA(cur.answer);
+    setEditing(true);
+  }
 
   async function save() {
-    const snap = JSON.stringify([q, a]);
-    if (snap === saved.current) return;
     if (!q.trim() || !a.trim()) return toast('Pertanyaan dan jawaban tidak boleh kosong.');
     setSaving(true);
-    const { error } = await sb.from('faqs').update({ question: q.trim(), answer: a.trim() }).eq('id', f.id);
+    const patch = { question: q.trim(), answer: a.trim() };
+    const { error } = await sb.from('faqs').update(patch).eq('id', cur.id);
     setSaving(false);
     if (error) { fail(error); return; }
-    saved.current = snap;
+    setCur((p) => ({ ...p, ...patch }));
+    setEditing(false);
     toast('Tersimpan.');
   }
 
   async function remove() {
     if (!confirm('Hapus FAQ ini?')) return;
     setRemoving(true);
-    const { error } = await sb.from('faqs').delete().eq('id', f.id);
+    const { error } = await sb.from('faqs').delete().eq('id', cur.id);
     if (error) { setRemoving(false); fail(error); return; }
     toast('FAQ dihapus.');
     onDeleted();
   }
 
+  if (editing) {
+    return (
+      <div className="li edit">
+        <span className="no" aria-label={'Nomor ' + no}>{no}</span>
+        <div className="t">
+          <input value={q} maxLength={200} placeholder="Pertanyaan" aria-label="Pertanyaan" onChange={(e) => setQ(e.target.value)} />
+          <div style={{ marginTop: 8 }}>
+            <textarea value={a} maxLength={1000} placeholder="Jawaban" aria-label="Jawaban" onChange={(e) => setA(e.target.value)} />
+          </div>
+          <div className="row">
+            <button className="btn sm" type="button" disabled={saving} onClick={save}><Busy on={saving} label="Menyimpan...">Simpan</Busy></button>
+            <button className="btn ghost sm" type="button" disabled={saving} onClick={() => setEditing(false)}>Batal</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="item">
-      <input value={q} maxLength={200} aria-label="Pertanyaan" onChange={(e) => setQ(e.target.value)} onBlur={save} />
-      <div style={{ marginTop: 8 }}>
-        <textarea value={a} maxLength={1000} aria-label="Jawaban" onChange={(e) => setA(e.target.value)} onBlur={save} />
+    <div className="li">
+      <span className="no" aria-label={'Nomor ' + no}>{no}</span>
+      <div className="t wrap">
+        <b>{cur.question}</b>
+        <small style={{ whiteSpace: 'pre-wrap' }}>{cur.answer}</small>
       </div>
-      <div className="row">
-        <button className="btn danger sm" type="button" disabled={removing} onClick={remove}>
-          <Busy on={removing} label="Menghapus...">Hapus</Busy>
-        </button>
-        {saving ? <span className="hint" role="status"><span className="spin" aria-hidden="true" />Menyimpan...</span> : null}
-      </div>
+      <button className="btn ghost sm" type="button" onClick={startEdit}>Edit</button>
+      <button className="btn danger sm" type="button" disabled={removing} onClick={remove}>
+        <Busy on={removing} label="Menghapus...">Hapus</Busy>
+      </button>
     </div>
   );
 }
@@ -108,8 +131,8 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
           {!items.length && (
             <p className="hint">Belum ada FAQ. Contoh: kebijakan retur, cara reseller, lama pengemasan.</p>
           )}
-          {items.map((f) => (
-            <FaqRow key={f.id} sb={sb} f={f} fail={fail} toast={toast} onDeleted={load} />
+          {items.map((f, i) => (
+            <FaqRow key={f.id} sb={sb} f={f} no={i + 1} fail={fail} toast={toast} onDeleted={load} />
           ))}
         </div>
       )}

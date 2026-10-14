@@ -109,6 +109,8 @@ create policy faqs_all on public.faqs for all to authenticated
 create policy conv_select on public.conversations for select to authenticated using (public.owns_shop(shop_id));
 create policy conv_update on public.conversations for update to authenticated
   using (public.owns_shop(shop_id)) with check (public.owns_shop(shop_id));
+create policy conv_delete on public.conversations for delete to authenticated
+  using (public.owns_shop(shop_id));
 -- Pemilik hanya boleh mengubah kolom ini (bukan token pengunjung atau shop_id)
 revoke update on public.conversations from authenticated;
 grant update (status, flag, unanswered, last_question, customer_name) on public.conversations to authenticated;

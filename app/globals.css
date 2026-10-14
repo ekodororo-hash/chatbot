@@ -40,6 +40,13 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding
 .li{display:flex;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit}
 button.li{cursor:pointer}
 .li:first-child{border-top:0}
+.li .no{flex:0 0 28px;text-align:right;font-weight:600;color:var(--mute);font-variant-numeric:tabular-nums}
+.li .open{flex:1;min-width:0;display:flex;gap:10px;align-items:center;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.li .t.wrap b,.li .t.wrap small{white-space:normal;overflow:visible}
+.li.edit{align-items:flex-start}
+.li.edit .t .row:last-child{margin-top:10px}
+.li .t .grid3{display:grid;gap:8px;grid-template-columns:2fr 1fr 1fr}
+@media(max-width:560px){.li .t .grid3{grid-template-columns:1fr}}
 .li .t{flex:1;min-width:0}
 .li .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .li .t small{display:block;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
