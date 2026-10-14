@@ -993,7 +993,8 @@ t('bahasa: pengaturan "ikuti bahasa pelanggan" membuat bot membalas dengan bahas
   const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
   for (const extra of [{}, { general_on: true, general_topic: 'hijab' }]) {
     const auto = I.buildSystem(Object.assign({}, base, extra, { reply_language: 'auto' }), [], [], false);
-    assert.ok(auto.includes('bahasa yang SAMA dengan pesan terakhir pelanggan'));
+    assert.ok(auto.includes('deteksi bahasa pesan TERAKHIR pelanggan') && auto.includes('BUKAN bahasa balasan') && auto.includes('INGAT: nilai "reply"'));
+    assert.ok(!auto.includes('Gunakan bahasa Indonesia'), 'gaya bicara tidak memaksa Indonesia');
     assert.ok(!auto.includes('SELALU balas dalam bahasa Indonesia'));
     const id = I.buildSystem(Object.assign({}, base, extra, { reply_language: 'id' }), [], [], false);
     assert.ok(id.includes('SELALU balas dalam bahasa Indonesia'));
