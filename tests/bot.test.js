@@ -119,6 +119,7 @@ t('jawaban umum: mati secara bawaan, menyala hanya bila ada topik, topik dibersi
     assert.ok(sys.includes('belum ada di daftar toko'), 'barang tidak ada: tawarkan alternatif');
     assert.ok(sys.includes('menyetujui tawaranmu'), 'handoff hanya setelah pelanggan setuju');
     assert.ok(sys.includes('PENDEKATAN DULU'), 'pendekatan dulu sebelum admin');
+    assert.ok(sys.includes('JANGAN meminta nama, alamat'), 'tidak minta alamat untuk produk yang tidak ada');
     assert.ok(!/produk di DATA TOKO kosong sehingga/.test(sys), 'katalog kosong bukan alasan handoff');
   }
 });
