@@ -11,6 +11,8 @@ class Q {
   insert(row) { this.op = 'insert'; this.payload = row; return this; }
   update(p) { this.op = 'update'; this.payload = p; return this; }
   eq(c, v) { this.f.push(r => r[c] === v); return this; }
+  neq(c, v) { this.f.push(r => r[c] !== v); return this; }
+  upsert(row, opt) { this.op = 'upsert'; this.payload = row; this.key = (opt && opt.onConflict) || 'id'; return this; }
   or(expr) {
     const parts = String(expr).split(',').map(x => x.split('.'));
     this.f.push(r => parts.some(([c, op, ...v]) => (op === 'is' ? r[c] == null : op === 'lt' ? r[c] != null && r[c] < v.join('.') : false)));
@@ -26,6 +28,12 @@ class Q {
   then(res, rej) { try { res(this.run()); } catch (e) { rej(e); } }
   run() {
     const rows = this.db[this.t];
+    if (!rows) throw new Error('tabel ' + this.t + ' tidak ada');
+    if (this.op === 'upsert') {
+      const ex = rows.find(r => r[this.key] === this.payload[this.key]);
+      if (ex) Object.assign(ex, this.payload); else rows.push(Object.assign({ created_at: new Date().toISOString() }, this.payload));
+      return { data: null, error: null, count: null };
+    }
     if (this.op === 'insert') {
       const r = Object.assign({ created_at: new Date().toISOString() }, this.payload);
       if (this.t === 'messages') r.id = this.db._mid++;
@@ -43,8 +51,22 @@ class Q {
     return { data: m, error: null, count };
   }
 }
-const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], _mid: 1 };
-const fake = { from: t => new Q(db, t) };
+const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], shop_billing: [], payments: [], _mid: 1 };
+let rpcFail = false;
+const fake = {
+  from: t => new Q(db, t),
+  // Tiruan sederhana fungsi SQL search_products / search_faqs (skor: nama 3, deskripsi 1).
+  rpc: async (fn, a) => {
+    if (rpcFail) return { data: null, error: { message: 'fungsi belum ada' } };
+    const isP = fn === 'search_products';
+    const rows = (isP ? db.products : db.faqs).filter(r => r.shop_id === a.sid).map(r => {
+      const head = String(isP ? r.name : r.question).toLowerCase(), body = String(isP ? r.description || '' : r.answer).toLowerCase();
+      const score = a.terms.reduce((sum, w) => sum + (head.includes(w) ? 3 : body.includes(w) ? 1 : 0), 0);
+      return Object.assign({}, r, { score });
+    }).filter(r => r.score > 0).sort((x, y) => y.score - x.score);
+    return { data: rows.slice(0, a.n), error: null };
+  }
+};
 
 /* ---------- Gemini palsu ---------- */
 let geminiCalls = [], geminiImpl = null;
@@ -58,6 +80,8 @@ const bot = require('../lib/bot');
 const { frameAncestors, normalizeDomain } = require('../lib/domains');
 const I = bot._internal;
 const channels = require('../lib/channels');
+const plans = require('../lib/plans');
+const billing = require('../lib/billing');
 const notify = require('../lib/notify');
 process.env.APP_URL = 'https://toko.test';
 
@@ -389,6 +413,374 @@ t('notifikasi: penerima Telegram dibatasi 10 chat', async () => {
   const r = await notify.handleTelegramAdminCommand(s, '/admin penuh', '5000');
   assert.ok(/penuh/.test(r));
   assert.strictEqual(db.shop_notify.find(x => x.shop_id === s.id).tg_chat_ids.length, notify.MAX_CHATS);
+});
+
+function bigCatalog(shop, n) {
+  for (let i = 0; i < n; i++) db.products.push({ shop_id: shop.id, name: 'Produk Biasa ' + i, price: 1000 + i, stock: 5, description: 'umum' });
+  db.products.push({ shop_id: shop.id, name: 'Kerudung Voal Premium', price: 85000, stock: 3, description: 'Bahan voal' });
+}
+t('keywords: buang kata sambung, hanya a-z0-9, unik, maksimal 8', async () => {
+  assert.deepStrictEqual(I.keywords('Kak, ada kerudung voal ga? harga berapa'), ['kerudung', 'voal']);
+  assert.deepStrictEqual(I.keywords("100% katun'; drop--table"), ['100', 'katun', 'drop', 'table']);
+  assert.deepStrictEqual(I.keywords('aaa aaa AAA'), ['aaa']);
+  assert.strictEqual(I.keywords('a b c d e f g h i j k l mmm nnn ooo ppp qqq rrr sss ttt uuu').length, 8);
+  assert.deepStrictEqual(I.keywords(''), []);
+});
+t('katalog kecil: semua produk dikirim, tanpa pencarian', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = reply('ok');
+  await bot.handleMessage({ slug: s.slug, text: 'halo' });
+  assert.ok(!geminiCalls[0].system.includes('banyak produk'));
+});
+t('katalog besar: hanya produk yang cocok dikirim, dan bot diberi tahu datanya sebagian', async () => {
+  const s = seedShop(); bigCatalog(s, 120); geminiCalls = []; geminiImpl = reply('Harganya Rp85.000');
+  await bot.handleMessage({ slug: s.slug, text: 'ada kerudung voal?' });
+  const sys = geminiCalls[0].system;
+  assert.ok(sys.includes('Kerudung Voal Premium') && sys.includes('85000'));
+  assert.ok(!sys.includes('Produk Biasa 5"'), 'produk tak relevan tidak ikut');
+  assert.ok(sys.includes('banyak produk/FAQ'));
+});
+t('katalog besar: pertanyaan umum tanpa kata kunci mendapat contoh produk, bukan daftar kosong', async () => {
+  const s = seedShop(); bigCatalog(s, 120); geminiCalls = [];
+  const c = await I.loadCatalog(fake, s.id, 'ada produk apa saja?');
+  assert.strictEqual(c.partial, true);
+  assert.ok(c.products.length > 0 && c.products.length <= 15);
+});
+t('katalog besar: pencarian memakai pesan pelanggan sebelumnya (konteks lanjutan)', async () => {
+  const s = seedShop(); bigCatalog(s, 120); geminiCalls = []; geminiImpl = reply('Ada, Rp85.000');
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'cari kerudung voal' });
+  await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'stoknya berapa?', after: 0 });
+  assert.ok(geminiCalls[1].system.includes('Kerudung Voal Premium'));
+});
+t('katalog besar: bila fungsi pencarian gagal, jatuh ke 100 produk pertama dan tetap menjawab', async () => {
+  const s = seedShop(); bigCatalog(s, 120); geminiCalls = []; geminiImpl = reply('ok'); rpcFail = true;
+  try {
+    const r = await bot.handleMessage({ slug: s.slug, text: 'kerudung voal' });
+    assert.strictEqual(r.messages[r.messages.length - 1].role, 'bot');
+    assert.ok(geminiCalls[0].system.includes('banyak produk/FAQ'));
+  } finally { rpcFail = false; }
+});
+t('katalog besar: FAQ juga dicari bila lebih dari 100', async () => {
+  const s = seedShop();
+  for (let i = 0; i < 120; i++) db.faqs.push({ shop_id: s.id, question: 'Pertanyaan umum ' + i, answer: 'Jawaban ' + i });
+  db.faqs.push({ shop_id: s.id, question: 'Apakah ada garansi?', answer: 'Garansi 7 hari.' });
+  const c = await I.loadCatalog(fake, s.id, 'garansi');
+  assert.deepStrictEqual(c.faqs.map(f => f.question), ['Apakah ada garansi?']);
+});
+
+/* ---------- Langganan dan kuota bulanan ---------- */
+const KEY = 'SB-Mid-server-test';
+process.env.MIDTRANS_SERVER_KEY = KEY;
+const sign = (n) => crypto.createHash('sha512').update(n.order_id + n.status_code + n.gross_amount + KEY).digest('hex');
+const notif = (pay, over) => {
+  const n = Object.assign({ order_id: pay.order_id, status_code: '200', gross_amount: pay.amount + '.00', transaction_status: 'settlement', payment_type: 'qris' }, over);
+  n.signature_key = sign(n);
+  return n;
+};
+let midtransCalls = [], midtransImpl = null;
+global.fetch = async (url, init) => {
+  midtransCalls.push({ url, init });
+  const r = await midtransImpl(url, init);
+  return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body };
+};
+const snapOk = () => { midtransImpl = async () => ({ status: 201, body: { token: 'tok-' + midtransCalls.length, redirect_url: 'https://app.sandbox.midtrans.com/snap/v4/redirection/tok-' + midtransCalls.length } }); };
+const owner = { email: 'pemilik@toko.test' };
+
+t('plans: harga, diskon, tanggal berakhir, awal bulan WIB', async () => {
+  assert.strictEqual(plans.priceFor('starter', 1), 49000);
+  assert.strictEqual(plans.priceFor('starter', 3), Math.round(49000 * 3 * 0.95));
+  assert.strictEqual(plans.priceFor('bisnis', 12), Math.round(149000 * 12 * 0.85));
+  assert.strictEqual(plans.priceFor('free', 1), null);
+  assert.strictEqual(plans.priceFor('starter', 2), null);
+  assert.strictEqual(plans.priceFor('toString', 1), null);
+  assert.strictEqual(plans.priceFor('starter', 'constructor'), null);
+  const now = new Date('2026-10-14T00:00:00Z');
+  assert.strictEqual(plans.effectivePlan(null, now).id, 'free');
+  assert.strictEqual(plans.effectivePlan({ plan: 'bisnis', expires_at: '2026-10-15T00:00:00Z' }, now).id, 'bisnis');
+  assert.strictEqual(plans.effectivePlan({ plan: 'bisnis', expires_at: '2026-10-13T00:00:00Z' }, now).id, 'free');
+  assert.strictEqual(plans.nextExpiry(null, 'starter', 1, now).toISOString(), '2026-11-13T00:00:00.000Z');
+  // paket sama masih aktif: sambung dari tanggal berakhir; paket lain: mulai dari sekarang
+  const row = { plan: 'starter', expires_at: '2026-10-20T00:00:00Z' };
+  assert.strictEqual(plans.nextExpiry(row, 'starter', 1, now).toISOString(), '2026-11-19T00:00:00.000Z');
+  assert.strictEqual(plans.nextExpiry(row, 'bisnis', 1, now).toISOString(), '2026-11-13T00:00:00.000Z');
+  assert.strictEqual(plans.startOfMonthWIB(new Date('2026-10-31T20:00:00Z')).toISOString(), '2026-10-31T17:00:00.000Z');
+  assert.strictEqual(plans.startOfMonthWIB(new Date('2026-10-14T10:00:00Z')).toISOString(), '2026-09-30T17:00:00.000Z');
+});
+const fillMonth = (shop, n) => { for (let i = 0; i < n; i++) db.messages.push({ id: db._mid++, shop_id: shop.id, conversation_id: 'x', role: 'bot', content: 'b', created_at: new Date().toISOString() }); };
+t('kuota bulanan: paket gratis habis -> diteruskan ke admin tanpa memanggil Gemini', async () => {
+  const s = seedShop({ daily_limit: 5000 }); fillMonth(s, plans.PLANS.free.quota); geminiCalls = []; geminiImpl = reply('x');
+  const r = await bot.handleMessage({ slug: s.slug, text: 'halo' });
+  assert.strictEqual(geminiCalls.length, 0);
+  assert.strictEqual(r.status, 'human');
+  assert.ok(/kuota balasan otomatis bulan ini/.test(r.messages[r.messages.length - 1].content));
+});
+t('kuota bulanan: paket berbayar yang aktif menaikkan kuota; yang sudah lewat masa kembali ke gratis', async () => {
+  const s = seedShop({ daily_limit: 5000 }); fillMonth(s, plans.PLANS.free.quota + 5);
+  db.shop_billing.push({ shop_id: s.id, plan: 'starter', expires_at: new Date(Date.now() + 86400000).toISOString() });
+  geminiCalls = []; geminiImpl = reply('Halo');
+  const r = await bot.handleMessage({ slug: s.slug, text: 'halo' });
+  assert.strictEqual(geminiCalls.length, 1);
+  assert.strictEqual(r.status, 'bot');
+  db.shop_billing.find(x => x.shop_id === s.id).expires_at = new Date(Date.now() - 1000).toISOString();
+  const r2 = await bot.handleMessage({ slug: s.slug, text: 'halo lagi' });
+  assert.strictEqual(r2.status, 'human');
+});
+t('kuota bulanan: tabel paket bermasalah tidak mematikan bot (hanya batas harian berlaku)', async () => {
+  const s = seedShop({ daily_limit: 5000 }); fillMonth(s, 500);
+  const saved = db.shop_billing; delete db.shop_billing;
+  try {
+    geminiCalls = []; geminiImpl = reply('Halo');
+    const r = await bot.handleMessage({ slug: s.slug, text: 'halo' });
+    assert.strictEqual(r.status, 'bot');
+    assert.strictEqual(geminiCalls.length, 1);
+  } finally { db.shop_billing = saved; }
+});
+t('checkout: membuat tagihan Snap, menyimpan pending, dan memakai ulang tautan yang sama', async () => {
+  const s = seedShop(); midtransCalls = []; snapOk();
+  const r1 = await billing.checkout({ shop: s, user: owner, planId: 'starter', months: 3 });
+  assert.ok(r1.url.startsWith('https://app.sandbox.midtrans.com/'));
+  const call = midtransCalls[0], sent = JSON.parse(call.init.body);
+  assert.strictEqual(sent.transaction_details.gross_amount, plans.priceFor('starter', 3));
+  assert.ok(sent.transaction_details.order_id.length <= 50);
+  assert.strictEqual(call.init.headers.Authorization, 'Basic ' + Buffer.from(KEY + ':').toString('base64'));
+  const pay = db.payments.find(p => p.shop_id === s.id);
+  assert.strictEqual(pay.status, 'pending');
+  assert.strictEqual(pay.amount, plans.priceFor('starter', 3));
+  const r2 = await billing.checkout({ shop: s, user: owner, planId: 'starter', months: 3 });
+  assert.strictEqual(r2.url, r1.url);
+  assert.strictEqual(midtransCalls.length, 1, 'tidak membuat tagihan kedua');
+});
+t('checkout: jumlah dihitung server (input aneh ditolak), turun paket ditolak, tanpa kunci = 503', async () => {
+  const s = seedShop(); snapOk();
+  await rejects(billing.checkout({ shop: s, user: owner, planId: 'gratis', months: 1 }), 400);
+  await rejects(billing.checkout({ shop: s, user: owner, planId: 'starter', months: 7 }), 400);
+  db.shop_billing.push({ shop_id: s.id, plan: 'bisnis', expires_at: new Date(Date.now() + 5 * 86400000).toISOString() });
+  await rejects(billing.checkout({ shop: s, user: owner, planId: 'starter', months: 1 }), 409);
+  process.env.MIDTRANS_SERVER_KEY = '';
+  try { await rejects(billing.checkout({ shop: s, user: owner, planId: 'bisnis', months: 1 }), 503); } finally { process.env.MIDTRANS_SERVER_KEY = KEY; }
+});
+t('checkout: Midtrans menolak -> 502 dan tidak ada tagihan tersimpan', async () => {
+  const s = seedShop(); midtransImpl = async () => ({ status: 401, body: { error_messages: ['Access denied'] } });
+  await rejects(billing.checkout({ shop: s, user: owner, planId: 'starter', months: 1 }), 502);
+  assert.strictEqual(db.payments.filter(p => p.shop_id === s.id).length, 0);
+});
+const payFor = async (s, planId, months) => { snapOk(); await billing.checkout({ shop: s, user: owner, planId, months }); return db.payments.filter(p => p.shop_id === s.id).pop(); };
+t('webhook: tanda tangan salah ditolak dan tidak mengubah apa pun', async () => {
+  const s = seedShop(); const pay = await payFor(s, 'starter', 1);
+  const n = notif(pay); n.signature_key = n.signature_key.replace(/.$/, c => (c === '0' ? '1' : '0'));
+  await rejects(billing.handleNotification(n), 401);
+  await rejects(billing.handleNotification(Object.assign(notif(pay), { signature_key: undefined })), 401);
+  assert.strictEqual(pay.status, 'pending');
+  assert.ok(!db.shop_billing.find(b => b.shop_id === s.id));
+});
+t('webhook: settlement mengaktifkan paket sekali saja walau notifikasi dikirim ulang', async () => {
+  const s = seedShop(); const pay = await payFor(s, 'starter', 1);
+  const now = new Date('2026-10-14T00:00:00Z');
+  const r1 = await billing.handleNotification(notif(pay), now);
+  assert.strictEqual(r1.status, 'paid');
+  const b = () => db.shop_billing.find(x => x.shop_id === s.id);
+  assert.strictEqual(b().plan, 'starter');
+  assert.strictEqual(b().expires_at, '2026-11-13T00:00:00.000Z');
+  const r2 = await billing.handleNotification(notif(pay), new Date('2026-10-14T00:05:00Z'));
+  assert.strictEqual(r2.already, true);
+  assert.strictEqual(b().expires_at, '2026-11-13T00:00:00.000Z', 'tidak diperpanjang dua kali');
+  assert.strictEqual(pay.status, 'paid');
+});
+t('webhook: bayar lagi paket yang sama menyambung dari tanggal berakhir', async () => {
+  const s = seedShop(); const now = new Date('2026-10-14T00:00:00Z');
+  await billing.handleNotification(notif(await payFor(s, 'starter', 1)), now);
+  const pay2 = await payFor(s, 'starter', 1);
+  pay2.created_at = '2000-01-01T00:00:00Z';   // pastikan ini tagihan baru, bukan tautan lama
+  await billing.handleNotification(notif(pay2), new Date('2026-10-20T00:00:00Z'));
+  assert.strictEqual(db.shop_billing.find(x => x.shop_id === s.id).expires_at, '2026-12-13T00:00:00.000Z');
+});
+t('webhook: jumlah tidak cocok, order tak dikenal, dan status pending tidak mengaktifkan paket', async () => {
+  const s = seedShop(); const pay = await payFor(s, 'starter', 1);
+  const bad = await billing.handleNotification(notif(pay, { gross_amount: '1000.00' }));
+  assert.strictEqual(bad.handled, false);
+  const unk = await billing.handleNotification(notif({ order_id: 'AT-tidak-ada', amount: 10 }));
+  assert.strictEqual(unk.handled, false);
+  await billing.handleNotification(notif(pay, { transaction_status: 'pending', status_code: '201' }));
+  assert.strictEqual(pay.status, 'pending');
+  assert.ok(!db.shop_billing.find(b => b.shop_id === s.id));
+});
+t('webhook: kartu kredit capture hanya dihitung lunas bila fraud_status accept', async () => {
+  const s = seedShop(); const pay = await payFor(s, 'starter', 1);
+  await billing.handleNotification(notif(pay, { transaction_status: 'capture', fraud_status: 'challenge' }));
+  assert.strictEqual(pay.status, 'pending');
+  await billing.handleNotification(notif(pay, { transaction_status: 'capture', fraud_status: 'accept' }));
+  assert.strictEqual(pay.status, 'paid');
+});
+t('webhook: expire/deny mengubah status, tapi tidak menimpa pembayaran yang sudah lunas', async () => {
+  const s = seedShop(); const p1 = await payFor(s, 'starter', 1);
+  await billing.handleNotification(notif(p1, { transaction_status: 'expire' }));
+  assert.strictEqual(p1.status, 'expired');
+  const s2 = seedShop(); const p2 = await payFor(s2, 'bisnis', 1);
+  await billing.handleNotification(notif(p2));
+  await billing.handleNotification(notif(p2, { transaction_status: 'cancel' }));
+  assert.strictEqual(p2.status, 'paid');
+  assert.strictEqual(db.shop_billing.find(x => x.shop_id === s2.id).plan, 'bisnis');
+});
+t('webhook: gagal memperpanjang -> status dikembalikan ke pending dan error dilempar (Midtrans kirim ulang)', async () => {
+  const s = seedShop(); const pay = await payFor(s, 'starter', 1);
+  const orig = fake.from;
+  fake.from = (tb) => { const q = orig(tb); if (tb === 'shop_billing' && true) { const run = q.run.bind(q); q.run = () => (q.op === 'upsert' ? { data: null, error: { message: 'db mati' }, count: null } : run()); } return q; };
+  try { await assert.rejects(billing.handleNotification(notif(pay))); } finally { fake.from = orig; }
+  assert.strictEqual(pay.status, 'pending');
+  await billing.handleNotification(notif(pay));   // kiriman ulang berikutnya berhasil
+  assert.strictEqual(pay.status, 'paid');
+  assert.ok(db.shop_billing.find(x => x.shop_id === s.id));
+});
+t('periksa pembayaran: menanyakan status ke Midtrans, dan hanya untuk tagihan toko sendiri', async () => {
+  const s = seedShop(), other = seedShop(); const pay = await payFor(s, 'starter', 1);
+  midtransImpl = async (url) => {
+    assert.ok(url.startsWith('https://api.sandbox.midtrans.com/v2/' + pay.order_id));
+    return { status: 200, body: notif(pay) };
+  };
+  await rejects(billing.syncOrder(other, pay.order_id), 404);
+  const r = await billing.syncOrder(s, pay.order_id);
+  assert.strictEqual(r.status, 'paid');
+  const s3 = seedShop(); const p3 = await payFor(s3, 'starter', 1);
+  midtransImpl = async () => ({ status: 404, body: {} });
+  assert.strictEqual((await billing.syncOrder(s3, p3.order_id)).status, 'pending');
+});
+t('status halaman Langganan: paket, pemakaian bulan ini, dan riwayat', async () => {
+  const s = seedShop(); fillMonth(s, 7); await billing.handleNotification(notif(await payFor(s, 'bisnis', 1)));
+  const st = await billing.status(fake, s);
+  assert.strictEqual(st.plan, 'bisnis'); assert.strictEqual(st.quota, plans.PLANS.bisnis.quota); assert.strictEqual(st.used, 7);
+  assert.strictEqual(st.payments[0].status, 'paid');
+  assert.ok(!JSON.stringify(st).includes(KEY));
+});
+
+/* ---------- DOKU ---------- */
+const DCID = 'MCH-0001-TEST', DSEC = 'SK-doku-secret-test';
+async function withDoku(fn) {
+  process.env.DOKU_CLIENT_ID = DCID; process.env.DOKU_SECRET_KEY = DSEC;
+  try { return await fn(); } finally { delete process.env.DOKU_CLIENT_ID; delete process.env.DOKU_SECRET_KEY; }
+}
+// Penghitung tanda tangan versi tes (rumus dari dokumentasi DOKU), terpisah dari kode produksi.
+const dsign = (h, target, body) => {
+  const lines = ['Client-Id:' + h['Client-Id'], 'Request-Id:' + h['Request-Id'], 'Request-Timestamp:' + h['Request-Timestamp'], 'Request-Target:' + target];
+  if (body !== undefined) lines.push('Digest:' + crypto.createHash('sha256').update(body).digest('base64'));
+  return 'HMACSHA256=' + crypto.createHmac('sha256', DSEC).update(lines.join('\n')).digest('base64');
+};
+const dokuNotif = (pay, over, target) => {
+  const body = JSON.stringify(Object.assign({ order: { invoice_number: pay.order_id, amount: pay.amount }, transaction: { status: 'SUCCESS', date: '2026-10-14T03:15:26Z' }, channel: { id: 'QRIS_DOKU' } }, over));
+  const h = { 'Client-Id': DCID, 'Request-Id': crypto.randomUUID(), 'Request-Timestamp': '2026-10-14T03:15:30Z' };
+  return { raw: body, target: target || '/api/doku', headers: { clientId: DCID, requestId: h['Request-Id'], timestamp: h['Request-Timestamp'], signature: dsign(h, target || '/api/doku', body) } };
+};
+const dokuOk = () => { midtransImpl = async () => ({ status: 200, body: { response: { payment: { token_id: 'tk-1', url: 'https://sandbox.doku.com/checkout-link-v2/tk-1' } } } }); };
+const dokuPay = async (s, planId, months) => { dokuOk(); await billing.checkout({ shop: s, user: owner, planId, months, provider: 'doku' }); return db.payments.filter(p => p.shop_id === s.id).pop(); };
+
+t('doku checkout: header dan tanda tangan sesuai dokumen, body dikirim sama dengan yang di-hash', async () => {
+  await withDoku(async () => {
+    const s = seedShop(); midtransCalls = []; dokuOk();
+    const r = await billing.checkout({ shop: s, user: owner, planId: 'bisnis', months: 1, provider: 'doku' });
+    assert.strictEqual(r.url, 'https://sandbox.doku.com/checkout-link-v2/tk-1');
+    const c = midtransCalls[0];
+    assert.strictEqual(c.url, 'https://api-sandbox.doku.com/checkout/v1/payment');
+    const h = c.init.headers;
+    assert.strictEqual(h['Client-Id'], DCID);
+    assert.ok(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(h['Request-Timestamp']), 'tanpa milidetik: ' + h['Request-Timestamp']);
+    assert.strictEqual(h.Signature, dsign(h, '/checkout/v1/payment', c.init.body));
+    const sent = JSON.parse(c.init.body);
+    assert.strictEqual(sent.order.amount, 149000);
+    assert.ok(sent.order.invoice_number.length <= 30);
+    assert.strictEqual(sent.payment.payment_due_date, 1440);
+    const pay = db.payments.find(p => p.shop_id === s.id);
+    assert.strictEqual(pay.provider, 'doku'); assert.strictEqual(pay.order_id, sent.order.invoice_number);
+  });
+});
+t('doku checkout: metode yang belum aktif ditolak; tanpa pilihan memakai penyedia yang aktif', async () => {
+  const s = seedShop(); snapOk();
+  await rejects(billing.checkout({ shop: s, user: owner, planId: 'starter', months: 1, provider: 'doku' }), 400);   // DOKU belum diisi
+  await rejects(billing.checkout({ shop: s, user: owner, planId: 'starter', months: 1, provider: 'constructor' }), 400);
+  await withDoku(async () => {
+    process.env.MIDTRANS_SERVER_KEY = '';
+    try {
+      midtransCalls = []; dokuOk();
+      await billing.checkout({ shop: seedShop(), user: owner, planId: 'starter', months: 1 });
+      assert.ok(midtransCalls[0].url.includes('doku.com'));
+    } finally { process.env.MIDTRANS_SERVER_KEY = KEY; }
+  });
+});
+t('doku checkout: DOKU menolak -> 502 dan tidak ada tagihan tersimpan', async () => {
+  await withDoku(async () => {
+    const s = seedShop(); midtransImpl = async () => ({ status: 400, body: { error_messages: ['order.amount must greater than 0'] } });
+    await rejects(billing.checkout({ shop: s, user: owner, planId: 'starter', months: 1, provider: 'doku' }), 502);
+    assert.strictEqual(db.payments.filter(p => p.shop_id === s.id).length, 0);
+  });
+});
+t('doku webhook: SUCCESS mengaktifkan paket sekali; kiriman ulang tidak memperpanjang lagi', async () => {
+  await withDoku(async () => {
+    const s = seedShop(); const pay = await dokuPay(s, 'starter', 1);
+    const now = new Date('2026-10-14T00:00:00Z');
+    const r = await billing.handleDokuNotification(dokuNotif(pay), now);
+    assert.strictEqual(r.status, 'paid');
+    assert.strictEqual(pay.payment_type, 'QRIS_DOKU');
+    const row = () => db.shop_billing.find(x => x.shop_id === s.id);
+    assert.strictEqual(row().plan, 'starter'); assert.strictEqual(row().expires_at, '2026-11-13T00:00:00.000Z');
+    assert.strictEqual((await billing.handleDokuNotification(dokuNotif(pay), new Date('2026-10-14T01:00:00Z'))).already, true);
+    assert.strictEqual(row().expires_at, '2026-11-13T00:00:00.000Z');
+  });
+});
+t('doku webhook: tanda tangan salah, body diubah, path beda, atau Client-Id asing ditolak 401', async () => {
+  await withDoku(async () => {
+    const s = seedShop(); const pay = await dokuPay(s, 'starter', 1);
+    const good = dokuNotif(pay);
+    await rejects(billing.handleDokuNotification(Object.assign({}, good, { raw: good.raw.replace(String(pay.amount), '1') })), 401);
+    await rejects(billing.handleDokuNotification(Object.assign({}, good, { target: '/api/lain' })), 401);
+    await rejects(billing.handleDokuNotification(Object.assign({}, good, { headers: Object.assign({}, good.headers, { signature: 'HMACSHA256=salah' }) })), 401);
+    await rejects(billing.handleDokuNotification(Object.assign({}, good, { headers: Object.assign({}, good.headers, { clientId: 'MCH-ORANG-LAIN' }) })), 401);
+    await rejects(billing.handleDokuNotification(Object.assign({}, good, { headers: Object.assign({}, good.headers, { signature: '' }) })), 401);
+    assert.strictEqual(pay.status, 'pending');
+    assert.ok(!db.shop_billing.find(b => b.shop_id === s.id));
+  });
+  // DOKU belum dikonfigurasi: semua notifikasi ditolak
+  const s2 = seedShop(); const fake = { raw: '{}', target: '/api/doku', headers: { clientId: '', requestId: 'x', timestamp: 'y', signature: 'z' } };
+  await rejects(billing.handleDokuNotification(fake), 401);
+});
+t('doku webhook: FAILED diabaikan (pelanggan bisa ganti metode), jumlah beda ditolak, order asing diabaikan', async () => {
+  await withDoku(async () => {
+    const s = seedShop(); const pay = await dokuPay(s, 'starter', 1);
+    await billing.handleDokuNotification(dokuNotif(pay, { transaction: { status: 'FAILED' } }));
+    assert.strictEqual(pay.status, 'pending');
+    const bad = await billing.handleDokuNotification(dokuNotif(pay, { order: { invoice_number: pay.order_id, amount: 1000 } }));
+    assert.strictEqual(bad.handled, false); assert.strictEqual(pay.status, 'pending');
+    const unk = await billing.handleDokuNotification(dokuNotif({ order_id: 'AT-asing', amount: 5 }));
+    assert.strictEqual(unk.handled, false);
+    // jumlah ditulis desimal ("49000.00" sebagai angka 49000) tetap cocok
+    const ok = await billing.handleDokuNotification(dokuNotif(pay, { order: { invoice_number: pay.order_id, amount: pay.amount + 0.0 } }));
+    assert.strictEqual(ok.status, 'paid');
+  });
+});
+t('doku periksa pembayaran: GET status bertanda tangan tanpa Digest; belum dibayar tetap pending', async () => {
+  await withDoku(async () => {
+    const s = seedShop(); const pay = await dokuPay(s, 'starter', 1);
+    midtransImpl = async (url, init) => {
+      assert.strictEqual(url, 'https://api-sandbox.doku.com/orders/v1/status/' + pay.order_id);
+      assert.strictEqual(init.method, 'GET'); assert.strictEqual(init.body, undefined);
+      assert.strictEqual(init.headers.Signature, dsign(init.headers, '/orders/v1/status/' + pay.order_id));
+      return { status: 200, body: { order: { invoice_number: pay.order_id, amount: pay.amount, status: 'ORDER_GENERATED' } } };
+    };
+    assert.strictEqual((await billing.syncOrder(s, pay.order_id)).status, 'pending');
+    midtransImpl = async () => ({ status: 200, body: { order: { invoice_number: pay.order_id, amount: pay.amount }, transaction: { status: 'SUCCESS' }, channel: { id: 'VIRTUAL_ACCOUNT_BCA' } } });
+    assert.strictEqual((await billing.syncOrder(s, pay.order_id)).status, 'paid');
+    assert.strictEqual(db.shop_billing.find(x => x.shop_id === s.id).plan, 'starter');
+    // dua penyedia berjalan berdampingan: tagihan Midtrans tetap diperiksa lewat Midtrans
+    const p2 = await payFor(seedShop(), 'starter', 1);
+    midtransImpl = async (url) => { assert.ok(url.includes('midtrans.com')); return { status: 404, body: {} }; };
+    assert.strictEqual((await billing.syncOrder({ id: p2.shop_id }, p2.order_id)).status, 'pending');
+  });
+});
+t('status halaman Langganan: daftar metode bayar hanya yang aktif, tanpa rahasia', async () => {
+  const s = seedShop();
+  let st = await billing.status(fake, s);
+  assert.deepStrictEqual(st.providers.map(p => p.id), ['midtrans']);
+  await withDoku(async () => {
+    st = await billing.status(fake, s);
+    assert.deepStrictEqual(st.providers.map(p => p.id), ['midtrans', 'doku']);
+    assert.ok(!JSON.stringify(st).includes(DSEC) && !JSON.stringify(st).includes(KEY));
+  });
 });
 
 (async () => {

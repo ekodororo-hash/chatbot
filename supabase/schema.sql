@@ -290,3 +290,87 @@ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+
+-- =====================================================================
+-- BAGIAN TAMBAHAN: pencarian katalog besar dan langganan berbayar.
+-- Sama dengan supabase/migrations/pencarian_katalog.sql dan langganan.sql (tanpa pemberian paket ke toko lama).
+-- =====================================================================
+--
+-- Kedua tabel hanya boleh diakses server (service role): RLS aktif TANPA policy. Sengaja tidak ditaruh di tabel
+-- shops, karena pemilik toko boleh mengubah barisnya sendiri dan bisa memberi dirinya paket gratis.
+
+create table if not exists public.shop_billing (
+  shop_id uuid primary key references public.shops(id) on delete cascade,
+  plan text not null default 'free' check (plan in ('free','starter','bisnis')),
+  expires_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.payments (
+  id uuid primary key default gen_random_uuid(),
+  order_id text not null unique,
+  provider text not null default 'midtrans' check (provider in ('midtrans','doku')),
+  shop_id uuid not null references public.shops(id) on delete cascade,
+  plan text not null check (plan in ('starter','bisnis')),
+  months int not null check (months > 0),
+  amount bigint not null check (amount > 0),
+  status text not null default 'pending' check (status in ('pending','paid','failed','expired')),
+  payment_type text,
+  snap_token text,
+  redirect_url text,
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists payments_shop_idx on public.payments (shop_id, created_at desc);
+
+alter table public.shop_billing enable row level security;
+alter table public.payments enable row level security;
+revoke all on public.shop_billing, public.payments from anon, authenticated;
+
+
+
+create extension if not exists pg_trgm;
+
+create index if not exists products_name_trgm on public.products using gin (lower(name) gin_trgm_ops);
+create index if not exists products_desc_trgm on public.products using gin (lower(description) gin_trgm_ops);
+create index if not exists faqs_question_trgm on public.faqs using gin (lower(question) gin_trgm_ops);
+
+-- Produk paling relevan untuk kata kunci pelanggan. Skor: kata muncul di nama (3), di deskripsi (1),
+-- atau mirip nama (salah ketik kecil, 2). Hanya dipanggil dari server (service role).
+create or replace function public.search_products(sid uuid, terms text[], n int default 40)
+returns table (name text, price bigint, stock int, description text, score bigint)
+language sql stable set search_path = public, extensions as $$
+  select p.name, p.price, p.stock, p.description, s.score
+  from public.products p
+  cross join lateral (
+    select coalesce(sum(
+      case when lower(p.name) like '%' || t || '%' then 3
+           when lower(p.description) like '%' || t || '%' then 1
+           when word_similarity(t, lower(p.name)) >= 0.5 then 2
+           else 0 end), 0) as score
+    from unnest(terms) as t
+  ) s
+  where p.shop_id = sid and s.score > 0
+  order by s.score desc, p.name
+  limit least(greatest(n, 1), 100)
+$$;
+revoke all on function public.search_products(uuid, text[], int) from public, anon, authenticated;
+
+create or replace function public.search_faqs(sid uuid, terms text[], n int default 20)
+returns table (question text, answer text, score bigint)
+language sql stable set search_path = public, extensions as $$
+  select f.question, f.answer, s.score
+  from public.faqs f
+  cross join lateral (
+    select coalesce(sum(
+      case when lower(f.question) like '%' || t || '%' then 3
+           when lower(f.answer) like '%' || t || '%' then 1
+           when word_similarity(t, lower(f.question)) >= 0.5 then 2
+           else 0 end), 0) as score
+    from unnest(terms) as t
+  ) s
+  where f.shop_id = sid and s.score > 0
+  order by s.score desc, f.question
+  limit least(greatest(n, 1), 100)
+$$;
+revoke all on function public.search_faqs(uuid, text[], int) from public, anon, authenticated;

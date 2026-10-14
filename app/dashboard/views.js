@@ -12,6 +12,7 @@ import PasangTab from './PasangTab';
 import SalurTab from './SalurTab';
 import AdminNotif from './AdminNotif';
 import TimTab from './TimTab';
+import LanggananTab from './LanggananTab';
 
 const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange });
 
@@ -42,3 +43,10 @@ export function NotifikasiView() {
   );
 }
 export function TimView() { return <TimTab {...common(useDash())} />; }
+export function LanggananView() {
+  return (
+    <Suspense fallback={<div className="card"><SkConvRows rows={2} /></div>}>
+      <LanggananTab {...common(useDash())} />
+    </Suspense>
+  );
+}

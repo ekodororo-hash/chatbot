@@ -22,10 +22,11 @@ const TABS = [
   ['/dashboard/coba', 'Coba bot', 'coba'],
   ['/dashboard/pasang', 'Pasang', 'pasang'],
   ['/dashboard/notifikasi', 'Notifikasi', 'notifikasi'],
-  ['/dashboard/tim', 'Tim', 'tim']
+  ['/dashboard/tim', 'Tim', 'tim'],
+  ['/dashboard/langganan', 'Langganan', 'langganan']
 ];
 // Halaman yang hanya boleh dibuka pemilik toko. Admin tambahan hanya mengurus percakapan, produk, dan FAQ.
-const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pasang', '/dashboard/notifikasi', '/dashboard/tim']);
+const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pasang', '/dashboard/notifikasi', '/dashboard/tim', '/dashboard/langganan']);
 
 // Ikon garis sederhana untuk menu sidebar.
 const ICON = {
@@ -37,6 +38,7 @@ const ICON = {
   coba: 'M6 4l14 8-14 8V4Z',
   pasang: 'm8 8-4 4 4 4m8-8 4 4-4 4m-2.5-11-3 14',
   notifikasi: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
+  langganan: 'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2ZM2 10h20M6 15h4',
   tim: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
 };
 const Icon = ({ k }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[k]} /></svg>;

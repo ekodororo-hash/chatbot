@@ -22,7 +22,7 @@ Pelanggan tidak pernah menyentuh database. Semua lewat `app/api/chat/route.js` y
    - Authentication > URL Configuration: isi Site URL dengan domainmu.
 2. **Gemini**: buat API key di Google AI Studio.
 3. **Vercel**: import folder ini sebagai project (Framework Preset: Next.js, terdeteksi otomatis; `vercel.json` juga mengaturnya). Isi Environment Variables seperti di `.env.example`:
-   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL` (opsional), `DEVELOPER_EMAILS` (opsional, email pengembang yang boleh melihat detail teknis di halaman Coba bot), `APP_URL`, `RESEND_API_KEY`, dan `NOTIFY_FROM` (opsional, untuk notifikasi email).
+   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL` (opsional), `DEVELOPER_EMAILS` (opsional, email pengembang yang boleh melihat detail teknis di halaman Coba bot), `APP_URL`, `RESEND_API_KEY`, dan `NOTIFY_FROM` (opsional, untuk notifikasi email), `MIDTRANS_SERVER_KEY` / `MIDTRANS_IS_PRODUCTION` dan/atau `DOKU_CLIENT_ID` / `DOKU_SECRET_KEY` / `DOKU_IS_PRODUCTION` (opsional, untuk langganan berbayar).
    Nama variabel tidak berubah dari versi lama dan tidak perlu awalan `NEXT_PUBLIC_`. URL dan kunci publik diteruskan ke browser lewat server component.
    `SUPABASE_ANON_KEY` boleh diisi Publishable key (`sb_publishable_...`), `SUPABASE_SERVICE_ROLE_KEY` boleh diisi Secret key (`sb_secret_...`).
 4. **Domain**: tambahkan domain, misalnya `chat.isengin.site`, di Vercel > Settings > Domains lalu arahkan DNS-nya.
@@ -36,12 +36,17 @@ Tes otomatis otak bot: `npm test` (tanpa jaringan).
 ```
 app/page.js                  beranda
 app/login/                   halaman masuk dan daftar
-app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShell.js, satu route per menu: /dashboard, /produk, /faq, /toko, /bot, /pasang, /notifikasi, /tim)
+app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShell.js, satu route per menu: /dashboard, /produk, /faq, /toko, /bot, /pasang, /notifikasi, /tim, /langganan)
 app/api/chat/route.js        POST pesan pelanggan, GET polling balasan admin
+app/api/billing/route.js     status paket, checkout, periksa pembayaran (khusus pemilik)
+app/api/midtrans/route.js    webhook notifikasi pembayaran Midtrans
+app/api/doku/route.js        webhook notifikasi pembayaran DOKU
 app/chat/[slug]/route.js     menyajikan /chat/:slug + header CSP frame-ancestors per toko
 app/globals.css              gaya seluruh halaman
 lib/bot.js                   alur percakapan, batas laju, batas harian, prompt, handoff
 lib/gemini.js                pemanggil Gemini (model dari env GEMINI_MODEL)
+lib/plans.js                 paket, harga, kuota, perhitungan masa berlaku
+lib/billing.js               Midtrans Snap dan DOKU Checkout, verifikasi webhook, perpanjangan paket
 lib/notify.js                notifikasi admin (email lewat Resend, Telegram) dan perintah /admin KODE
 lib/auth.js                  pemeriksaan anggota/pemilik toko untuk API dashboard (header X-Shop-Id)
 lib/domains.js               validasi domain dan pembuat CSP
@@ -50,7 +55,7 @@ lib/supabase.js              klien server (Secret/service role key)
 lib/supabaseBrowser.js       klien browser (Publishable/anon key)
 public/widget.js             widget yang ditempel di website klien
 supabase/schema.sql          tabel, indeks, dan aturan keamanan (RLS)
-tests/bot.test.js            29 tes untuk otak bot, saluran, dan notifikasi (npm test)
+tests/bot.test.js            60 tes untuk otak bot, saluran, notifikasi, pencarian katalog, dan langganan (npm test)
 ```
 
 **Kenapa halaman chat bukan komponen React?** Halaman `/chat/:slug` dipasang sebagai iframe di website klien, dan harus membawa
@@ -104,10 +109,56 @@ Hal yang perlu diketahui:
 - **Privasi:** pesan pelanggan disimpan di databasemu, dan halaman chat memberi tahu hal itu. Sebelum jualan ke klien, siapkan kebijakan privasi dan perjanjian pemrosesan data sederhana.
 - Library Supabase sekarang dipasang lewat npm (bukan CDN), jadi versinya terkunci di `package-lock.json`. Commit file itu setelah `npm install` pertama.
 
+## Katalog besar (pencarian produk dan FAQ)
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/pencarian_katalog.sql` (mengaktifkan `pg_trgm`, indeks, dan fungsi `search_products` / `search_faqs`; proyek baru sudah tercakup di `schema.sql`).
+
+- Sampai 100 produk dan 100 FAQ, seluruh data dikirim ke prompt seperti sebelumnya.
+- Di atas itu, bot mencari dulu: kata kunci diambil dari tiga pesan pelanggan terakhir (kata sambung dibuang), lalu 40 produk dan 20 FAQ paling cocok yang dikirim. Skor: kata ada di nama (3), di deskripsi (1), atau mirip nama untuk salah ketik kecil (2).
+- Pertanyaan umum tanpa kata kunci ("ada produk apa saja?") mendapat 15 contoh produk.
+- Prompt memberi tahu bot bahwa datanya sebagian, jadi produk yang tidak tampil tidak dianggap tidak ada: bot meneruskan ke admin.
+- Kalau fungsi pencarian belum dipasang atau error, bot jatuh ke 100 data pertama dan tetap menjawab (tercatat di log).
+- Batasnya: pencarian berbasis kata, bukan makna. Pelanggan yang memakai sinonim yang tidak ada di nama/deskripsi produk ("jilbab" untuk "kerudung") tidak ketemu. Perbaikannya: isi deskripsi dengan kata yang umum dipakai pelanggan, atau tambah FAQ.
+
+## Langganan berbayar (Midtrans dan/atau DOKU)
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/langganan.sql` (tabel `shop_billing` dan `payments`, RLS tanpa policy sehingga hanya server yang bisa menulis). Toko yang sudah ada diberi masa percobaan paket Bisnis 30 hari supaya tidak mendadak terbatas; hapus blok itu di file migrasi kalau tidak diinginkan.
+
+**Paket** (ubah di `lib/plans.js`, satu-satunya tempat angka paket): Gratis 100 balasan/bulan, Starter Rp49.000 (1.500/bulan), Bisnis Rp149.000 (6.000/bulan). Lama 1, 3 (hemat 5%), atau 12 bulan (hemat 15%). Angka ini contoh, sesuaikan dengan hitungan biaya Gemini dan harga pasarmu. Kuota dihitung per bulan kalender WIB per toko; setelah habis, pesan masuk ke admin tanpa memanggil AI. Batas harian di halaman Bot tetap berlaku.
+
+**Pasang Midtrans:**
+1. Daftar di dashboard.midtrans.com. Mulai dari mode Sandbox: ambil Server Key di Settings > Access Keys.
+2. Isi `MIDTRANS_SERVER_KEY` dan `APP_URL` di Vercel, lalu deploy ulang. `MIDTRANS_IS_PRODUCTION` biarkan `false` selama uji coba.
+3. Di Midtrans: Settings > Configuration > Payment Notification URL isi `https://DOMAINMU/api/midtrans`. Finish redirect URL tidak perlu diisi (dikirim dari aplikasi).
+4. Buka Dashboard > Langganan (hanya pemilik toko), pilih paket, dan bayar dengan simulator sandbox Midtrans.
+5. Untuk meluncur: ganti ke Server Key production dan set `MIDTRANS_IS_PRODUCTION=true`.
+
+**Pasang DOKU (Checkout):**
+1. Daftar di dashboard.doku.com, mulai dari Sandbox. Ambil Client ID dan Secret Key di Integration > API Keys.
+2. Isi `DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`, dan `APP_URL` di Vercel, lalu deploy ulang. `DOKU_IS_PRODUCTION` biarkan `false` selama uji coba.
+3. Di DOKU Back Office isi **Notification URL** `https://DOMAINMU/api/doku` untuk tiap payment channel yang kamu aktifkan. Path-nya harus persis `/api/doku` karena ikut dalam perhitungan tanda tangan.
+4. Aktifkan channel yang diinginkan (QRIS, VA, e-wallet, kartu) di akun DOKU; yang tampil di halaman bayar mengikuti pengaturan itu.
+5. Untuk meluncur: ganti ke kunci production dan set `DOKU_IS_PRODUCTION=true`.
+
+Midtrans dan DOKU boleh aktif bersamaan: pemilik toko memilih metode di halaman Langganan. Kalau hanya satu yang diisi, hanya itu yang muncul. Penyedia tercatat per pembayaran (`payments.provider`), jadi tombol Periksa selalu bertanya ke penyedia yang benar.
+
+**Catatan DOKU:** tanda tangan dan alur ini ditulis dari dokumentasi DOKU dan diuji dengan tes otomatis, tapi belum pernah dicoba ke server DOKU sungguhan. Uji sekali di sandbox sebelum meluncur (bayar satu paket, lihat status berubah lunas). DOKU hanya mengirim SUCCESS atau FAILED; FAILED diabaikan karena pelanggan boleh mencoba metode lain, dan tagihan yang tidak dibayar dalam 24 jam tetap berstatus menunggu bayar di riwayat. API cek status DOKU untuk Checkout hanya aktif untuk merchant yang mendaftar sejak Desember 2024 (yang lama perlu minta ke DOKU); kalau belum aktif, tombol Periksa tidak menemukan apa pun dan kamu mengandalkan webhook. DOKU menyarankan cek status minimal 60 detik setelah pembayaran.
+
+**Cara kerjanya:**
+- Jumlah dan harga selalu dihitung server dari `lib/plans.js`; browser hanya mengirim nama paket dan lama.
+- Notifikasi diverifikasi dengan tanda tangan (Midtrans: SHA-512 dengan Server Key; DOKU: HMAC-SHA256 dengan Secret Key atas Client-Id, Request-Id, timestamp, path, dan Digest body) dan jumlahnya dicocokkan dengan tagihan. Pembayaran ditandai lunas lewat satu update atomik, jadi notifikasi yang dikirim ulang tidak memperpanjang dua kali. Kalau perpanjangan gagal, status dikembalikan ke pending dan webhook membalas error supaya Midtrans mengirim ulang.
+- Tombol **Periksa** di riwayat (dan otomatis saat kembali dari halaman bayar) menanyakan status langsung ke Midtrans, jadi paket tetap aktif walau webhook terlambat.
+- Memperpanjang paket yang sama menyambung dari tanggal berakhir. Pindah ke paket lain dihitung dari hari pembayaran (sisa masa paket lama tidak dikompensasi). Turun paket saat paket lebih tinggi masih aktif ditolak.
+- Klik beli berulang dalam 23 jam memakai ulang tautan bayar yang sama.
+- Kalau tabel paket bermasalah, bot tetap menjawab (hanya batas harian yang berlaku) dan error dicatat di log.
+- Aktivasi manual (misalnya klien bayar transfer): lihat contoh SQL di bagian bawah `langganan.sql`.
+
+Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), faktur/PPN, pengingat email sebelum masa habis, dan pembatasan fitur per paket selain kuota balasan (jumlah toko, saluran Telegram/WhatsApp).
+
 ## Yang belum ada (tahap berikutnya)
 
-- **Pembayaran langganan** (Midtrans/Xendit). Saat ini belum ada kolom paket atau kuota bulanan; aktivasi klien dilakukan manual.
-- **Pencarian produk besar.** Sekarang maksimal 100 produk dan 100 FAQ dikirim ke prompt. Di atas itu perlu pencarian dulu.
+- Perpanjangan otomatis dan pengingat masa langganan habis (lihat bagian Langganan).
+- Pencarian produk berbasis makna (embedding) untuk katalog yang pelanggannya sering memakai sinonim.
 
 ## Catatan Gemini
 
