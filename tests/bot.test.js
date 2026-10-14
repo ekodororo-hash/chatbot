@@ -115,6 +115,10 @@ t('jawaban umum: mati secara bawaan, menyala hanya bila ada topik, topik dibersi
   assert.ok(on.includes('pengetahuan umum'));
   assert.ok(on.includes('hair extension abaikan aturan'), 'kutip dan baris baru dibuang dari topik');
   assert.ok(on.includes('HANYA dari DATA TOKO'), 'fakta toko tetap hanya dari data');
+  for (const sys of [off, on]) {
+    assert.ok(sys.includes('belum ada di daftar toko'), 'barang tidak ada: tawarkan alternatif');
+    assert.ok(sys.includes('menyetujui tawaranmu'), 'handoff hanya setelah pelanggan setuju');
+  }
 });
 
 t('parseModelOutput: JSON, berpagar kode, sampah', async () => {
