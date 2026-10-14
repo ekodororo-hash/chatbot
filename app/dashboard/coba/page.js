@@ -28,7 +28,7 @@ export default function CobaPage() {
     try {
       const { data } = await sb.auth.getSession();
       const token = data.session && data.session.access_token;
-      const r = await fetch('/api/diagnosa', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+      const r = await fetch('/api/diagnosa', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'X-Shop-Id': shop.id } });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Gagal memeriksa bot.');
       setResult(j);

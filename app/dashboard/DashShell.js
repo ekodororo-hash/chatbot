@@ -11,6 +11,7 @@ import { useToast } from '../components/useToast';
 import { Sk, SkConvRows, SkForm, SkItems, SkNav } from '../components/Skeleton';
 import { DashCtx } from './context';
 import Onboarding from './Onboarding';
+import { useRealtime } from './useRealtime';
 
 const TABS = [
   ['/dashboard', 'Percakapan', 'chat'],
@@ -20,8 +21,11 @@ const TABS = [
   ['/dashboard/bot', 'Bot', 'bot'],
   ['/dashboard/coba', 'Coba bot', 'coba'],
   ['/dashboard/pasang', 'Pasang', 'pasang'],
-  ['/dashboard/notifikasi', 'Notifikasi', 'notifikasi']
+  ['/dashboard/notifikasi', 'Notifikasi', 'notifikasi'],
+  ['/dashboard/tim', 'Tim', 'tim']
 ];
+// Halaman yang hanya boleh dibuka pemilik toko. Admin tambahan hanya mengurus percakapan, produk, dan FAQ.
+const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pasang', '/dashboard/notifikasi', '/dashboard/tim']);
 
 // Ikon garis sederhana untuk menu sidebar.
 const ICON = {
@@ -32,7 +36,8 @@ const ICON = {
   bot: 'M12 8V4m-4 4h8a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3ZM9.5 13h.01M14.5 13h.01',
   coba: 'M6 4l14 8-14 8V4Z',
   pasang: 'm8 8-4 4 4 4m8-8 4 4-4 4m-2.5-11-3 14',
-  notifikasi: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0'
+  notifikasi: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
+  tim: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
 };
 const Icon = ({ k }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICON[k]} /></svg>;
 
@@ -67,7 +72,9 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   const [toast, toastNode] = useToast();
   const [sb, setSb] = useState(null);
   const [user, setUser] = useState(null);
-  const [shop, setShop] = useState(null);
+  const [shops, setShops] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(!error);
   const [fatal, setFatal] = useState(error || '');
   const [prefillQ, setPrefillQ] = useState('');
@@ -89,10 +96,16 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
       if (!alive) return;
       if (!sess.session) { router.replace('/login'); return; }
       const u = sess.session.user;
-      const { data, error: e } = await client.from('shops').select('*').eq('owner_id', u.id).maybeSingle();
+      // Terima undangan admin yang menunggu untuk email ini (diabaikan kalau migrasi SQL belum dijalankan).
+      try { await client.rpc('accept_invites'); } catch (e2) { /* abaikan */ }
+      const { data, error: e } = await client.from('shops').select('*').order('created_at', { ascending: true });
       if (!alive) return;
       if (e) { setFatal(e.message); setLoading(false); return; }
-      setSb(client); setUser(u); setShop(data); setLoading(false);
+      const list = data || [];
+      let want = '';
+      try { want = new URLSearchParams(window.location.search).get('s') || window.localStorage.getItem('shop:active') || ''; } catch (e3) { /* abaikan */ }
+      const first = list.find((x) => x.id === want) || list[0] || null;
+      setSb(client); setUser(u); setShops(list); setActiveId(first ? first.id : null); setLoading(false);
     })();
     const { data: sub } = client.auth.onAuthStateChange((ev) => {
       if (ev === 'SIGNED_OUT') router.replace('/login');
@@ -100,7 +113,13 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
     return () => { alive = false; sub.subscription.unsubscribe(); };
   }, [error, supabaseUrl, supabaseAnonKey, router]);
 
+  const shop = useMemo(() => shops.find((x) => x.id === activeId) || null, [shops, activeId]);
+  const role = shop && user && shop.owner_id === user.id ? 'owner' : 'admin';
   const shopId = shop ? shop.id : null;
+  useEffect(() => {
+    if (!shopId) return;
+    try { window.localStorage.setItem('shop:active', shopId); } catch (e) { /* abaikan */ }
+  }, [shopId]);
   const refreshHumanCount = useCallback(async () => {
     if (!sb || !shopId) return;
     const { count } = await sb.from('conversations').select('id', { count: 'exact', head: true })
@@ -108,8 +127,16 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
     setHumanCount(count || 0);
   }, [sb, shopId]);
   useEffect(() => { refreshHumanCount(); }, [refreshHumanCount]);
+  // Realtime: angka "butuh admin" di menu ikut berubah begitu ada percakapan baru atau status berubah.
+  useRealtime(sb, 'conversations', shopId ? 'shop_id=eq.' + shopId : '', refreshHumanCount, 60000);
 
-  const onShopChange = useCallback((patch) => setShop((s) => ({ ...s, ...patch })), []);
+  const onShopChange = useCallback((patch) => {
+    setShops((list) => list.map((x) => (x.id === activeId ? { ...x, ...patch } : x)));
+  }, [activeId]);
+
+  const switchShop = useCallback((id) => {
+    setActiveId(id); setHumanCount(0); setAdding(false);
+  }, []);
 
   // Pindah halaman: tutup sidebar di layar kecil.
   useEffect(() => { setMenuOpen(false); }, [pathname]);
@@ -128,12 +155,14 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   }
 
   const ctx = useMemo(() => ({
-    sb, user, shop, fail, toast, onShopChange,
+    sb, user, shop, shops, role, fail, toast, onShopChange,
     humanCount, setHumanCount, refreshHumanCount, prefillQ, setPrefillQ
-  }), [sb, user, shop, fail, toast, onShopChange, humanCount, refreshHumanCount, prefillQ]);
+  }), [sb, user, shop, shops, role, fail, toast, onShopChange, humanCount, refreshHumanCount, prefillQ]);
 
   const current = activeTab(pathname || '');
   const showNav = !!shop && !fatal;
+  const tabs = TABS.filter(([href]) => role === 'owner' || !OWNER_ONLY.has(href));
+  const blocked = !!current && role !== 'owner' && OWNER_ONLY.has(current[0]);
   const waiting = loading && !fatal;
 
   let body;
@@ -141,14 +170,25 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
     body = <p className="err" role="alert">{fatal}</p>;
   } else if (loading || !sb) {
     body = <PageSkeleton href={current && current[0]} />;
-  } else if (!shop) {
+  } else if (!shop || adding) {
     body = (
-      <Onboarding sb={sb} user={user} onCreated={(s) => {
-        setShop(s); router.push('/dashboard/toko'); toast('Toko dibuat. Lengkapi datanya.');
-      }} />
+      <Onboarding sb={sb} user={user} first={!shops.length} onCancel={shops.length ? () => setAdding(false) : null}
+        onCreated={(s) => {
+          setShops((list) => [...list, s]); setActiveId(s.id); setAdding(false);
+          router.push('/dashboard/toko'); toast('Toko dibuat. Lengkapi datanya.');
+        }} />
+    );
+  } else if (blocked) {
+    body = (
+      <div className="card">
+        <h2>Khusus pemilik toko</h2>
+        <p className="hint">Halaman ini hanya bisa dibuka pemilik toko. Sebagai admin, kamu bisa mengurus percakapan, produk, dan FAQ.</p>
+        <Link className="btn sm" href="/dashboard">Ke Percakapan</Link>
+      </div>
     );
   } else {
-    body = children;
+    // key: pindah toko memuat ulang isi halaman dengan data toko yang baru.
+    body = <div key={shop.id}>{children}</div>;
   }
 
   return (
@@ -168,14 +208,19 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
           <Link className="brand" href="/">Asisten<span>Toko</span></Link>
           {showNav && (
             <div className="shopbox">
-              <b>{shop.name}</b>
-              <small>{'/chat/' + shop.slug}</small>
+              {shops.length > 1 ? (
+                <select aria-label="Pilih toko" value={shop.id} onChange={(e) => switchShop(e.target.value)}>
+                  {shops.map((x) => <option key={x.id} value={x.id}>{x.name + (user && x.owner_id !== user.id ? ' (admin)' : '')}</option>)}
+                </select>
+              ) : <b>{shop.name}</b>}
+              <small>{'/chat/' + shop.slug + (role !== 'owner' ? ' · admin' : '')}</small>
+              <button className="linkbtn" type="button" onClick={() => { setAdding(true); setMenuOpen(false); }}>+ Tambah toko</button>
             </div>
           )}
           {waiting && <Sk h={52} r={12} style={{ margin: '0 4px' }} />}
           {showNav && (
             <nav aria-label="Menu utama">
-              {TABS.map(([href, label, icon]) => (
+              {tabs.map(([href, label, icon]) => (
                 <Link key={href} href={href} className="nav-i" aria-current={current && current[0] === href ? 'page' : undefined}>
                   <Icon k={icon} />
                   {label}
@@ -194,7 +239,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
 
         <div className="app-main">
           <main className="wrap">
-            {current && (showNav || waiting) && <h1 className="ptitle">{current[1]}</h1>}
+            {current && (showNav || waiting) && !adding && <h1 className="ptitle">{current[1]}</h1>}
             {body}
           </main>
         </div>

@@ -51,3 +51,17 @@ export function readCount(key) {
 export function saveCount(key, n) {
   try { window.localStorage.setItem('cnt:' + key, String(n)); } catch (e) { /* abaikan */ }
 }
+
+// Panggilan ke API server dengan sesi login dan toko yang sedang dipilih (header X-Shop-Id).
+export async function authFetch(sb, shopId, url, method, body) {
+  const { data } = await sb.auth.getSession();
+  const tok = data && data.session && data.session.access_token;
+  const res = await fetch(url, {
+    method: method || 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, 'X-Shop-Id': shopId },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || 'Terjadi kesalahan');
+  return j;
+}

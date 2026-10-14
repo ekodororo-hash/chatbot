@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Busy, Field, useOrigin } from './helpers';
 
-export default function Onboarding({ sb, user, onCreated }) {
+export default function Onboarding({ sb, user, first = true, onCancel, onCreated }) {
   const origin = useOrigin();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -33,7 +33,7 @@ export default function Onboarding({ sb, user, onCreated }) {
 
   return (
     <div style={{ maxWidth: 420, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 30, marginTop: 12 }}>Buat toko pertamamu</h1>
+      <h1 style={{ fontSize: 30, marginTop: 12 }}>{first ? 'Buat toko pertamamu' : 'Tambah toko baru'}</h1>
       <div className="card">
         <Field id="on" label="Nama toko">
           <input id="on" maxLength={100} placeholder="Contoh: Toko Ayu Hijab" value={name} onChange={(e) => onName(e.target.value)} />
@@ -44,6 +44,7 @@ export default function Onboarding({ sb, user, onCreated }) {
         <p className="hint">Link chat tokomu: {origin}/chat/alamat-ini</p>
         <div className="err" role="alert">{err}</div>
         <button className="btn" type="button" disabled={busy} style={{ width: '100%', marginTop: 12 }} onClick={create}><Busy on={busy} label="Membuat toko...">Buat toko</Busy></button>
+        {onCancel ? <button className="btn ghost" type="button" disabled={busy} style={{ width: '100%', marginTop: 8 }} onClick={onCancel}>Batal</button> : null}
       </div>
     </div>
   );

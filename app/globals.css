@@ -226,3 +226,12 @@ a.nav-i{text-decoration:none}
 .guide-body li{margin:0 0 8px}
 .guide-body li:last-child{margin-bottom:0}
 .guide-body .hint{margin:10px 0 0}
+.shopbox select{padding:6px 8px;font-size:14px;font-weight:600;margin-bottom:4px}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:12px;padding:6px 0 0;cursor:pointer;text-align:left}
+.linkbtn:hover{text-decoration:underline}
+.mem{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.mem:first-of-type{border-top:0}
+.mem .t{flex:1;min-width:0}
+.mem .t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mem .t small{color:var(--mute);font-size:12px}
+.sw{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:15px;margin:10px 0 0}

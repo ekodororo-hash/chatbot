@@ -3,13 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Busy } from './helpers';
 import { Sk } from '../components/Skeleton';
 import { useConfirm } from '../components/useConfirm';
+import { Panduan } from '../components/Panduan';
 
-async function api(sb, method, body) {
+async function api(sb, shopId, method, body) {
   const { data } = await sb.auth.getSession();
   const tok = data && data.session && data.session.access_token;
   const res = await fetch('/api/channels', {
     method,
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, 'X-Shop-Id': shopId },
     body: body ? JSON.stringify(body) : undefined
   });
   const j = await res.json().catch(() => ({}));
@@ -21,23 +22,6 @@ function copy(text, toast) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => toast('Disalin.'), () => toast('Tekan lama pada teks untuk menyalin.'));
   } else toast('Tekan lama pada teks untuk menyalin.');
-}
-
-// Kotak panduan yang bisa dibuka-tutup, dengan ikon informasi biru.
-function Panduan({ title, children }) {
-  return (
-    <details className="guide">
-      <summary>
-        <svg className="gi" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" fill="currentColor" />
-          <path d="M12 11v5M12 7.6h.01" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
-        <span>{title}</span>
-        <svg className="gc" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </summary>
-      <div className="guide-body">{children}</div>
-    </details>
-  );
 }
 
 const PanduanTelegram = () => (
@@ -73,7 +57,7 @@ const PanduanWhatsApp = () => (
 );
 
 // Dua kartu di halaman Notifikasi: sambungkan bot Telegram dan nomor WhatsApp Business.
-export default function SalurTab({ sb, fail, toast }) {
+export default function SalurTab({ sb, shop, fail, toast }) {
   const [st, setSt] = useState(null);
   const [ask, confirmNode] = useConfirm();
   const [tgToken, setTgToken] = useState('');
@@ -84,15 +68,15 @@ export default function SalurTab({ sb, fail, toast }) {
   const [err, setErr] = useState({ tg: '', wa: '' });
 
   const load = useCallback(async () => {
-    try { setSt(await api(sb, 'GET')); } catch (e) { fail(e); }
-  }, [sb, fail]);
+    try { setSt(await api(sb, shop.id, 'GET')); } catch (e) { fail(e); }
+  }, [sb, shop.id, fail]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (st && st.whatsapp.phoneId) setPhoneId(st.whatsapp.phoneId); }, [st]);
 
   async function run(key, errKey, body, okMsg) {
     setBusy(key); setErr((p) => ({ ...p, [errKey]: '' }));
     try {
-      setSt(await api(sb, 'POST', body));
+      setSt(await api(sb, shop.id, 'POST', body));
       toast(okMsg);
       return true;
     } catch (e) {

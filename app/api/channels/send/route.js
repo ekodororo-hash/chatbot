@@ -11,7 +11,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Kalau pengiriman gagal (mis. WhatsApp di luar jendela 24 jam), pesan tidak disimpan dan admin diberi tahu.
 export async function POST(request) {
   try {
-    const { sb, shop } = await auth.requireOwner(request);
+    const { sb, shop } = await auth.requireMember(request);
     let b;
     try { b = await request.json(); } catch (e) { return json({ error: 'Format permintaan salah' }, 400); }
     const text = String((b && b.text) || '').trim();

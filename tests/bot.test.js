@@ -7,10 +7,15 @@ const path = require('path');
 /* ---------- Supabase palsu di memori ---------- */
 class Q {
   constructor(db, t) { this.db = db; this.t = t; this.op = 'select'; this.f = []; this.ord = null; this.lim = null; this.head = false; this.cnt = false; this.ret = false; this.one = null; }
-  select(cols, opt) { if (this.op === 'insert') this.ret = true; if (opt && opt.count) this.cnt = true; if (opt && opt.head) this.head = true; return this; }
+  select(cols, opt) { if (this.op === 'insert' || this.op === 'update') this.ret = true; if (opt && opt.count) this.cnt = true; if (opt && opt.head) this.head = true; return this; }
   insert(row) { this.op = 'insert'; this.payload = row; return this; }
   update(p) { this.op = 'update'; this.payload = p; return this; }
   eq(c, v) { this.f.push(r => r[c] === v); return this; }
+  or(expr) {
+    const parts = String(expr).split(',').map(x => x.split('.'));
+    this.f.push(r => parts.some(([c, op, ...v]) => (op === 'is' ? r[c] == null : op === 'lt' ? r[c] != null && r[c] < v.join('.') : false)));
+    return this;
+  }
   gte(c, v) { this.f.push(r => r[c] >= v); return this; }
   gt(c, v) { this.f.push(r => r[c] > v); return this; }
   in(c, a) { this.f.push(r => a.includes(r[c])); return this; }
@@ -29,7 +34,7 @@ class Q {
       return { data: this.ret ? r : null, error: null, count: null };
     }
     let m = rows.filter(r => this.f.every(fn => fn(r)));
-    if (this.op === 'update') { m.forEach(r => Object.assign(r, this.payload)); return { data: null, error: null, count: null }; }
+    if (this.op === 'update') { m.forEach(r => Object.assign(r, this.payload)); return { data: this.ret ? m : null, error: null, count: null }; }
     if (this.ord) { const [c, asc] = this.ord; m = m.slice().sort((a, b) => (a[c] > b[c] ? 1 : -1) * (asc ? 1 : -1)); }
     if (this.lim != null) m = m.slice(0, this.lim);
     const count = this.cnt ? m.length : null;
@@ -38,7 +43,7 @@ class Q {
     return { data: m, error: null, count };
   }
 }
-const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], _mid: 1 };
+const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], _mid: 1 };
 const fake = { from: t => new Q(db, t) };
 
 /* ---------- Gemini palsu ---------- */
@@ -53,6 +58,8 @@ const bot = require('../lib/bot');
 const { frameAncestors, normalizeDomain } = require('../lib/domains');
 const I = bot._internal;
 const channels = require('../lib/channels');
+const notify = require('../lib/notify');
+process.env.APP_URL = 'https://toko.test';
 
 let n = 0;
 function seedShop(over) {
@@ -295,6 +302,93 @@ t('saluran: percakapan yang dipegang admin tidak dibalas bot, dan kegagalan kiri
   const r = await channels.handleInbound('telegram', ctx, { kind: 'text', text: 'halo lagi', externalId: '8', name: 'C', messageId: 'tg:h3' }, async () => { throw new Error('Telegram down'); });
   console.error = oldErr;
   assert.strictEqual(r.error, true);
+});
+
+t('notifikasi: isi pesan memuat toko, pelanggan, kutipan pesan, dan tautan ke percakapan', async () => {
+  const n = notify.buildNotice({ id: 's1', name: 'Toko Ayu' }, 'handoff', { customerName: 'Budi', channel: 'telegram', text: '  mau   komplain  ', convId: 'c1' });
+  assert.strictEqual(n.subject, '[Toko Ayu] Butuh admin');
+  assert.ok(n.text.includes('Dari: Budi (Telegram)') && n.text.includes('Pesan: mau komplain'));
+  assert.ok(n.text.includes('https://toko.test/dashboard?s=s1&c=c1'));
+  assert.ok(notify.buildNotice({ id: 's1', name: 'T' }, 'order', {}).subject.includes('Ada pesanan baru'));
+});
+t('notifikasi: handoff dikabari ke Telegram admin, dibatasi sekali per 15 menit per percakapan', async () => {
+  const s = seedShop(); geminiImpl = reply('Saya teruskan ke admin.', true);
+  db.shop_notify.push({ shop_id: s.id, email_on: false, tg_on: true, tg_code: 'abc123', tg_chat_ids: ['777'] });
+  db.shop_channels.push({ shop_id: s.id, telegram_token: '123:TOKEN' });
+  const calls = []; const realFetch = global.fetch;
+  global.fetch = async (url, opt) => { calls.push({ url, body: JSON.parse(opt.body) }); return { ok: true, json: async () => ({ ok: true }) }; };
+  try {
+    const r1 = await bot.handleMessage({ slug: s.slug, text: 'mau komplain' });
+    assert.strictEqual(calls.length, 1);
+    assert.ok(calls[0].url.includes('/bot123:TOKEN/sendMessage'));
+    assert.strictEqual(calls[0].body.chat_id, '777');
+    assert.ok(calls[0].body.text.includes('Butuh admin') && calls[0].body.text.includes('mau komplain'));
+    // pesan lanjutan di percakapan yang sudah dipegang admin: belum 15 menit, tidak dikabari lagi
+    await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'halo?' });
+    assert.strictEqual(calls.length, 1);
+    // lewat 15 menit: dikabari lagi bahwa pelanggan menunggu
+    db.conversations.find(c => c.id === r1.conversationId).notified_at = new Date(Date.now() - 16 * 60000).toISOString();
+    await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'ada orang?' });
+    assert.strictEqual(calls.length, 2);
+    assert.ok(calls[1].body.text.includes('Pelanggan menunggu balasan'));
+  } finally { global.fetch = realFetch; }
+});
+t('notifikasi: pesanan baru dikabari, balasan bot biasa tidak', async () => {
+  const s = seedShop();
+  db.shop_notify.push({ shop_id: s.id, email_on: false, tg_on: true, tg_code: 'x', tg_chat_ids: ['5'] });
+  db.shop_channels.push({ shop_id: s.id, telegram_token: '9:T' });
+  const calls = []; const realFetch = global.fetch;
+  global.fetch = async (url, opt) => { calls.push(JSON.parse(opt.body)); return { ok: true, json: async () => ({ ok: true }) }; };
+  try {
+    geminiImpl = reply('Harganya Rp45.000');
+    await bot.handleMessage({ slug: s.slug, text: 'harga pashmina?' });
+    assert.strictEqual(calls.length, 0);
+    geminiImpl = reply('Boleh, kirim nama dan alamat ya.', false, true);
+    await bot.handleMessage({ slug: s.slug, text: 'mau pesan 2' });
+    assert.strictEqual(calls.length, 1);
+    assert.ok(calls[0].text.includes('Ada pesanan baru'));
+  } finally { global.fetch = realFetch; }
+});
+t('notifikasi: kegagalan kirim tidak mengganggu balasan ke pelanggan', async () => {
+  const s = seedShop(); geminiImpl = reply('Saya teruskan ke admin.', true);
+  db.shop_notify.push({ shop_id: s.id, email_on: false, tg_on: true, tg_code: 'x', tg_chat_ids: ['5'] });
+  db.shop_channels.push({ shop_id: s.id, telegram_token: '9:T' });
+  const realFetch = global.fetch; const oldErr = console.error; console.error = () => {};
+  global.fetch = async () => { throw new Error('jaringan putus'); };
+  try {
+    const r = await bot.handleMessage({ slug: s.slug, text: 'komplain' });
+    assert.strictEqual(r.status, 'human');
+    assert.ok(r.messages.some(m => m.role === 'bot'));
+  } finally { global.fetch = realFetch; console.error = oldErr; }
+});
+t('notifikasi: "/admin KODE" mendaftarkan chat Telegram; kode salah diproses sebagai pesan biasa; "/admin stop" mencabut', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo juga');
+  db.shop_notify.push({ shop_id: s.id, email_on: true, tg_on: true, tg_code: 'kode123456', tg_chat_ids: [] });
+  const ctx = { shop: s }; const sent = []; const send = async (x) => { sent.push(x); };
+  const row = () => db.shop_notify.find(r => r.shop_id === s.id);
+  await channels.handleInbound('telegram', ctx, { kind: 'text', text: '/admin salah', externalId: '55', name: 'X', messageId: 'tg:a1' }, send);
+  assert.strictEqual(geminiCalls.length, 1); assert.deepStrictEqual(row().tg_chat_ids, []);
+  await channels.handleInbound('telegram', ctx, { kind: 'text', text: '/admin kode123456', externalId: '56', name: 'Admin', messageId: 'tg:a2' }, send);
+  assert.ok(sent[sent.length - 1].includes('Notifikasi admin aktif'));
+  assert.deepStrictEqual(row().tg_chat_ids, ['56']);
+  assert.strictEqual(geminiCalls.length, 1);
+  assert.ok(!db.conversations.some(c => c.shop_id === s.id && c.external_id === '56'));
+  // daftar dua kali: tidak dobel
+  await channels.handleInbound('telegram', ctx, { kind: 'text', text: '/admin kode123456', externalId: '56', name: 'Admin', messageId: 'tg:a3' }, send);
+  assert.deepStrictEqual(row().tg_chat_ids, ['56']);
+  // pelanggan biasa yang mengetik "/admin stop" tidak mencabut chat orang lain
+  await channels.handleInbound('telegram', ctx, { kind: 'text', text: '/admin stop', externalId: '99', name: 'Z', messageId: 'tg:a4' }, send);
+  assert.deepStrictEqual(row().tg_chat_ids, ['56']);
+  await channels.handleInbound('telegram', ctx, { kind: 'text', text: '/admin stop', externalId: '56', name: 'Admin', messageId: 'tg:a5' }, send);
+  assert.deepStrictEqual(row().tg_chat_ids, []);
+});
+t('notifikasi: penerima Telegram dibatasi 10 chat', async () => {
+  const s = seedShop();
+  const ids = Array.from({ length: notify.MAX_CHATS }, (_, i) => String(1000 + i));
+  db.shop_notify.push({ shop_id: s.id, email_on: true, tg_on: true, tg_code: 'penuh', tg_chat_ids: ids.slice() });
+  const r = await notify.handleTelegramAdminCommand(s, '/admin penuh', '5000');
+  assert.ok(/penuh/.test(r));
+  assert.strictEqual(db.shop_notify.find(x => x.shop_id === s.id).tg_chat_ids.length, notify.MAX_CHATS);
 });
 
 (async () => {

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Busy, dayTime, hhmm, readCount, saveCount } from './helpers';
 import { SkConvRows, SkMsgs } from '../components/Skeleton';
 import { useConfirm } from '../components/useConfirm';
+import { useRealtime } from './useRealtime';
 
 const STATUS = { bot: ['Dijawab bot', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at,channel';
@@ -34,11 +35,10 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
     onHumanCount(data.filter((c) => c.status === 'human').length);
   }, [sb, shop.id, fail, onHumanCount]);
 
-  useEffect(() => {
-    load();
-    const t = setInterval(() => { if (!document.hidden) load(); }, 10000);
-    return () => clearInterval(t);
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+  // Realtime: daftar diperbarui begitu ada percakapan atau pesan baru. Jaring pengaman tiap 60 detik.
+  useRealtime(sb, 'conversations', 'shop_id=eq.' + shop.id, load, 60000);
+  useRealtime(sb, 'messages', 'shop_id=eq.' + shop.id, load, 60000);
 
   async function remove(c) {
     const ok = await ask({ title: 'Hapus percakapan?', message: 'Percakapan dengan "' + c.customer_name + '" beserta semua pesannya akan dihapus permanen.' });
@@ -111,11 +111,16 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     }
   }, [sb, conv.id, fail]);
 
-  useEffect(() => {
-    pull();
-    const t = setInterval(() => { if (!document.hidden) pull(); }, 8000);
-    return () => clearInterval(t);
-  }, [pull]);
+  useEffect(() => { pull(); }, [pull]);
+  // Realtime: pesan baru muncul langsung. Jaring pengaman tiap 60 detik.
+  useRealtime(sb, 'messages', 'conversation_id=eq.' + conv.id, pull, 60000);
+
+  // Status percakapan bisa diubah admin lain; ikuti perubahannya.
+  const reloadConv = useCallback(async () => {
+    const { data } = await sb.from('conversations').select(CONV_COLS).eq('id', conv.id).maybeSingle();
+    if (data) setC(data);
+  }, [sb, conv.id]);
+  useRealtime(sb, 'conversations', 'id=eq.' + conv.id, reloadConv, 60000);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -146,7 +151,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
         const { data } = await sb.auth.getSession();
         const res = await fetch('/api/channels/send', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (data && data.session && data.session.access_token) },
+          headers: { 'Content-Type': 'application/json', 'X-Shop-Id': shop.id, Authorization: 'Bearer ' + (data && data.session && data.session.access_token) },
           body: JSON.stringify({ conversationId: c.id, text: t })
         });
         if (!res.ok) { const j = await res.json().catch(() => ({})); error = new Error(j.error || 'Gagal mengirim pesan.'); }

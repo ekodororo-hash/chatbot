@@ -21,8 +21,15 @@ export async function POST(request) {
   const { data: u, error: ue } = await sb.auth.getUser(token);
   if (ue || !u || !u.user) return json({ error: 'Sesi login tidak valid' }, 401);
 
-  const { data: shop } = await sb.from('shops').select('*').eq('owner_id', u.user.id).maybeSingle();
-  if (!shop) return json({ error: 'Toko belum dibuat' }, 404);
+  // Toko yang dipilih di dashboard (header X-Shop-Id). Pemilik dan admin tambahan boleh memeriksa.
+  const sid = String(request.headers.get('x-shop-id') || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid)) return json({ error: 'Toko belum dipilih' }, 400);
+  const { data: shop } = await sb.from('shops').select('*').eq('id', sid).maybeSingle();
+  if (!shop) return json({ error: 'Toko tidak ditemukan' }, 404);
+  if (shop.owner_id !== u.user.id) {
+    const mem = await sb.from('shop_members').select('user_id').eq('shop_id', shop.id).eq('user_id', u.user.id).maybeSingle();
+    if (!mem.data) return json({ error: 'Toko tidak ditemukan' }, 404);
+  }
 
   const devs = String(process.env.DEVELOPER_EMAILS || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   const isDev = devs.includes(String(u.user.email || '').toLowerCase());

@@ -42,14 +42,14 @@ async function save(sb, shop, patch) {
 
 export async function GET(request) {
   try {
-    const { sb, shop } = await auth.requireOwner(request);
+    const { sb, shop } = await auth.requireMember(request, { ownerOnly: true });
     return json(status(await load(sb, shop), shop, originOf(request)));
   } catch (e) { return fail(e); }
 }
 
 export async function POST(request) {
   try {
-    const { sb, shop } = await auth.requireOwner(request);
+    const { sb, shop } = await auth.requireMember(request, { ownerOnly: true });
     let b;
     try { b = await request.json(); } catch (e) { return json({ error: 'Format permintaan salah' }, 400); }
     b = b || {};

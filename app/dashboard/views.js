@@ -10,8 +10,10 @@ import FaqTab from './FaqTab';
 import TokoTab from './TokoTab';
 import PasangTab from './PasangTab';
 import SalurTab from './SalurTab';
+import AdminNotif from './AdminNotif';
+import TimTab from './TimTab';
 
-const common = (d) => ({ sb: d.sb, shop: d.shop, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange });
+const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange });
 
 export function ChatView() {
   const d = useDash();
@@ -30,4 +32,13 @@ export function FaqView() {
 }
 export function TokoView() { return <TokoTab {...common(useDash())} />; }
 export function PasangView() { return <PasangTab {...common(useDash())} />; }
-export function NotifikasiView() { return <SalurTab {...common(useDash())} />; }
+export function NotifikasiView() {
+  const c = common(useDash());
+  return (
+    <>
+      <AdminNotif {...c} />
+      <SalurTab {...c} />
+    </>
+  );
+}
+export function TimView() { return <TimTab {...common(useDash())} />; }
