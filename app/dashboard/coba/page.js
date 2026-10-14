@@ -41,23 +41,31 @@ export default function CobaPage() {
 
   return (
     <>
-      <div className="card">
-        <h2>Coba bot</h2>
-        <p className="hint">Chat seperti pelanggan untuk melihat jawaban bot dari data tokomu. Percakapan percobaan ikut muncul di halaman Percakapan. Kalau bot berhenti menjawab karena percakapan sudah diteruskan ke admin, mulai percakapan baru.</p>
-        <div className="preview-box">
-          <iframe key={run} className="preview" style={{ height: 'min(680px, 72vh)' }} src={link} title="Pratinjau chat" onLoad={() => setReady(true)} />
-          {!ready && <Sk h="100%" r={12} style={{ position: 'absolute', inset: 0 }} />}
+      <section className="card" aria-labelledby="cb">
+        <div className="chead">
+          <div>
+            <h2 id="cb">Coba bot</h2>
+            <p className="hint">Chat seperti pelanggan untuk melihat jawaban bot dari data tokomu. Percakapan percobaan ikut muncul di halaman Percakapan. Kalau bot berhenti menjawab karena percakapan sudah diteruskan ke admin, mulai percakapan baru.</p>
+          </div>
         </div>
-        <div className="row">
+        <div className="coba-frame">
+          <div className="preview-box">
+            <iframe key={run} className="preview" style={{ height: 'min(680px, 72vh)' }} src={link} title="Pratinjau chat" onLoad={() => setReady(true)} />
+            {!ready && <Sk h="100%" r={12} style={{ position: 'absolute', inset: 0 }} />}
+          </div>
+        </div>
+        <div className="coba-act">
           <button className="btn sm" type="button" onClick={restart}>Mulai percakapan baru</button>
           <a className="btn ghost sm" href={link} target="_blank" rel="noopener">Buka di tab baru</a>
         </div>
-      </div>
+      </section>
 
-      <div className="card">
-        <h2>Bot tidak menjawab?</h2>
-        <p className="hint">Periksa pengaturan bot, kuota, data toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
-        <div className="row">
+      <section className="card" aria-labelledby="cd">
+        <div className="chead">
+          <div>
+            <h2 id="cd">Bot tidak menjawab?</h2>
+            <p className="hint">Periksa pengaturan bot, kuota, data toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
+          </div>
           <button className="btn" type="button" disabled={checking} onClick={diagnose}>
             <Busy on={checking} label="Memeriksa...">Cek kesiapan bot</Busy>
           </button>
@@ -65,22 +73,27 @@ export default function CobaPage() {
         <div className="err" role="alert">{problem}</div>
         {result && (
           <div role="status">
-            {result.checks.map((c) => (
-              <div className="li" key={c.id} style={{ alignItems: 'flex-start' }}>
-                <div className="t">
-                  <b style={{ whiteSpace: 'normal' }}>{c.label}</b>
-                  <small style={{ whiteSpace: 'normal' }}>{c.detail}</small>
-                  {c.tech ? <small style={{ whiteSpace: 'normal', marginTop: 4 }}>{'Teknis (hanya pengembang): ' + c.tech}</small> : null}
-                </div>
-                <span className={'tag ' + (c.ok ? '' : 'w')}>{c.ok ? 'Beres' : 'Perlu diperbaiki'}</span>
-              </div>
-            ))}
-            <p className="hint" style={{ marginTop: 12 }}>
+            <div className={'diag-sum ' + (result.ok ? 'ok' : 'bad')}>
               {result.ok ? 'Semua beres. Kalau chat masih diam, klik "Mulai percakapan baru" lalu coba lagi.' : 'Perbaiki yang bertanda merah, lalu klik "Mulai percakapan baru" dan coba lagi.'}
-            </p>
+            </div>
+            <div className="diag-list">
+              {result.checks.map((c) => (
+                <div className="diag" key={c.id}>
+                  <span className={'diag-i' + (c.ok ? '' : ' bad')} aria-hidden="true">
+                    <svg viewBox="0 0 24 24">{c.ok ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M12 7v6M12 17h.01" />}</svg>
+                  </span>
+                  <div className="t">
+                    <b>{c.label}</b>
+                    <small>{c.detail}</small>
+                    {c.tech ? <small className="tech">{'Teknis (hanya pengembang): ' + c.tech}</small> : null}
+                  </div>
+                  <span className={'tag ' + (c.ok ? '' : 'w')}>{c.ok ? 'Beres' : 'Perlu diperbaiki'}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-      </div>
+      </section>
     </>
   );
 }

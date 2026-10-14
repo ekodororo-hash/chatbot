@@ -418,3 +418,22 @@ a.nav-i{text-decoration:none}
 .card.dz h2{color:var(--danger)}
 .card.dz .chead{border-bottom:0;padding-bottom:0;margin-bottom:12px}
 .card.dz .row{margin-top:0}
+
+/* ===== Coba bot: tampilan rapi ===== */
+.coba-frame{max-width:480px;margin:0 auto}
+.coba-act{max-width:480px;margin:14px auto 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.card>.chead .btn{align-self:flex-start}
+.diag-sum{margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:14px}
+.diag-sum.ok{border-color:color-mix(in srgb,var(--ok) 50%,var(--line))}
+.diag-sum.bad{border-color:color-mix(in srgb,var(--warn) 50%,var(--line))}
+.diag{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.diag:first-child{border-top:0}
+.diag-i{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--ok);color:var(--panel)}
+.diag-i.bad{background:var(--warn)}
+.diag-i svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.diag .t{flex:1;min-width:0}
+.diag .t b{display:block;font-weight:500}
+.diag .t small{display:block;color:var(--mute);font-size:13px}
+.diag .t small.tech{margin-top:4px}
+.diag .tag{flex:none}
+@media (max-width:560px){.diag{flex-wrap:wrap}.diag .tag{margin-left:36px}}
