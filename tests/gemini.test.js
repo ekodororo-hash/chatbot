@@ -126,6 +126,83 @@ test('slot: tes satu key saja', async () => {
   await assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free', slot: 3 }), /GEMINI_API_KEY/);
 });
 
+/* ---------- Penyedia lain (Groq, OpenRouter, ...) untuk paket tertentu ---------- */
+const withFetch = async (impl, fn) => { const real = global.fetch; global.fetch = impl; try { return await fn(); } finally { global.fetch = real; } };
+const oai = (calls, text) => async (url, init) => {
+  calls.push({ url, auth: init.headers.Authorization, body: JSON.parse(init.body) });
+  return { ok: true, json: async () => ({ choices: [{ message: { content: text == null ? '{"reply":"ok"}' : text }, finish_reason: 'stop' }] }) };
+};
+
+test('penyedia per paket: parse dan sanitize (kosong/gemini = bawaan, tidak dikenal ditolak 400)', async () => {
+  assert.deepStrictEqual(gemini.parseProviders('{rusak'), {});
+  assert.deepStrictEqual(gemini.parseProviders(JSON.stringify({ providers: { free: 'groq', starter: 'gemini', bisnis: 'tidakada' } })), { free: 'groq' });
+  assert.deepStrictEqual(gemini.sanitizeProviders({ free: ' groq ', starter: '', bisnis: 'gemini' }), { free: 'groq' });
+  assert.throws(() => gemini.sanitizeProviders({ free: 'toString' }), (e) => e.httpStatus === 400);
+  assert.throws(() => gemini.sanitizeProviders({ free: 'xyz' }), (e) => e.httpStatus === 400);
+  assert.deepStrictEqual(gemini.parseModels(JSON.stringify({ models: { free: 'meta-llama/llama-3.3-70b-instruct:free', starter: 'a/../b' } })), { free: 'meta-llama/llama-3.3-70b-instruct:free' });
+});
+
+test('paket gratis memakai Groq, paket berbayar tetap Gemini dengan key bawaan', async () => {
+  store = { GEMINI_API_KEY: 'k-gemini', GEMINI_API_KEY_FREE: 'gsk-free', AI_CONFIG: JSON.stringify({ providers: { free: 'groq' } }) };
+  const calls = []; fetched = [];
+  const contents = [{ role: 'user', parts: [{ text: 'halo' }] }, { role: 'model', parts: [{ text: 'hai kak' }] }, { role: 'user', parts: [{ text: 'stok?' }] }, { role: 'user', parts: [{ text: 'ada?' }] }];
+  const out = await withFetch(oai(calls, '<think>mikir dulu</think>{"reply":"ada kak"}'), () => gemini.generate({ system: 'SISTEM JSON', contents, plan: 'free' }));
+  assert.strictEqual(out, '{"reply":"ada kak"}', 'blok <think> dibuang');
+  assert.strictEqual(calls.length, 1);
+  assert.strictEqual(calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
+  assert.strictEqual(calls[0].auth, 'Bearer gsk-free');
+  assert.strictEqual(calls[0].body.model, gemini.PROVIDERS.groq.model);
+  assert.deepStrictEqual(calls[0].body.response_format, { type: 'json_object' });
+  assert.deepStrictEqual(calls[0].body.messages, [
+    { role: 'system', content: 'SISTEM JSON' }, { role: 'user', content: 'halo' },
+    { role: 'assistant', content: 'hai kak' }, { role: 'user', content: 'stok?\nada?' }
+  ]);
+  await gemini.generate({ system: 's', contents: [], plan: 'starter' });
+  assert.strictEqual(fetched.length, 1); assert.strictEqual(fetched[0].key, 'k-gemini');
+  assert.ok(fetched[0].url.includes('generativelanguage.googleapis.com'));
+  const r = await gemini.resolve('free');
+  assert.strictEqual(r.provider, 'groq'); assert.strictEqual(r.keySource, 'plan');
+  assert.strictEqual((await gemini.resolve('starter')).provider, 'gemini');
+});
+
+test('penyedia lain tidak memakai key bawaan Gemini dan gagal jelas tanpa key sendiri', async () => {
+  store = { GEMINI_API_KEY: 'k-gemini', AI_CONFIG: JSON.stringify({ providers: { free: 'groq' } }) };
+  const calls = [];
+  const r = await gemini.resolve('free');
+  assert.strictEqual(r.keySource, null); assert.strictEqual(r.key, '');
+  await withFetch(oai(calls), () => assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /Groq untuk paket free belum diatur/));
+  assert.strictEqual(calls.length, 0, 'key Gemini tidak bocor ke Groq');
+});
+
+test('OpenRouter: model wajib diisi (tanpa bawaan); nama model bergaris miring dan titik dua diterima', async () => {
+  store = { GEMINI_API_KEY_FREE: 'sk-or-1', AI_CONFIG: JSON.stringify({ providers: { free: 'openrouter' } }) };
+  const calls = [];
+  await withFetch(oai(calls), () => assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /Model OpenRouter untuk paket free belum diisi/));
+  store.AI_CONFIG = JSON.stringify({ providers: { free: 'openrouter' }, models: { free: 'meta-llama/llama-3.3-70b-instruct:free' } });
+  await withFetch(oai(calls), () => gemini.generate({ system: 's', contents: [{ role: 'user', parts: [{ text: 'x' }] }], plan: 'free' }));
+  assert.strictEqual(calls[0].url, 'https://openrouter.ai/api/v1/chat/completions');
+  assert.strictEqual(calls[0].body.model, 'meta-llama/llama-3.3-70b-instruct:free');
+  assert.strictEqual(calls[0].body.response_format, undefined, 'OpenRouter tidak dipaksa json_object');
+});
+
+test('penyedia lain: key kena limit (429) pindah ke key berikutnya; galat membawa nama penyedia; jawaban kosong ditolak', async () => {
+  store = { GEMINI_API_KEY_FREE: 'g1', GEMINI_API_KEY_FREE_2: 'g2', AI_CONFIG: JSON.stringify({ providers: { free: 'groq' } }) };
+  const seen = [];
+  const impl = async (url, init) => {
+    seen.push(init.headers.Authorization);
+    if (init.headers.Authorization === 'Bearer g1') return { ok: false, status: 429, text: async () => 'rate limit' };
+    return { ok: true, json: async () => ({ choices: [{ message: { content: '{"reply":"ok"}' } }] }) };
+  };
+  const out = await withFetch(impl, () => gemini.generate({ system: 's', contents: [], plan: 'free', slot: undefined }));
+  assert.strictEqual(out, '{"reply":"ok"}');
+  assert.ok(seen.includes('Bearer g1') || seen.includes('Bearer g2'));
+  store = { GEMINI_API_KEY_FREE: 'g1', AI_CONFIG: JSON.stringify({ providers: { free: 'groq' } }) };
+  await withFetch(async () => ({ ok: false, status: 429, text: async () => 'limit' }), () => assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /Groq 429/));
+  await withFetch(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: '<think>x</think>' }, finish_reason: 'length' }] }) }),
+    () => assert.rejects(() => gemini.generate({ system: 's', contents: [], plan: 'free' }), /Groq kosong/));
+});
+
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

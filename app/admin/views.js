@@ -558,10 +558,15 @@ export function AiView() {
   const [defKey, setDefKey] = useState('');
   const [keys, setKeys] = useState({});                 // isian key baru: { 'paket:slot': '...' } (belum disimpan)
   const [models, setModels] = useState(() => Object.fromEntries(data.plans.map((p) => [p.id, ai.models[p.id] || ''])));
+  const providerList = ai.providerList || [{ id: 'gemini', label: 'Gemini (Google)', keyHint: 'AIza...', defaultModel: ai.defaultModel }];
+  const provOf = (id, src) => (src[id] && providerList.some((x) => x.id === src[id]) ? src[id] : 'gemini');
+  const [provs, setProvs] = useState(() => Object.fromEntries(data.plans.map((p) => [p.id, provOf(p.id, ai.providers || {})])));
   const [busy, setBusy] = useState('');
   const [tests, setTests] = useState({});               // hasil tes: { 'paket': ..., 'paket:slot': ... }
 
   const savedModel = (id) => ai.models[id] || '';
+  const savedProv = (id) => provOf(id, ai.providers || {});
+  const infoOf = (id) => providerList.find((x) => x.id === provs[id]) || providerList[0];
   const metaOf = (id, n) => (planKeys[id] && planKeys[id][n - 1]) || { source: null, hint: '' };
   const countOf = (id) => slots.filter((n) => metaOf(id, n).source).length;
   const totalOwn = data.plans.reduce((a, p) => a + countOf(p.id), 0);
@@ -582,7 +587,7 @@ export function AiView() {
   }
   async function savePlan(p) {
     const typed = typedOf(p.id);
-    const modelChanged = String(models[p.id] || '').trim() !== savedModel(p.id);
+    const modelChanged = String(models[p.id] || '').trim() !== savedModel(p.id) || provs[p.id] !== savedProv(p.id);
     if (Object.keys(typed).length) {
       const ok = await run('save' + p.id, { action: 'save_ai_key', plan: p.id, keys: typed }, 'Key paket ' + p.name + ' disimpan.');
       if (!ok) return;
@@ -590,7 +595,8 @@ export function AiView() {
     }
     if (modelChanged) {
       const next = { ...Object.fromEntries(data.plans.map((q) => [q.id, savedModel(q.id)])), [p.id]: models[p.id] || '' };
-      await run('save' + p.id, { action: 'save_ai_models', models: next }, 'Model paket ' + p.name + ' disimpan.');
+      const nextProv = { ...Object.fromEntries(data.plans.map((q) => [q.id, savedProv(q.id)])), [p.id]: provs[p.id] };
+      await run('save' + p.id, { action: 'save_ai_models', models: next, providers: nextProv }, 'Penyedia dan model paket ' + p.name + ' disimpan.');
     }
     setTests((t) => ({ ...t, [p.id]: undefined }));
   }
@@ -607,7 +613,8 @@ export function AiView() {
     try {
       const r = await post({ action: 'test_ai', plan: id, slot: slot || undefined });
       const via = r.keySource === 'plan' ? (slot ? 'key ' + slot : 'key paket') : 'key bawaan';
-      setTests((t) => ({ ...t, [tag]: r.ok ? { ok: true, text: 'Berfungsi · ' + r.model + ' · ' + via + ' · ' + r.ms + ' ms' } : { ok: false, text: r.error || 'Gagal.' } }));
+      const pl = (providerList.find((x) => x.id === r.provider) || {}).label || '';
+      setTests((t) => ({ ...t, [tag]: r.ok ? { ok: true, text: 'Berfungsi · ' + (pl ? pl + ' · ' : '') + r.model + ' · ' + via + ' · ' + r.ms + ' ms' } : { ok: false, text: r.error || 'Gagal.' } }));
     } catch (e) {
       setTests((t) => ({ ...t, [tag]: { ok: false, text: e.message || 'Gagal.' } }));
     }
@@ -616,7 +623,7 @@ export function AiView() {
 
   return (
     <>
-      <p className="lead">{'Atur API key dan model Gemini untuk tiap paket. Setiap paket boleh punya sampai ' + perPlan + ' key sendiri: asisten memakainya bergantian supaya beban terbagi, dan kalau satu key kena limit atau error, otomatis pindah ke key berikutnya. Paket tanpa key sendiri memakai key bawaan. Perubahan langsung berlaku tanpa deploy ulang.'}</p>
+      <p className="lead">{'Atur penyedia AI, API key, dan model untuk tiap paket (bawaan Gemini; paket Gratis bisa memakai penyedia gratis lain seperti Groq). Setiap paket boleh punya sampai ' + perPlan + ' key sendiri: asisten memakainya bergantian supaya beban terbagi, dan kalau satu key kena limit atau error, otomatis pindah ke key berikutnya. Paket Gemini tanpa key sendiri memakai key bawaan; penyedia lain wajib punya key sendiri. Perubahan langsung berlaku tanpa deploy ulang.'}</p>
 
       <div className="stats">
         <div className="stat"><span className="hint">Key bawaan</span><b>{def.source ? 'Aktif' : 'Kosong'}</b><small>{def.source ? '••••' + String(def.hint || '').slice(-4) + (def.source === 'env' ? ' · dari Vercel' : '') : 'Belum diisi'}</small></div>
@@ -628,9 +635,12 @@ export function AiView() {
       <datalist id="model-hints">{MODEL_HINTS.map((m) => <option key={m} value={m} />)}</datalist>
       {data.plans.map((p) => {
         const n = countOf(p.id);
-        const effective = n > 0 || !!def.source;
+        const info = infoOf(p.id);
+        const isGemini = info.id === 'gemini';
+        const baseModel = info.defaultModel || '';
+        const effective = n > 0 || (isGemini && !!def.source);
         const typed = Object.keys(typedOf(p.id)).length;
-        const modelDirty = String(models[p.id] || '').trim() !== savedModel(p.id);
+        const modelDirty = String(models[p.id] || '').trim() !== savedModel(p.id) || provs[p.id] !== savedProv(p.id);
         const dirty = typed > 0 || modelDirty;
         const t = tests[p.id];
         const me = (models[p.id] || '').trim();
@@ -639,10 +649,10 @@ export function AiView() {
             <div className="chead">
               <div>
                 <h2>{'Paket ' + p.name}</h2>
-                <p className="hint">{'Model: ' + (me || ai.defaultModel) + (me ? '' : ' (bawaan)') + ' · Key: ' + (n ? n + ' key sendiri' : def.source ? 'ikut bawaan' : 'belum ada')}</p>
+                <p className="hint">{info.label + ' · Model: ' + (me || baseModel || 'belum diisi') + (me || !baseModel ? '' : ' (bawaan)') + ' · Key: ' + (n ? n + ' key sendiri' : (isGemini && def.source) ? 'ikut bawaan' : 'belum ada')}</p>
               </div>
               {n ? <span className="tag a">{n + ' / ' + perPlan + ' key'}</span>
-                : def.source ? <span className="tag">Ikut key bawaan</span>
+                : (isGemini && def.source) ? <span className="tag">Ikut key bawaan</span>
                 : <span className="tag w">Belum ada key</span>}
             </div>
 
@@ -657,7 +667,7 @@ export function AiView() {
                     <div className="keyrow">
                       <input type="password" autoComplete="off" spellCheck="false" aria-label={'API key ' + i + ' paket ' + p.name}
                         value={keys[p.id + ':' + i] || ''}
-                        placeholder={has ? 'Kosongkan jika tidak diubah' : 'AIza... (boleh dikosongkan)'}
+                        placeholder={has ? 'Kosongkan jika tidak diubah' : (info.keyHint || 'API key') + ' (boleh dikosongkan)'}
                         onChange={(e) => setKeys((k) => ({ ...k, [p.id + ':' + i]: e.target.value }))} />
                       {has ? (
                         <>
@@ -680,9 +690,16 @@ export function AiView() {
 
             <div className="fgrid one">
               <label>
+                <span className="flabel">Penyedia AI</span>
+                <select value={provs[p.id]} onChange={(e) => setProvs((m) => ({ ...m, [p.id]: e.target.value }))}>
+                  {providerList.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+                </select>
+                {!isGemini ? <span className="hint">{'Key dari penyedia ini wajib diisi di atas (key bawaan Gemini tidak dipakai). Kosongkan Model untuk memakai model bawaan penyedia' + (baseModel ? '' : ', tapi OpenRouter tidak punya bawaan: isi nama model, contoh meta-llama/llama-3.3-70b-instruct:free') + '. Nama model dan batas gratis bisa berubah, cek di situs penyedia.'}</span> : null}
+              </label>
+              <label>
                 <span className="flabel">Model</span>
-                <input list="model-hints" autoComplete="off" spellCheck="false" maxLength={60} value={models[p.id] || ''}
-                  placeholder={ai.defaultModel} onChange={(e) => setModels((m) => ({ ...m, [p.id]: e.target.value }))} />
+                <input list={isGemini ? 'model-hints' : undefined} autoComplete="off" spellCheck="false" maxLength={60} value={models[p.id] || ''}
+                  placeholder={baseModel || 'nama model'} onChange={(e) => setModels((m) => ({ ...m, [p.id]: e.target.value }))} />
               </label>
             </div>
 
@@ -725,7 +742,7 @@ export function AiView() {
         </div>
       </section>
 
-      <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan. Toko tanpa langganan aktif memakai paket Gratis. Nama model harus tersedia di akun Gemini-mu. Tombol “Tes” menguji pengaturan yang sudah tersimpan.</p>
+      <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan. Toko tanpa langganan aktif memakai paket Gratis. Nama model harus tersedia di akun penyedianya. Pakai tier gratis berarti kena batas laju penyedia, dan sebagian penyedia membatasi pemakaian komersial atau memakai data untuk pelatihan, jadi baca ketentuannya. Tombol “Tes” menguji pengaturan yang sudah tersimpan.</p>
     </>
   );
 }

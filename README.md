@@ -210,6 +210,15 @@ Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), fakt
 - Pencarian produk berbasis makna (embedding) untuk katalog yang pelanggannya sering memakai sinonim.
 - Broadcast promo ke kontak yang terkumpul, dan penilaian untuk saluran Telegram/WhatsApp.
 
+## Penyedia AI per paket (mis. Groq untuk paket Gratis)
+
+Tiap paket punya pilihan **Penyedia AI** di `/admin/ai`: Gemini (bawaan), Groq, OpenRouter, Mistral, atau Cerebras. Contoh umum: paket Gratis memakai Groq (tier gratis), paket Starter dan Bisnis tetap Gemini. Penyedia selain Gemini berformat OpenAI (`POST {base}/chat/completions`), dipanggil dari `lib/gemini.js`.
+
+- Key diisi di kartu paket (sampai 3, dipakai bergantian dan saling cadangan, seperti Gemini). **Key bawaan Gemini tidak pernah dipakai penyedia lain**, jadi paket yang memakai Groq wajib punya key Groq sendiri.
+- Model kosong = model bawaan penyedia (`PROVIDERS` di `lib/gemini.js`). OpenRouter tidak punya bawaan: isi nama model (contoh `meta-llama/llama-3.3-70b-instruct:free`). Nama model dan batas gratis sering berubah, jadi cek di situs penyedia dan ganti dari `/admin/ai` tanpa deploy.
+- Tidak ada pindah otomatis antarpenyedia: kalau semua key penyedia sebuah paket gagal, bot meminta pelanggan mengirim ulang lalu meneruskan ke admin seperti biasa.
+- Tier gratis punya batas laju, dan sebagian penyedia membatasi pemakaian komersial atau memakai data untuk pelatihan. Baca ketentuannya sebelum dipakai untuk chat pelanggan.
+
 ## Catatan Gemini
 
 Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemini (tersimpan terenkripsi, tanpa deploy ulang). Tiap paket (Gratis, Starter, Bisnis) bisa punya sampai 3 API key sendiri. Key dipakai bergantian supaya beban terbagi, dan kalau satu key kena limit (429), ditolak, atau server Gemini error, bot otomatis mencoba key berikutnya. Paket tanpa key sendiri memakai key bawaan. Paket yang modelnya dikosongkan memakai `GEMINI_MODEL` (default `gemini-3.5-flash-lite`); toko tanpa langganan aktif memakai model paket Gratis. Nama model dan parameter yang didukung bisa berubah, jadi cek dokumentasi Google sebelum meluncur. Untuk model Gemini 3.x, `lib/gemini.js` sengaja tidak mengirim `temperature`, `top_p`, atau `top_k`.

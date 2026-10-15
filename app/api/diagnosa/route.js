@@ -64,7 +64,9 @@ export async function POST(request) {
   const ai = await gemini.resolve(planId);
   if (!ai.key) {
     add('ai', AI_LABEL, false, 'Layanan AI belum terhubung. Hubungi penyedia layananmu.',
-      'API key Gemini belum diisi. Isi di Admin > AI (key bawaan atau key paket ' + planId + ', atau GEMINI_API_KEY di Vercel > Settings > Environment Variables).');
+      ai.provider === 'gemini'
+        ? 'API key Gemini belum diisi. Isi di Admin > AI (key bawaan atau key paket ' + planId + ', atau GEMINI_API_KEY di Vercel > Settings > Environment Variables).'
+        : 'API key ' + gemini.PROVIDERS[ai.provider].label + ' untuk paket ' + planId + ' belum diisi. Isi di Admin > AI (key bawaan Gemini tidak dipakai penyedia ini).');
   } else {
     try {
       const raw = await gemini.generate({
@@ -75,10 +77,10 @@ export async function POST(request) {
       const parsed = bot._internal.parseModelOutput(raw);
       add('ai', AI_LABEL, !!parsed,
         parsed ? 'Terhubung dan berfungsi.' : 'Layanan AI membalas dengan format yang tidak terbaca. Coba lagi nanti atau hubungi penyedia layananmu.',
-        'Model ' + ai.model + ' (paket ' + planId + ')' + (parsed ? ': OK.' : '. Jawaban mentah: ' + String(raw).slice(0, 120)));
+        gemini.PROVIDERS[ai.provider].label + ' · model ' + ai.model + ' (paket ' + planId + ')' + (parsed ? ': OK.' : '. Jawaban mentah: ' + String(raw).slice(0, 120)));
     } catch (e) {
       add('ai', AI_LABEL, false, 'Layanan AI sedang bermasalah. Coba lagi nanti atau hubungi penyedia layananmu.',
-        'Model ' + ai.model + ': ' + String((e && e.message) || e).slice(0, 300));
+        gemini.PROVIDERS[ai.provider].label + ' · model ' + ai.model + ': ' + String((e && e.message) || e).slice(0, 300));
     }
   }
 

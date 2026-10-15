@@ -96,6 +96,8 @@ export async function GET(request) {
         planKeys: Object.fromEntries(Object.keys(plans.PLANS).map((id) => [id, Array.from({ length: gemini.KEYS_PER_PLAN }, (_, i) => meta[gemini.keyName(id, i + 1)] || { source: null, hint: '' })])),
         perPlan: gemini.KEYS_PER_PLAN,
         models: gemini.parseModels(allSettings.AI_CONFIG),
+        providers: gemini.parseProviders(allSettings.AI_CONFIG),
+        providerList: Object.values(gemini.PROVIDERS).map((p) => ({ id: p.id, label: p.label, keyHint: p.keyHint, defaultModel: p.model })),
         defaultModel: gemini.DEFAULT_MODEL
       }
     });
@@ -171,20 +173,26 @@ export async function POST(request) {
         const v = checkKey(b.keys[k]);
         if (v) patch[gemini.keyName(planId, n)] = v;
       });
-      if (!Object.keys(patch).length) return json({ error: 'Isi API key Gemini dulu.' }, 400);
+      if (!Object.keys(patch).length) return json({ error: 'Isi API key dulu.' }, 400);
       await settings.save(patch);
       return json({ ok: true });
     }
     if (b.action === 'save_ai_models') {
       const clean = gemini.sanitizeModels(b.models);
-      await settings.save({ AI_CONFIG: Object.keys(clean).length ? JSON.stringify({ models: clean }) : '' });
+      // Penyedia per paket (kosong = Gemini). Bila klien lama tidak mengirimnya, penyedia yang tersimpan dipertahankan.
+      const cur = gemini.parseProviders((await settings.getAll()).AI_CONFIG);
+      const provs = b.providers === undefined ? cur : gemini.sanitizeProviders(b.providers);
+      const cfg = {};
+      if (Object.keys(clean).length) cfg.models = clean;
+      if (Object.keys(provs).length) cfg.providers = provs;
+      await settings.save({ AI_CONFIG: Object.keys(cfg).length ? JSON.stringify(cfg) : '' });
       return json({ ok: true });
     }
     if (b.action === 'test_ai') {
       const planId = String(b.plan || '');
       if (!Object.prototype.hasOwnProperty.call(plans.PLANS, planId)) return json({ error: 'Paket tidak dikenal.' }, 400);
       const slot = b.slot ? Number(b.slot) : 0;
-      const { model, keySource } = await gemini.resolve(planId);
+      const { model, keySource, provider } = await gemini.resolve(planId);
       const t0 = Date.now();
       try {
         await gemini.generate({
@@ -193,9 +201,9 @@ export async function POST(request) {
           plan: planId,
           slot: slot || undefined
         });
-        return json({ ok: true, model, keySource, slot, ms: Date.now() - t0 });
+        return json({ ok: true, model, provider, keySource, slot, ms: Date.now() - t0 });
       } catch (e) {
-        return json({ ok: false, model, keySource, error: String((e && e.message) || e).slice(0, 300) });
+        return json({ ok: false, model, provider, keySource, error: String((e && e.message) || e).slice(0, 300) });
       }
     }
 
