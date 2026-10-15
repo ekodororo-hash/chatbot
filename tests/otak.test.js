@@ -413,6 +413,27 @@ t('otak tidak ikut terkirim lewat konfigurasi publik widget/chat', async () => {
   }
 });
 
+
+const TPL_WA = 'x https://wa.me/62895379994528 y';
+t('anti-spam: tombol WA tidak diulang bila 3 balasan terakhir sudah memuatnya', () => {
+  const recentBot = ['Info.\n\nTanya lewat WhatsApp: https://wa.me/62895379994528'];
+  const r = otak.parseOutput('{"reply":"Baik. [[WA]]"}', TPL_WA, { userText: 'gokil', recentBot });
+  assert.ok(!/wa\.me/.test(r.reply));
+  const r2 = otak.parseOutput('{"reply":"Baik. [[WA]]"}', TPL_WA, { userText: 'boleh minta nomor WA?', recentBot });
+  assert.ok(/wa\.me/.test(r2.reply));
+  const r3 = otak.parseOutput('{"reply":"Maaf ya. [[WA]][[URGENT]]"}', TPL_WA, { userText: 'parah', recentBot });
+  assert.ok(/wa\.me/.test(r3.reply));
+  const r4 = otak.parseOutput('{"reply":"Baik. [[WA]]"}', TPL_WA, { userText: 'gokil', recentBot: [] });
+  assert.ok(/wa\.me/.test(r4.reply));
+});
+t('anti-spam: tautan berdiri sendiri yang sudah dikirim tidak diulang, kecuali FRAUD', () => {
+  const recentBot = ['Cek di sini.\n\nhttps://shop.emahairshop.com/'];
+  const r = otak.parseOutput('{"reply":"Boleh tahu nama Anda?\\n\\nhttps://shop.emahairshop.com/"}', TPL_WA, { userText: 'gokil', recentBot });
+  assert.strictEqual(r.reply, 'Boleh tahu nama Anda?');
+  const f = otak.parseOutput('{"reply":"Cek dulu.\\n\\nhttps://verify.emahairshop.com [[FRAUD]]"}', TPL_WA, { userText: 'x', recentBot: ['a\n\nhttps://verify.emahairshop.com'] });
+  assert.ok(/verify\.emahairshop\.com/.test(f.reply));
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
