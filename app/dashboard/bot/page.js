@@ -145,7 +145,7 @@ function WidgetPreview({ f }) {
         position: 'absolute', [side]: Math.min(ox, 120), bottom: Math.min(oy, 80), height: px, minWidth: px, padding: label ? '0 18px' : 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: hex,
         color: lum > 0.62 ? '#111' : '#fff', fontSize: Math.round(px * 0.45),
-        borderRadius: f.widget_shape === 'kotak' ? 16 : (f.widget_shape === 'lancip' ? (f.widget_pos === 'left' ? '999px 999px 999px 0' : '999px 999px 0 999px') : (label ? 999 : '50%')), boxShadow: '0 4px 14px rgba(0,0,0,.25)'
+        borderRadius: f.widget_shape === 'kotak' ? 16 : (f.widget_shape === 'lancip' ? (f.widget_pos === 'left' ? '18px 18px 18px 0' : '18px 18px 0 18px') : (label ? 999 : '50%')), boxShadow: '0 4px 14px rgba(0,0,0,.25)'
       }}>
         <span style={{ display: 'flex' }}><IconView icon={f.widget_icon || DEFAULT_ICON} /></span>
         {label ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span> : null}
@@ -410,7 +410,7 @@ export default function BotPage() {
                 <select id="w3" value={f.widget_shape} onChange={set('widget_shape')}>
                   <option value="bulat">Bulat</option>
                   <option value="kotak">Kotak membulat</option>
-                  <option value="lancip">Lancip (satu sudut runcing)</option>
+                  <option value="lancip">Lancip kotak (satu sudut siku)</option>
                 </select>
               </div>
               <div>

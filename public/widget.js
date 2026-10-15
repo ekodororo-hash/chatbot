@@ -101,8 +101,8 @@
     var boxH = { kecil: 500, sedang: 560, besar: 620 }[c.size];
     var boxWLg = { kecil: 380, sedang: 440, besar: 480 }[c.size];
     var boxHLg = { kecil: 600, sedang: 680, besar: 760 }[c.size];
-    // lancip: bulat dengan satu sudut runcing di bawah, di sisi yang dekat tepi layar (seperti ekor balon chat)
-    var radius = c.shape === 'kotak' ? '16px' : (c.shape === 'lancip' ? (c.pos === 'left' ? '999px 999px 999px 0' : '999px 999px 0 999px') : (c.label ? '999px' : '50%'));
+    // lancip: kotak membulat dengan satu sudut siku tajam di bawah, di sisi yang dekat tepi layar (seperti ekor balon chat)
+    var radius = c.shape === 'kotak' ? '16px' : (c.shape === 'lancip' ? (c.pos === 'left' ? '18px 18px 18px 0' : '18px 18px 0 18px') : (c.label ? '999px' : '50%'));
     var boxBottom = c.oy + px + 12;
 
     var css = document.createElement('style');
