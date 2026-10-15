@@ -1220,6 +1220,11 @@ t('pesanan: prompt tidak menyuruh menanyakan alamat; cukup produk, jumlah, nama,
   assert.ok(!sys.includes('alamat lengkap paling akhir'));
 });
 
+t('pesanan: prompt melarang mengarang satuan (bungkus, pcs) saat menanyakan jumlah', async () => {
+  const sys = I.buildSystem({ name: 'Toko', bot_name: 'A', tone: 'ramah', fallback: 'x' }, [{ name: 'Bawang Merah 250 gr', price: 12000, stock: 5, description: '' }], [], false);
+  assert.ok(sys.includes('TANPA menyebut satuan') && sys.includes('JANGAN menambahkan satuan'));
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
