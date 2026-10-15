@@ -171,6 +171,28 @@ t('parseOutput: penanda dibuang, tindakannya dicatat, tautan WA ditambahkan', as
   assert.strictEqual(dup.reply.split(WA).length, 2, 'tautan tidak digandakan');
 });
 
+t('parseOutput: jaring pengaman minta admin (seperti wantsHuman portal) dan tanpa tautan WA saat serah-terima', async () => {
+  // Model lupa menulis [[HUMAN]], tapi pengunjung jelas minta bicara dengan admin -> tetap diserahkan.
+  const a = otak.parseOutput('{"reply":"Baik, saya bantu."}', otak.DEFAULT_TEMPLATE, { userText: 'saya mau ngomong sama admin' });
+  assert.strictEqual(a.handoff, true);
+  // Pertanyaan biasa tidak memicu serah-terima.
+  for (const q of ['berapa harga hair extension?', 'apa itu tape-in', 'admin tidak ada di sini ya?', 'ok terima kasih']) {
+    assert.strictEqual(otak.parseOutput('{"reply":"Halo."}', otak.DEFAULT_TEMPLATE, { userText: q }).handoff, false, q);
+  }
+  for (const q of ['connect ke CS dong', 'mau bicara sama orang asli', 'can I talk to a real person', 'hubungkan saya dengan tim']) {
+    assert.strictEqual(otak.wantsHuman(q), true, q);
+  }
+  // Model sudah menandai FRAUD/URGENT: pesan penipuan yang memuat "admin" + "chat" tidak membungkam bot.
+  const f = otak.parseOutput('{"reply":"Nomor itu mungkin bukan resmi. [[FRAUD]]"}', otak.DEFAULT_TEMPLATE, { userText: 'ada yang chat saya minta transfer, ini admin kalian?' });
+  assert.deepStrictEqual([f.handoff, f.alert], [false, 'fraud']);
+  // Tanpa userText perilaku lama tidak berubah.
+  assert.strictEqual(otak.parseOutput('{"reply":"Halo."}', otak.DEFAULT_TEMPLATE).handoff, false);
+  // Serah-terima + [[WA]] dari model: tautan WhatsApp tidak ditambahkan (pelanggan sedang disambungkan di chat ini).
+  const h = otak.parseOutput('{"reply":"Mohon tunggu ya. [[WA]] [[HUMAN]]"}', otak.DEFAULT_TEMPLATE);
+  assert.strictEqual(h.handoff, true);
+  assert.ok(!h.reply.includes('WhatsApp:') && !h.reply.includes(WA), h.reply);
+});
+
 t('parseOutput: di luar topik, markdown, JSON berpagar, teks biasa, dan keluaran rusak', async () => {
   assert.strictEqual(otak.parseOutput('{"reply":"[[OFFTOPIC]]"}', '').reply.includes('EMAHAIRSHOP'), true, 'hanya penanda: pakai kalimat cadangan');
   assert.strictEqual(otak.parseOutput('{"reply":"Itu di luar bidang saya. [[OFFTOPIC]]"}', '').reply, 'Itu di luar bidang saya.');
@@ -241,6 +263,21 @@ t('handleMessage toko owner: [[HUMAN]] menyerahkan ke admin dan memberi tahu', a
   assert.deepStrictEqual(alerts.map(a => a.reason), ['handoff']);
   const bots = r.messages.filter(m => m.role === 'bot');
   assert.ok(bots.length === 1 && !bots[0].content.includes('[['));
+});
+
+t('handleMessage toko owner: model lupa [[HUMAN]] tapi pengunjung minta admin -> tetap diserahkan (jaring pengaman portal)', async () => {
+  const s = ownerShop();
+  geminiCalls = []; alerts = [];
+  geminiImpl = say('Baik, saya bantu ya.');
+  const r = await chat(s, 'Saya mau bicara dengan admin');
+  assert.strictEqual(conv(r).status, 'human');
+  assert.deepStrictEqual(alerts.map(a => a.reason), ['handoff']);
+  // Pertanyaan biasa dengan balasan tanpa penanda: tidak diserahkan.
+  const s2 = ownerShop(); alerts = [];
+  geminiImpl = say('Harga mulai dari $50 per 100 gram. [[WA]]');
+  const r2 = await chat(s2, 'berapa harga rambut?');
+  assert.strictEqual(conv(r2).status, 'bot');
+  assert.deepStrictEqual(alerts, []);
 });
 
 t('handleMessage toko owner: [[URGENT]] tidak membungkam bot, hanya menandai dan memberi tahu; nama dan lead tercatat', async () => {
