@@ -157,6 +157,19 @@ t('buildSystem: template + tanggal WIB + format JSON; nama hanya bila sah', asyn
   assert.ok(!otak.buildSystem('X', { knownName: '-(nama belum diberikan)' }).includes('already told you'));
 });
 
+t('bahasa: pesan terakhir dideteksi dan dikirim ke model sebagai arahan (kasus "can i have price list" dijawab Indonesia)', async () => {
+  assert.strictEqual(otak.detectLang('can i have price list'), 'English');
+  assert.strictEqual(otak.detectLang('mau minta price list dong'), 'Indonesian');
+  assert.strictEqual(otak.detectLang('ciao vorrei il listino prezzi'), 'Italian');
+  assert.strictEqual(otak.detectLang('مرحبا كيف حالك'), 'Arabic');
+  assert.strictEqual(otak.detectLang('ok'), '', 'terlalu pendek: tidak yakin');
+  assert.strictEqual(otak.detectLang('Sari'), '', 'nama saja: tidak yakin');
+  const en = otak.buildSystem('ATURAN', { lastText: 'can i have price list' });
+  assert.ok(en.includes("LAST message: English. Write your whole reply in English"), en.slice(-600));
+  assert.ok(!otak.buildSystem('ATURAN', { lastText: 'ok' }).includes('Automatic language detection'));
+  assert.ok(!otak.buildSystem('ATURAN').includes('Automatic language detection'));
+});
+
 t('parseOutput: penanda dibuang, tindakannya dicatat, tautan WA ditambahkan', async () => {
   const r = otak.parseOutput(JSON.stringify({ reply: 'Halo Sari, silakan hubungi tim.\n\nhttps://shop.emahairshop.com/ [[WA]] [[URGENT]] [[ADMIN_DRAFT: Maaf ya, kami cek]] [[NAME: Sari]] [[LEAD: minta=price list; nama=Sari]] [[UNKNOWN: refund rate]]' }), otak.DEFAULT_TEMPLATE);
   assert.ok(!/\[\[|\]\]/.test(r.reply), r.reply);
