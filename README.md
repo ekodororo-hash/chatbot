@@ -120,7 +120,7 @@ Hal yang perlu diketahui:
 
 **Persiapan database (sekali):** jalankan `supabase/migrations/pemakaian_bot.sql` di Supabase SQL Editor (aman dijalankan ulang; proyek baru sudah tercakup di `schema.sql`).
 
-Kuota harian (`daily_limit`) dan kuota bulanan paket dihitung dari tabel `bot_usage` (satu baris per toko per hari WIB, diisi trigger setiap bot membalas), bukan dari jumlah pesan. Pesan ikut terhapus saat percakapan dihapus (`ON DELETE CASCADE`), sehingga dulu pemakaian bisa kembali ke 0 setelah semua percakapan dihapus. Pembacaan ada di `lib/usage.js`. Kalau tabel belum ada, aplikasi tetap jalan dan menghitung dari pesan seperti sebelumnya. Balasan yang sudah terlanjur terhapus sebelum migrasi tidak bisa dipulihkan.
+Kuota harian (`daily_limit`) dan kuota bulanan paket dihitung dari tabel `bot_usage` (satu baris per toko per hari WIB, ditambah lewat fungsi `bot_usage_add` setiap AI selesai membalas), bukan dari jumlah pesan. Hanya balasan AI yang dihitung: pesan otomatis seperti "asisten sedang nonaktif" atau "kuota habis" tidak memakai kuota. Pesan ikut terhapus saat percakapan dihapus (`ON DELETE CASCADE`), sehingga dulu pemakaian bisa kembali ke 0 setelah semua percakapan dihapus. Pembacaan ada di `lib/usage.js`. Kalau tabel belum ada, aplikasi tetap jalan dan menghitung dari pesan seperti sebelumnya. Balasan yang sudah terlanjur terhapus sebelum migrasi tidak bisa dipulihkan.
 
 ## Bahasa
 

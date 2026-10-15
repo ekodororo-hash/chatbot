@@ -18,6 +18,11 @@ class Q {
     this.f.push(r => parts.some(([c, op, ...v]) => (op === 'is' ? r[c] == null : op === 'lt' ? r[c] != null && r[c] < v.join('.') : op === 'eq' ? r[c] === v.join('.') : op === 'neq' ? r[c] != null && r[c] !== v.join('.') : false)));
     return this;
   }
+  not(c, op, v) {
+    if (op !== 'like') throw new Error('operator not belum didukung tiruan: ' + op);
+    const re = new RegExp('^' + String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$', 's');
+    this.f.push(r => !re.test(String(r[c]))); return this;
+  }
   gte(c, v) { this.f.push(r => r[c] >= v); return this; }
   gt(c, v) { this.f.push(r => r[c] > v); return this; }
   in(c, a) { this.f.push(r => a.includes(r[c])); return this; }
@@ -39,12 +44,6 @@ class Q {
       if (this.t === 'messages') r.id = this.db._mid++;
       if (this.t === 'conversations') Object.assign(r, { id: crypto.randomUUID(), visitor_token: crypto.randomUUID(), status: 'bot', unanswered: false, flag: null });
       rows.push(r);
-      // Tiruan trigger bot_usage_count (hanya bila tabel bot_usage disediakan oleh tes).
-      if (this.t === 'messages' && r.role === 'bot' && this.db.bot_usage) {
-        const day = require('../lib/usage').dayKey(r.created_at);
-        const u = this.db.bot_usage.find(x => x.shop_id === r.shop_id && x.day === day);
-        if (u) u.n += 1; else this.db.bot_usage.push({ shop_id: r.shop_id, day, n: 1 });
-      }
       return { data: this.ret ? r : null, error: null, count: null };
     }
     let m = rows.filter(r => this.f.every(fn => fn(r)));
@@ -63,6 +62,13 @@ const fake = {
   from: t => new Q(db, t),
   // Tiruan sederhana fungsi SQL search_products / search_faqs (skor: nama 3, deskripsi 1).
   rpc: async (fn, a) => {
+    if (fn === 'bot_usage_add') {      // tiruan fungsi SQL bot_usage_add; ada hanya bila tes menyediakan db.bot_usage
+      if (!db.bot_usage) return { data: null, error: { message: 'fungsi belum ada' } };
+      const day = require('../lib/usage').dayKey();
+      const u = db.bot_usage.find(x => x.shop_id === a.sid && x.day === day);
+      if (u) u.n += 1; else db.bot_usage.push({ shop_id: a.sid, day, n: 1 });
+      return { data: null, error: null };
+    }
     if (rpcFail) return { data: null, error: { message: 'fungsi belum ada' } };
     const isP = fn === 'search_products';
     const rows = (isP ? db.products : db.faqs).filter(r => r.shop_id === a.sid).map(r => {
@@ -745,17 +751,34 @@ t('pemakaian balasan: menghapus percakapan tidak mengembalikan kuota harian maup
     geminiCalls = [];
     const r = await bot.handleMessage({ slug: s.slug, text: 'c' });
     assert.strictEqual(geminiCalls.length, 0, 'batas harian tetap berlaku'); assert.strictEqual(r.status, 'human');
-    assert.strictEqual(await usage.repliesSince(fake, s.id, plans.startOfMonthWIB()), 3, 'balasan penolakan juga tercatat');
-    // Toko lain tidak ikut terhitung
-    const o = seedShop();
+    assert.strictEqual(await usage.repliesSince(fake, s.id, plans.startOfMonthWIB()), 2, 'pesan otomatis (kuota habis) tidak ikut dihitung');
+    // Toko lain tidak ikut terhitung; asisten nonaktif membalas otomatis tanpa memakai kuota
+    const o = seedShop({ bot_on: false });
+    await bot.handleMessage({ slug: o.slug, text: 'halo' });
+    assert.ok(db.messages.some(m => m.shop_id === o.id && m.role === 'bot' && /nonaktif/.test(m.content)));
     assert.strictEqual(await usage.repliesSince(fake, o.id, plans.startOfMonthWIB()), 0);
   } finally { delete db.bot_usage; }
 });
-t('pemakaian balasan: tabel bot_usage belum ada -> menghitung dari pesan seperti sebelumnya', async () => {
+t('pemakaian balasan: tabel bot_usage belum ada -> menghitung dari pesan, tanpa pesan otomatis', async () => {
   const usage = require('../lib/usage');
   assert.strictEqual(db.bot_usage, undefined);
   const s = seedShop(); fillMonth(s, 4);
   assert.strictEqual(await usage.repliesSince(fake, s.id, plans.startOfMonthWIB()), 4);
+  // Asisten nonaktif membalas otomatis: tidak menambah hitungan, walau migrasi belum dijalankan
+  const off = seedShop({ bot_on: false });
+  await bot.handleMessage({ slug: off.slug, text: 'halo' }); await bot.handleMessage({ slug: off.slug, text: 'halo lagi' });
+  assert.strictEqual(await usage.repliesSince(fake, off.id, plans.startOfMonthWIB()), 0);
+});
+t('pemakaian balasan: pola pesan otomatis cocok dengan kalimat di bot.js (nonaktif, kuota harian, kuota bulanan)', async () => {
+  const usage = require('../lib/usage');
+  const rx = usage.AUTO_PATTERNS.map(p => new RegExp('^' + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$', 's'));
+  const lastBot = (s) => db.messages.filter(m => m.shop_id === s.id && m.role === 'bot').pop().content;
+  const a = seedShop({ bot_on: false }); await bot.handleMessage({ slug: a.slug, text: 'x' });
+  const b = seedShop({ daily_limit: 1 }); geminiImpl = reply('ok');
+  await bot.handleMessage({ slug: b.slug, text: 'x' }); await bot.handleMessage({ slug: b.slug, text: 'y' });
+  const c = seedShop({ daily_limit: 5000 }); fillMonth(c, plans.PLANS.free.quota); await bot.handleMessage({ slug: c.slug, text: 'x' });
+  for (const s of [a, b, c]) assert.ok(rx.some(r => r.test(lastBot(s))), 'tidak cocok pola: ' + lastBot(s));
+  assert.ok(!rx.some(r => r.test('Halo kak, ada yang bisa dibantu?')));
 });
 t('status halaman Langganan: paket, pemakaian bulan ini, dan riwayat', async () => {
   const s = seedShop(); fillMonth(s, 7); await billing.handleNotification(notif(await payFor(s, 'bisnis', 1)));
