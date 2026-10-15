@@ -25,13 +25,38 @@
   var langOverride = dl === 'auto' ? '' : langCode(dl);
   var onLang = function () {};
   window.IsenginChat = { setLang: function (l) { langOverride = langCode(l); onLang(); } };
+  /* Sumber bahasa situs, urut prioritas awal. Di HP pengganti bahasa sering tidak mengubah atribut <html lang>
+     (mis. hanya menyimpan pilihan di cookie/localStorage, atau URL masih membawa ?lang= lama), jadi semua sumber
+     dipantau dan sumber yang BERUBAH paling akhir yang dipakai, bukan sumber dengan prioritas tetap. */
+  function readCookie(n) {
+    try { var m = new RegExp('(?:^|;\\s*)' + n + '=([^;]*)').exec(document.cookie); return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; }
+  }
+  function readStore(n) { try { return localStorage.getItem(n) || ''; } catch (e) { return ''; } }
+  var STORE_KEYS = ['lang', 'language', 'locale', 'i18nextLng', 'NEXT_LOCALE', 'site_lang', 'selectedLanguage', 'preferred_language'];
+  function sources() {
+    var o = [];
+    try { o.push(langCode(new URLSearchParams(location.search).get('lang'))); } catch (e) { o.push(''); }
+    try { o.push(langCode(location.pathname.split('/')[1])); } catch (e) { o.push(''); }
+    try { o.push(langCode(document.documentElement.lang)); } catch (e) { o.push(''); }
+    try { o.push(langCode(document.documentElement.getAttribute('xml:lang'))); } catch (e) { o.push(''); }
+    var i, v, gt = readCookie('googtrans'); // Google Translate: /id/en
+    o.push(langCode(gt ? gt.split('/').pop() : ''));
+    for (i = 0; i < STORE_KEYS.length; i++) o.push(langCode(readCookie(STORE_KEYS[i])));
+    for (i = 0; i < STORE_KEYS.length; i++) o.push(langCode(readStore(STORE_KEYS[i])));
+    return o;
+  }
+  var lastSrc = null, lastWinner = -1;
   function siteLang() {
     if (langOverride) return langOverride;
-    var l = '';
-    try { l = langCode(new URLSearchParams(location.search).get('lang')); } catch (e) {}
-    if (!l) { try { l = langCode(location.pathname.split('/')[1]); } catch (e) {} }
-    if (!l) { try { l = langCode(document.documentElement.lang); } catch (e) {} }
-    return l;
+    var cur = sources(), i, changed = -1;
+    if (lastSrc) {
+      for (i = 0; i < cur.length; i++) if (cur[i] && cur[i] !== lastSrc[i]) changed = i;
+      if (changed >= 0) lastWinner = changed;
+    }
+    lastSrc = cur;
+    if (lastWinner >= 0 && cur[lastWinner]) return cur[lastWinner];
+    for (i = 0; i < cur.length; i++) if (cur[i]) return cur[i];
+    return '';
   }
 
   var fbColor = s.getAttribute('data-color') || '#0b7a75';
@@ -231,6 +256,10 @@
     setInterval(syncLang, 1000);
     try { new MutationObserver(syncLang).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); } catch (e) {}
     window.addEventListener('popstate', syncLang);
+    window.addEventListener('storage', syncLang);
+    window.addEventListener('hashchange', syncLang);
+    window.addEventListener('resize', syncLang);
+    window.addEventListener('touchend', function () { setTimeout(syncLang, 400); }, true);
     // Timer di browser HP sering ditahan saat tab di latar belakang: sinkronkan juga saat tab kembali aktif.
     document.addEventListener('visibilitychange', function () { if (!document.hidden) syncLang(); });
     window.addEventListener('pageshow', syncLang);
@@ -243,6 +272,7 @@
     function open() {
       hideTip(true);
       clearBadge();
+      syncLang();
       if (!frame) {
         frame = document.createElement('iframe');
         frame.src = frameSrc();
