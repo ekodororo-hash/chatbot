@@ -434,6 +434,14 @@ t('anti-spam: tautan berdiri sendiri yang sudah dikirim tidak diulang, kecuali F
   assert.ok(/verify\.emahairshop\.com/.test(f.reply));
 });
 
+
+t('wa.me tulisan model dibuang dan diganti satu tombol dengan label bersih (tidak terpotong)', () => {
+  const r = otak.parseOutput('{"reply":"Maaf, soal itu tim kami yang tahu.\\nSilakan hubungi tim kami melalui WhatsApp untuk konfirmasi lebih lanjut: https://wa.me/62895379994528"}', TPL_WA, { userText: 'mahal', recentBot: [] });
+  assert.strictEqual((r.reply.match(/wa\.me/g) || []).length, 1);
+  assert.ok(/\n\nTanya lewat WhatsApp: https:\/\/wa\.me\/\d+$/.test(r.reply));
+  assert.ok(!/hubungi tim kami melalui/.test(r.reply));
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
