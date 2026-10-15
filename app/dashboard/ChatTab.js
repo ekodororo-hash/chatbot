@@ -30,7 +30,9 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
       (ms || []).forEach((m) => { if (!p[m.conversation_id]) p[m.conversation_id] = m.content; });
     }
     setPrev(p);
-    setConvs(data);
+    // Percakapan "butuh admin" naik ke atas dulu, sisanya tetap urut dari yang terbaru (sort stabil).
+    const sorted = [...data].sort((a, b) => (b.status === 'human') - (a.status === 'human'));
+    setConvs(sorted);
     saveCount('conv:' + shop.id, data.length);
     onHumanCount(data.filter((c) => c.status === 'human').length);
   }, [sb, shop.id, fail, onHumanCount]);
@@ -66,8 +68,11 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
           <p className="hint">Belum ada percakapan. Coba chat lewat halaman Coba asisten untuk melihat hasilnya di sini.</p>
         )}
         {(convs || []).map((c, i) => (
-          <div key={c.id} className="li conv">
-            <span className="no" aria-label={'Nomor ' + (i + 1)}>{i + 1}</span>
+          <div key={c.id} className={'li conv' + (c.status === 'human' ? ' alert' : '')}>
+            <span className="no" aria-label={'Nomor ' + (i + 1) + (c.status === 'human' ? ', butuh admin' : '')}>
+              {i + 1}
+              {c.status === 'human' ? <i className="dot" aria-hidden="true" /> : null}
+            </span>
             <button className="open" type="button" onClick={() => onOpen(c)}>
               <div className="t">
                 <div className="nm"><b>{c.customer_name}</b><time dateTime={c.updated_at}>{dayTime(c.updated_at)}</time></div>

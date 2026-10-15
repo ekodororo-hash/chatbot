@@ -148,6 +148,11 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   }, [sb, shopId]);
   const refreshAll = useCallback(() => { refreshHumanCount(); refreshBadges(); }, [refreshHumanCount, refreshBadges]);
   useEffect(() => { refreshAll(); }, [refreshAll]);
+  // Judul tab browser ikut menunjukkan jumlah percakapan butuh admin, supaya kelihatan walau tab sedang di belakang.
+  useEffect(() => {
+    document.title = humanCount ? '(' + humanCount + ') Asisten Toko' : 'Asisten Toko';
+    return () => { document.title = 'Asisten Toko'; };
+  }, [humanCount]);
   // Realtime: angka di menu ikut berubah begitu ada percakapan baru atau status berubah.
   useRealtime(sb, 'conversations', shopId ? 'shop_id=eq.' + shopId : '', refreshAll, 60000);
 

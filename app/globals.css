@@ -42,7 +42,9 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding
 .li{display:flex;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit}
 button.li{cursor:pointer}
 .li:first-child{border-top:0}
-.li .no{flex:0 0 28px;align-self:flex-start;text-align:right;font-weight:400;color:var(--mute);font-variant-numeric:tabular-nums}
+.li .no{flex:0 0 28px;align-self:flex-start;text-align:right;font-weight:400;color:var(--mute);font-variant-numeric:tabular-nums;position:relative}
+.li .no .dot{position:absolute;top:-2px;right:1px;width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--panel)}
+.li.conv.alert{background:color-mix(in srgb,var(--danger) 5%,var(--panel))}
 .li .open{flex:1;min-width:0;display:flex;gap:10px;align-items:center;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .li .t.stack b,.li .t.stack small{white-space:normal;overflow:visible}
 .li.edit{align-items:flex-start}
