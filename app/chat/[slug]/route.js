@@ -2,6 +2,7 @@ import supabase from '@/lib/supabase';
 import domains from '@/lib/domains';
 import TEMPLATE from '@/lib/chatTemplate';
 import widgetConfig from '@/lib/widgetConfig';
+import gayaPortal from '@/lib/gayaPortal';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,8 @@ export async function GET(request, context) {
     rating: Object.prototype.hasOwnProperty.call(shop, 'lead_on'),
     lead: shop.lead_on === true
   };
+  // Toko layanan sendiri: balasan tampil seperti portal (tombol WhatsApp, ikon tautan). Toko lain tidak berubah.
+  cfg.portal = await gayaPortal.aktif(supabase.getAdmin(), shop);
   const html = TEMPLATE.replace('__CONFIG__', () => safeJson(cfg));
 
   return new Response(html, {

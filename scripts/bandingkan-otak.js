@@ -72,7 +72,7 @@ function portalView(c) {
 function chatbotView(c) {
   const r = otak.parseOutput(JSON.stringify({ reply: c.raw }), otak.DEFAULT_TEMPLATE, { userText: c.q });
   const m = r.reply.match(WA_RE);
-  return { reply: r.reply.replace(/\n*WhatsApp: https:\/\/wa\.me\/\d+/, '').trim(), human: r.handoff, alert: r.alert, unknown: r.unknown, lead: r.lead, name: r.name, wa: bool(m) };
+  return { reply: r.reply.replace(/\n*[^\n:]{2,40}: https:\/\/wa\.me\/\d+\s*$/, '').trim(), human: r.handoff, alert: r.alert, unknown: r.unknown, lead: r.lead, name: r.name, wa: bool(m) };
 }
 function diff(p, b) {
   const d = [];

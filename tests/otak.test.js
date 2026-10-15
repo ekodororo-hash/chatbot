@@ -170,11 +170,58 @@ t('bahasa: pesan terakhir dideteksi dan dikirim ke model sebagai arahan (kasus "
   assert.ok(!otak.buildSystem('ATURAN').includes('Automatic language detection'));
 });
 
+t('label tombol WhatsApp mengikuti bahasa pengunjung (sama dengan portal)', async () => {
+  const wa = (q) => otak.parseOutput('{"reply":"Hi [[WA]]"}', otak.DEFAULT_TEMPLATE, { userText: q }).reply.split('\n').pop();
+  assert.strictEqual(wa('can i have price list'), 'Ask on WhatsApp: ' + WA);
+  assert.strictEqual(wa('mau minta price list dong'), 'Tanya lewat WhatsApp: ' + WA);
+  assert.strictEqual(wa('ciao vorrei il listino prezzi'), 'Chiedi su WhatsApp: ' + WA);
+  assert.strictEqual(wa('ok'), 'Tanya lewat WhatsApp: ' + WA, 'tidak terdeteksi: bahasa halaman (Indonesia)');
+  assert.strictEqual(wa('olá gostaria de preços, obrigado'), 'Ask on WhatsApp: ' + WA, 'bahasa di luar daftar: Inggris');
+});
+
+t('enrich: lead, nomor, dan nama seperti jaring pengaman portal (tanpa panggilan model tambahan)', async () => {
+  const base = { reply: 'Harga mulai $50.\n\nhttps://shop.emahairshop.com/price-list', handoff: false, order: false, alert: '', unknown: '', lead: '', name: '' };
+  // Model lupa [[LEAD]] dan [[NAME]], nama sudah dikenal, percakapan harga -> lead otomatis + nama tercatat.
+  let r = otak.enrich(base, { userText: 'minta price list', knownName: 'Sari', prevBot: '' });
+  assert.ok(r.lead.startsWith('minta=price list; nama=Sari'), r.lead);
+  assert.strictEqual(r.name, 'Sari');
+  // Pengunjung kirim nomor di percakapan harga: nomor masuk lead (wa=), dari pola angka, bukan dari model.
+  r = otak.enrich(Object.assign({}, base, { reply: 'Terima kasih.' }), { userText: 'wa saya +62 812-3456-7890', knownName: '', prevBot: 'lihat https://shop.emahairshop.com/price-list' });
+  assert.ok(r.lead.includes('wa=+6281234567890'), r.lead);
+  // wa= buatan model dibuang; lead tanpa nama sah dibuang.
+  r = otak.enrich(Object.assign({}, base, { reply: 'x', lead: 'minta=quote; nama=Dewi; wa=0811' }), { userText: 'halo' });
+  assert.strictEqual(r.lead, 'minta=quote; nama=Dewi');
+  r = otak.enrich(Object.assign({}, base, { reply: 'x', lead: 'minta=quote; nama=none' }), { userText: 'halo' });
+  assert.strictEqual(r.lead, '');
+  // Bukan percakapan harga dan tanpa lead: tidak ada yang dibuat.
+  r = otak.enrich(Object.assign({}, base, { reply: 'Halo.' }), { userText: 'halo', knownName: 'Sari', prevBot: '' });
+  assert.strictEqual(r.lead, '');
+  assert.strictEqual(otak.extractPhone('pesanan 12345'), '');
+});
+
+t('gayaPortal: hanya toko owner (dan saklar menyala) yang tampil seperti portal; hasilnya cuma true/false', async () => {
+  const fs = require('fs'), p = require('path');
+  const route = fs.readFileSync(p.join(__dirname, '..', 'app/chat/[slug]/route.js'), 'utf8');
+  assert.ok(route.includes('cfg.portal = await gayaPortal.aktif('), 'halaman chat memasang penanda portal');
+  const gp = require('../lib/gayaPortal');
+  const mine = ownerShop(), other = otherShop();
+  otak._ownerCache.clear();
+  assert.strictEqual(await gp.aktif(fake, mine), true);
+  assert.strictEqual(await gp.aktif(fake, other), false, 'toko lain tidak berubah');
+  assert.strictEqual(await gp.aktif(fake, Object.assign({}, mine, { owner_id: null })), false);
+  await settings.save({ OTAK_MODE: 'off' });
+  assert.strictEqual(await gp.aktif(fake, mine), false, 'saklar mati: semua toko kembali seperti biasa');
+  await settings.save({ OTAK_MODE: 'on' });
+  const keep = fake.auth; fake.auth = undefined; otak._ownerCache.clear();
+  assert.strictEqual(await gp.aktif(fake, mine), false, 'gagal baca: false, tidak melempar');
+  fake.auth = keep; otak._ownerCache.clear();
+});
+
 t('parseOutput: penanda dibuang, tindakannya dicatat, tautan WA ditambahkan', async () => {
   const r = otak.parseOutput(JSON.stringify({ reply: 'Halo Sari, silakan hubungi tim.\n\nhttps://shop.emahairshop.com/ [[WA]] [[URGENT]] [[ADMIN_DRAFT: Maaf ya, kami cek]] [[NAME: Sari]] [[LEAD: minta=price list; nama=Sari]] [[UNKNOWN: refund rate]]' }), otak.DEFAULT_TEMPLATE);
   assert.ok(!/\[\[|\]\]/.test(r.reply), r.reply);
   assert.ok(r.reply.startsWith('Halo Sari, silakan hubungi tim.'));
-  assert.ok(r.reply.endsWith('WhatsApp: ' + WA));
+  assert.ok(r.reply.endsWith('Tanya lewat WhatsApp: ' + WA));
   assert.deepStrictEqual([r.handoff, r.order, r.alert, r.name, r.lead, r.unknown], [false, false, 'urgent', 'Sari', 'minta=price list; nama=Sari', 'refund rate']);
   assert.strictEqual(otak.parseOutput('{"reply":"x [[FRAUD]] [[URGENT]]"}', '').alert, 'fraud', 'fraud lebih penting dari urgent');
   const h = otak.parseOutput('{"reply":"Baik, mohon tunggu. [[HUMAN]]"}', otak.DEFAULT_TEMPLATE);
@@ -260,7 +307,7 @@ t('handleMessage toko owner: prompt dari otak, tanpa katalog, penanda dibuang da
   assert.ok(!sys.includes('DATA TOKO') && !sys.includes('Produk Biasa'), 'produk toko tidak ikut');
   assert.deepStrictEqual([geminiCalls[0].maxTokens, geminiCalls[0].lowThinking], [2048, true], 'jawaban panjang dan berpikir minimal seperti portal');
   const out = r.messages.filter(m => m.role === 'bot').map(m => m.content).join('\n');
-  assert.ok(out.includes('Wholesale mulai $50') && !out.includes('[[') && out.endsWith('WhatsApp: ' + WA));
+  assert.ok(out.includes('Wholesale mulai $50') && !out.includes('[[') && out.endsWith('WhatsApp: ' + WA) || out.endsWith('Ask on WhatsApp: ' + WA) || out.endsWith('Tanya lewat WhatsApp: ' + WA));
   assert.strictEqual(conv(r).status, 'bot');
   assert.strictEqual(alerts.length, 0);
   assert.strictEqual(r.offerLead, undefined, 'kartu tawaran kontak chatbot biasa tidak dipakai');
