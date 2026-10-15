@@ -20,7 +20,7 @@ const NOTIFY_KEY = (shopId) => 'pesanan-kabari:' + shopId;
 const WIB = 7 * 3600000;
 
 function readNotifyPref(shopId) {
-  try { return window.localStorage.getItem(NOTIFY_KEY(shopId)) !== '0'; } catch (e) { return true; }
+  try { return window.localStorage.getItem(NOTIFY_KEY(shopId)) === '1'; } catch (e) { return false; }   // mati bawaan: asisten hanya mencatat, admin yang menghubungi pelanggan
 }
 
 // Awal periode ekspor menurut WIB. null = tanpa batas.
@@ -184,7 +184,7 @@ export default function PesananTab({ sb, shop, refreshBadges, fail, toast }) {
       <p className="hint">Pesanan yang dicatat asisten dari chat. Konfirmasi total dan ongkir langsung ke pelanggan lewat percakapan, lalu ubah statusnya di sini.</p>
       <label className="sw" htmlFor="pk">
         <input id="pk" type="checkbox" checked={notifyOn} onChange={(e) => changeNotify(e.target.checked)} />
-        Kabari pelanggan otomatis saat status berubah
+        Kirim pesan otomatis ke pelanggan saat status berubah (bawaan: mati)
       </label>
       {!detailsOn ? <p className="hint note">Rincian barang dan total belum aktif. Jalankan migrasi <b>pesanan_terstruktur.sql</b> di Supabase.</p> : null}
       <div className="chips" role="group" aria-label="Filter status pesanan">

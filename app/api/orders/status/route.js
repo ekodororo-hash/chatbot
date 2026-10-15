@@ -9,7 +9,7 @@ const json = (body, status = 200) => Response.json(body, { status, headers: { 'C
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Ubah status pesanan (pemilik dan admin toko), lalu kabari pelanggan lewat saluran percakapannya.
-// Body: { conversationId, status, notifyCustomer? }. notifyCustomer=false mengubah status tanpa mengirim pesan.
+// Body: { conversationId, status, notifyCustomer? }. Tanpa notifyCustomer: true, status berubah tanpa mengirim pesan.
 // Hasil notified: 'sent' (terkirim ke Telegram/WhatsApp), 'saved' (tersimpan di chat web), 'failed', atau 'none'.
 // Gagal mengabari tidak membatalkan perubahan status; alasannya dikembalikan di notifyError.
 export async function POST(request) {
@@ -47,7 +47,8 @@ export async function POST(request) {
     } catch (e) { console.error('Status rincian pesanan dilewati:', e && e.message); }
 
     const res = { ok: true, status: next, notified: 'none' };
-    if (b.notifyCustomer === false || !orders.shouldNotify(prev, next)) return json(res);
+    // Pesan otomatis ke pelanggan hanya bila diminta jelas (notifyCustomer: true). Bawaannya tidak mengirim apa pun.
+    if (b.notifyCustomer !== true || !orders.shouldNotify(prev, next)) return json(res);
 
     const text = orders.statusMessage(shop, next, name);
     const conv = c.data;

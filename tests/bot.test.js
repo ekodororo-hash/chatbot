@@ -1214,6 +1214,12 @@ t('daftar produk: prompt menyuruh menyebut contoh nama produk, bukan menolak, ba
   }
 });
 
+t('pesanan: prompt tidak menyuruh menanyakan alamat; cukup produk, jumlah, nama, lalu dicatat untuk dihubungi admin', async () => {
+  const sys = I.buildSystem({ name: 'Toko', bot_name: 'A', tone: 'ramah', fallback: 'x' }, [{ name: 'Susu UHT', price: 19000, stock: 5, description: '' }], [], false);
+  assert.ok(sys.includes('JANGAN menanyakan alamat') && sys.includes('admin akan segera menghubungi'));
+  assert.ok(!sys.includes('alamat lengkap paling akhir'));
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
