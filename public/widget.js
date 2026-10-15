@@ -231,8 +231,14 @@
     setInterval(syncLang, 1000);
     try { new MutationObserver(syncLang).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); } catch (e) {}
     window.addEventListener('popstate', syncLang);
+    // Timer di browser HP sering ditahan saat tab di latar belakang: sinkronkan juga saat tab kembali aktif.
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) syncLang(); });
+    window.addEventListener('pageshow', syncLang);
+    window.addEventListener('focus', syncLang);
+    // Setiap pesan buka/tutup membawa bahasa situs saat itu. Di HP chat menutupi seluruh layar, jadi bahasa situs
+    // baru bisa diganti setelah chat ditutup; dengan ini chat selalu disinkronkan ulang tepat saat dibuka lagi.
     function tellFrame(type) {
-      if (frame && frame.contentWindow) { try { frame.contentWindow.postMessage({ type: type }, '*'); } catch (e) {} }
+      if (frame && frame.contentWindow) { try { frame.contentWindow.postMessage({ type: type, lang: siteLang() || 'id' }, '*'); } catch (e) {} }
     }
     function open() {
       hideTip(true);
