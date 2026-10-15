@@ -22,6 +22,7 @@ assert.strictEqual(bad.color, '#0b7a75');
 assert.strictEqual(bad.pos, 'right');
 assert.strictEqual(bad.size, 'sedang');
 assert.strictEqual(bad.shape, 'bulat');
+assert.strictEqual(wc.clean({ widget_shape: 'lancip' }).shape, 'lancip');
 assert.strictEqual(bad.label.length, 30);
 assert.strictEqual(bad.icon, '\uD83D\uDCAC');
 

@@ -64,7 +64,7 @@
       label: text(c.label, 30, ''),
       teaser: text(c.teaser, 100, ''),
       size: pick(c.size, ['kecil', 'sedang', 'besar'], 'sedang'),
-      shape: pick(c.shape, ['bulat', 'kotak'], 'bulat'),
+      shape: pick(c.shape, ['bulat', 'kotak', 'lancip'], 'bulat'),
       ox: num(c.ox, 0, 200, 20),
       oy: num(c.oy, 0, 200, 20)
     };
@@ -101,7 +101,8 @@
     var boxH = { kecil: 500, sedang: 560, besar: 620 }[c.size];
     var boxWLg = { kecil: 380, sedang: 440, besar: 480 }[c.size];
     var boxHLg = { kecil: 600, sedang: 680, besar: 760 }[c.size];
-    var radius = c.shape === 'kotak' ? '16px' : (c.label ? '999px' : '50%');
+    // lancip: bulat dengan satu sudut runcing di bawah, di sisi yang dekat tepi layar (seperti ekor balon chat)
+    var radius = c.shape === 'kotak' ? '16px' : (c.shape === 'lancip' ? (c.pos === 'left' ? '999px 999px 999px 0' : '999px 999px 0 999px') : (c.label ? '999px' : '50%'));
     var boxBottom = c.oy + px + 12;
 
     var css = document.createElement('style');
