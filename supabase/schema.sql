@@ -77,8 +77,10 @@ create index conversations_channel_ext on public.conversations (shop_id, channel
 create unique index messages_shop_external on public.messages (shop_id, external_id) where external_id is not null;
 
 -- Perbarui waktu percakapan setiap ada pesan baru
+-- security definer: pemilik hanya punya izin ubah kolom tertentu (lihat grant di bawah), jadi trigger ini harus jalan
+-- dengan hak pemilik fungsi. Tanpa ini, balasan admin dari dashboard gagal: "permission denied for table conversations".
 create or replace function public.touch_conversation() returns trigger
-language plpgsql as $$
+language plpgsql security definer set search_path = public as $$
 begin
   update public.conversations set updated_at = now() where id = new.conversation_id;
   return new;
