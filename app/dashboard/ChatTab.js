@@ -69,10 +69,8 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
         )}
         {(convs || []).map((c, i) => (
           <div key={c.id} className={'li conv' + (c.status === 'human' ? ' alert' : '')}>
-            <span className="no" aria-label={'Nomor ' + (i + 1) + (c.status === 'human' ? ', butuh admin' : '')}>
-              {i + 1}
-              {c.status === 'human' ? <i className="dot" aria-hidden="true" /> : null}
-            </span>
+            {c.status === 'human' ? <i className="dot" aria-hidden="true" /> : null}
+            <span className="no" aria-label={'Nomor ' + (i + 1) + (c.status === 'human' ? ', butuh admin' : '')}>{i + 1}</span>
             <button className="open" type="button" onClick={() => onOpen(c)}>
               <div className="t">
                 <div className="nm"><b>{c.customer_name}</b><time dateTime={c.updated_at}>{dayTime(c.updated_at)}</time></div>
