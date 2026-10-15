@@ -51,7 +51,7 @@ class Q {
     return { data: m, error: null, count };
   }
 }
-const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], shop_billing: [], payments: [], _mid: 1 };
+const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], shop_billing: [], payments: [], leads: [], _mid: 1 };
 let rpcFail = false;
 const fake = {
   from: t => new Q(db, t),
@@ -1057,6 +1057,152 @@ t('bahasa: percakapan penuh dari pelanggan berbahasa Inggris pada toko besar tet
   const last = r.messages[r.messages.length - 1];
   assert.strictEqual(last.role, 'bot'); assert.ok(last.content.includes('85.000'));
   assert.ok(geminiCalls[geminiCalls.length - 1].system.includes('Kerudung Voal Premium'), 'produk hasil terjemahan masuk ke prompt jawaban');
+});
+
+
+/* ---------- Rating percakapan dan penangkapan kontak ---------- */
+const ratingLib = require('../lib/rating');
+const leadLib = require('../lib/leads');
+const chat = async (s, text, prev) => bot.handleMessage({ slug: s.slug, text, conversationId: prev && prev.conversationId, token: prev && prev.token });
+
+t('rating: nilai tidak valid, belum ada balasan, token salah, dan toko lain ditolak', async () => {
+  const s = seedShop(), other = seedShop(); geminiImpl = reply('Halo kak');
+  const first = await chat(s, 'Halo');
+  const base = { slug: s.slug, conversationId: first.conversationId, token: first.token };
+  await rejects(bot.rateConversation(Object.assign({}, base, { value: 5 })), 400);
+  await rejects(bot.rateConversation(Object.assign({}, base, { value: 'x' })), 400);
+  await rejects(bot.rateConversation(Object.assign({}, base, { value: 1, token: crypto.randomUUID() })), 404);
+  await rejects(bot.rateConversation(Object.assign({}, base, { value: 1, slug: other.slug })), 404);
+  // percakapan tanpa balasan bot/admin (misalnya sisa data) tidak bisa dinilai
+  const empty = db.conversations.find(c => c.id === first.conversationId);
+  const fresh = { id: crypto.randomUUID(), shop_id: s.id, visitor_token: crypto.randomUUID(), status: 'bot', created_at: new Date().toISOString() };
+  db.conversations.push(fresh);
+  await rejects(bot.rateConversation({ slug: s.slug, conversationId: fresh.id, token: fresh.visitor_token, value: 1 }), 400);
+  assert.ok(empty.rating == null, 'penilaian yang ditolak tidak tersimpan');
+});
+
+t('rating: jempol atas menyimpan nilai, jempol bawah menyimpan pertanyaan sebagai bahan FAQ, nilai bisa diubah', async () => {
+  const s = seedShop(); geminiImpl = reply('Maaf kak, belum tahu.');
+  let r = await chat(s, 'Tanya produk');
+  r = await chat(s, 'Apakah pashmina bisa dicuci mesin?', r);
+  r = await chat(s, 'oke', r);
+  const base = { slug: s.slug, conversationId: r.conversationId, token: r.token };
+  const row = db.conversations.find(c => c.id === r.conversationId);
+
+  assert.deepStrictEqual(await bot.rateConversation(Object.assign({}, base, { value: -1 })), { ok: true, rating: -1 });
+  assert.strictEqual(row.rating, -1);
+  assert.strictEqual(row.rating_q, 'Apakah pashmina bisa dicuci mesin?', 'pertanyaan dipilih, bukan "oke" atau tombol cepat');
+  assert.strictEqual(row.rating_done, false);
+  assert.ok(row.rated_at);
+
+  row.rating_done = true;   // pemilik sempat menandai beres, lalu pelanggan mengubah penilaiannya
+  await bot.rateConversation(Object.assign({}, base, { value: 1 }));
+  assert.strictEqual(row.rating, 1); assert.strictEqual(row.rating_q, null); assert.strictEqual(row.rating_done, false);
+  await bot.rateConversation(Object.assign({}, base, { value: 'down' }));
+  assert.strictEqual(row.rating, -1); assert.ok(row.rating_q);
+});
+
+t('rating: migrasi belum dijalankan -> pesan jelas (503), bukan error 500', async () => {
+  const s = seedShop(); geminiImpl = reply('Halo');
+  const r = await chat(s, 'Halo');
+  const orig = fake.from;
+  fake.from = (tbl) => { const q = orig(tbl); if (tbl === 'conversations') { const u = q.update.bind(q); q.update = (p) => { if ('rating' in p) { const e = new Error('kolom tidak ada'); e.code = '42703'; q.run = () => { throw e; }; } return u(p); }; } return q; };
+  try { await rejects(bot.rateConversation({ slug: s.slug, conversationId: r.conversationId, token: r.token, value: 1 }), 503); }
+  finally { fake.from = orig; }
+});
+
+t('rating: pickQuestion dan summarize', () => {
+  assert.strictEqual(ratingLib.pickQuestion(['ok', 'Tanya produk', 'Ada warna merah?', 'halo']), 'Ada warna merah?');
+  assert.strictEqual(ratingLib.pickQuestion(['pashmina yang kemarin dibeli luntur']), 'pashmina yang kemarin dibeli luntur', 'tanpa tanda tanya tapi cukup panjang');
+  assert.strictEqual(ratingLib.pickQuestion(['ok', 'ya']), '');
+  assert.strictEqual(ratingLib.pickQuestion([]), '');
+  assert.strictEqual(ratingLib.pickQuestion(['x'.repeat(500) + '?']).length, 200);
+  assert.deepStrictEqual(ratingLib.summarize([{ rating: 1 }, { rating: 1 }, { rating: -1 }, { rating: null }]), { up: 2, down: 1, total: 3, pct: 67 });
+  assert.strictEqual(ratingLib.summarize([]).pct, null);
+  assert.strictEqual(ratingLib.parseValue('up'), 1); assert.strictEqual(ratingLib.parseValue(-1), -1); assert.strictEqual(ratingLib.parseValue(0), 0);
+});
+
+t('kontak: normalisasi nomor dan email, menolak isian yang tidak masuk akal', () => {
+  const n = leadLib.normalizeContact;
+  for (const x of ['0812-3456-7890', '+62 812 3456 7890', '81234567890', '6281234567890', '(0812) 3456 7890'])
+    assert.deepStrictEqual(n(x), { kind: 'phone', value: '6281234567890' }, x);
+  assert.deepStrictEqual(n('+1 415 555 2671'), { kind: 'phone', value: '14155552671' });
+  assert.deepStrictEqual(n(' Budi.S+toko@Mail.CO.id '), { kind: 'email', value: 'budi.s+toko@mail.co.id' });
+  for (const x of ['', 'abc', '12345', '0', 'bad@x', '=cmd|x@y.id', 'a b@c.id', '0812', '9999999999', '+62 12', 'x'.repeat(130)])
+    assert.strictEqual(n(x), null, 'harus ditolak: ' + x);
+  assert.strictEqual(leadLib.formatContact('phone', '6281234567890'), '+62 8123 4567 890');
+  assert.strictEqual(leadLib.waLink('phone', '6281234567890'), 'https://wa.me/6281234567890');
+  assert.strictEqual(leadLib.waLink('email', 'a@b.co'), '');
+  const csv = leadLib.toCsv([{ kind: 'email', contact: '=HYPERLINK("x")@a.id', created_at: '2026-10-15' }]);
+  assert.ok(csv.includes('"\'=HYPERLINK(""x"")@a.id"'), 'awalan = diberi tanda kutip tunggal supaya tidak jadi rumus: ' + csv);
+});
+
+t('kontak: kartu tawaran muncul sekali, setelah pelanggan bertanya beberapa kali tanpa memesan', async () => {
+  const s = seedShop({ lead_on: true }); geminiImpl = reply('Ada kak, Pashmina Ceruti.');
+  let r = await chat(s, 'Ada pashmina?');
+  assert.ok(!r.offerLead, 'pesan pertama belum cukup');
+  r = await chat(s, 'Warna apa saja?', r);
+  assert.strictEqual(r.offerLead, true);
+  assert.ok(db.conversations.find(c => c.id === r.conversationId).lead_offered_at);
+  r = await chat(s, 'Terima kasih', r);
+  assert.ok(!r.offerLead, 'tidak ditawarkan lagi di percakapan yang sama');
+});
+
+t('kontak: tidak ditawarkan bila fitur mati, pelanggan memesan, atau dioper ke admin', async () => {
+  let s = seedShop(); geminiImpl = reply('Ada kak.');   // lead_on tidak ada = mati
+  let r = await chat(s, 'Ada pashmina?'); r = await chat(s, 'Warna apa saja?', r);
+  assert.ok(!r.offerLead);
+  s = seedShop({ lead_on: false });
+  r = await chat(s, 'Ada pashmina?'); r = await chat(s, 'Warna apa saja?', r);
+  assert.ok(!r.offerLead);
+
+  s = seedShop({ lead_on: true });
+  geminiImpl = reply('Siap, ditunggu ya kak.', false, true);
+  r = await chat(s, 'Ada pashmina?'); r = await chat(s, 'Saya pesan satu', r);
+  assert.ok(!r.offerLead, 'yang sedang memesan tidak ditawari promo');
+  geminiImpl = reply('Baik kak.');
+  r = await chat(s, 'Terima kasih', r);
+  assert.ok(!r.offerLead, 'percakapan yang sudah berstatus pesanan tidak pernah ditawari');
+
+  s = seedShop({ lead_on: true });
+  geminiImpl = reply('Saya sambungkan ke admin.', true);
+  r = await chat(s, 'Ada pashmina?'); r = await chat(s, 'Saya mau komplain', r);
+  assert.ok(!r.offerLead, 'saat handoff ke admin tidak menawarkan promo');
+});
+
+t('kontak: kalau tabel leads belum ada, bot tetap membalas tanpa menawarkan', async () => {
+  const s = seedShop({ lead_on: true }); geminiImpl = reply('Ada kak.');
+  const saved = db.leads; delete db.leads;
+  const oldErr = console.error; console.error = () => {};
+  try {
+    let r = await chat(s, 'Ada pashmina?'); r = await chat(s, 'Warna apa saja?', r);
+    assert.ok(!r.offerLead); assert.strictEqual(r.messages[r.messages.length - 1].role, 'bot');
+  } finally { console.error = oldErr; db.leads = saved; }
+});
+
+t('kontak: menyimpan lead, nomor yang sama tidak ganda, dan semua penolakan', async () => {
+  const s = seedShop({ lead_on: true }); geminiImpl = reply('Ada kak.');
+  let r = await chat(s, 'Ada pashmina?'); r = await chat(s, 'Warna apa saja?', r);
+  const base = { slug: s.slug, conversationId: r.conversationId, token: r.token };
+  await rejects(bot.saveLead(Object.assign({}, base, { contact: 'bukan kontak' })), 400);
+  await rejects(bot.saveLead(Object.assign({}, base, { contact: '0812-3456-7890', token: crypto.randomUUID() })), 404);
+
+  assert.deepStrictEqual(await bot.saveLead(Object.assign({}, base, { contact: '0812-3456-7890' })), { ok: true });
+  const mine = () => db.leads.filter(l => l.shop_id === s.id);
+  assert.strictEqual(mine().length, 1);
+  assert.deepStrictEqual([mine()[0].kind, mine()[0].contact, mine()[0].conversation_id], ['phone', '6281234567890', r.conversationId]);
+  await bot.saveLead(Object.assign({}, base, { contact: '+62 812 3456 7890' }));
+  assert.strictEqual(mine().length, 1, 'nomor yang sama (beda penulisan) tidak disimpan dua kali');
+  await bot.saveLead(Object.assign({}, base, { contact: 'Budi@Mail.com' }));
+  assert.strictEqual(mine().length, 2);
+  await bot.saveLead(Object.assign({}, base, { contact: 'budi2@mail.com' }));
+  await rejects(bot.saveLead(Object.assign({}, base, { contact: 'budi3@mail.com' })), 429);   // batas per percakapan
+
+  const off = seedShop();   // fitur mati: ditolak walau percakapan dan token sah
+  const r2 = await chat(off, 'Halo');
+  await rejects(bot.saveLead({ slug: off.slug, conversationId: r2.conversationId, token: r2.token, contact: 'a@b.co' }), 404);
+  const other = seedShop({ lead_on: true });   // percakapan toko lain tidak bisa dipakai
+  await rejects(bot.saveLead({ slug: other.slug, conversationId: r.conversationId, token: r.token, contact: 'a@b.co' }), 404);
 });
 
 (async () => {

@@ -16,6 +16,7 @@ import LanggananTab from './LanggananTab';
 import RingkasanTab from './RingkasanTab';
 import PesananTab from './PesananTab';
 import BelumTab from './BelumTab';
+import KontakTab from './KontakTab';
 
 const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, role: d.role, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange, onShopDeleted: d.onShopDeleted, refreshBadges: d.refreshBadges });
 
@@ -54,7 +55,12 @@ export function LanggananView() {
   );
 }
 
-export function RingkasanView() { return <RingkasanTab {...common(useDash())} />; }
+export function RingkasanView() {
+  const d = useDash();
+  const router = useRouter();
+  return <RingkasanTab {...common(d)} onMakeFaq={(q) => { d.setPrefillQ(q); router.push('/dashboard/faq'); }} />;
+}
+export function KontakView() { return <KontakTab {...common(useDash())} />; }
 export function PesananView() { return <PesananTab {...common(useDash())} />; }
 export function BelumView() {
   const d = useDash();

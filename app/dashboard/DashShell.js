@@ -18,6 +18,7 @@ const TABS = [
   ['/dashboard/ringkasan', 'Ringkasan', 'ringkasan'],
   ['/dashboard', 'Percakapan', 'chat'],
   ['/dashboard/pesanan', 'Pesanan', 'pesanan'],
+  ['/dashboard/kontak', 'Kontak', 'kontak'],
   ['/dashboard/belum-terjawab', 'Belum terjawab', 'belum'],
   ['/dashboard/produk', 'Produk', 'produk'],
   ['/dashboard/faq', 'FAQ', 'faq'],
@@ -36,6 +37,7 @@ const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pas
 const ICON = {
   ringkasan: 'M3 20h18M6 20v-7m6 7V5m6 15v-10',
   pesanan: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0',
+  kontak: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
   belum: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 8v5m0 3h.01',
   chat: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8Z',
   produk: 'M21 8 12 3 3 8m18 0-9 5m9-5v8l-9 5m0-8L3 8m9 5v8M3 8v8l9 5',
@@ -71,7 +73,7 @@ function PageSkeleton({ href }) {
       </div>
     );
   }
-  if (href === '/dashboard' || !href || href === '/dashboard/pesanan' || href === '/dashboard/belum-terjawab') return <div className="card"><SkConvRows rows={4} /></div>;
+  if (href === '/dashboard' || !href || href === '/dashboard/pesanan' || href === '/dashboard/kontak' || href === '/dashboard/belum-terjawab') return <div className="card"><SkConvRows rows={4} /></div>;
   return <div className="card"><SkForm fields={href === '/dashboard/bot' ? 5 : 4} /></div>;
 }
 

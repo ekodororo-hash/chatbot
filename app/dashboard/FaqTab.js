@@ -115,6 +115,8 @@ export default function FaqTab({ sb, shop, prefillQ, onPrefillUsed, fail, toast 
       const like = origQ.replace(/[\\%_]/g, '\\$&') + '%';
       const r = await sb.from('conversations').update({ unanswered: false }).eq('shop_id', shop.id).eq('unanswered', true).ilike('last_question', like);
       if (r.error) console.error(r.error);
+      // Pertanyaan yang sama dari daftar "Dinilai kurang baik" di Ringkasan ikut ditandai beres. Gagal (kolom belum ada) diabaikan.
+      await sb.from('conversations').update({ rating_done: true }).eq('shop_id', shop.id).eq('rating', -1).eq('rating_done', false).ilike('rating_q', like);
     }
     toast('FAQ ditambahkan.');
     setQ(''); setA('');

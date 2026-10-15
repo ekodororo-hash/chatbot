@@ -49,6 +49,7 @@ function fromShop(shop) {
     fallback: shop.fallback, daily_limit: String(shop.daily_limit), accent: shop.accent,
     general_on: shop.general_on === true, general_topic: shop.general_topic || '',
     reply_language: shop.reply_language === 'auto' ? 'auto' : 'id',
+    lead_on: shop.lead_on === true,
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat',
@@ -120,6 +121,7 @@ function WidgetPreview({ f }) {
 /* Halaman Asisten AI: /dashboard/bot (alamat tetap, hanya namanya yang berubah). Judul tab diatur di bot/layout.js. */
 export default function BotPage() {
   const { sb, shop, onShopChange, fail, toast } = useDash();
+  const leadReady = Object.prototype.hasOwnProperty.call(shop, 'lead_on');
   const [used, setUsed] = useState(null);
   const [f, setF] = useState(() => fromShop(shop));
   const [saved, setSaved] = useState(() => fromShop(shop));
@@ -173,6 +175,7 @@ export default function BotPage() {
       hours_on: f.hours_on, hours_open: f.hours_open || '09:00', hours_close: f.hours_close || '17:00',
       hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
+    if (leadReady) patch.lead_on = f.lead_on;   // kolom ini baru ada setelah migrasi rating_dan_kontak.sql
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
     if (error) return fail(error);
@@ -236,6 +239,18 @@ export default function BotPage() {
           </span>
           <input id="b7" type="checkbox" checked={f.general_on} onChange={(e) => setF((p) => ({ ...p, general_on: e.target.checked }))} />
         </label>
+        <label htmlFor="b7l" className="swrow">
+          <span className="swrow-t">
+            <b>Tawarkan pengunjung dikabari soal promo</b>
+            <small>
+              {leadReady
+                ? 'Setelah pengunjung bertanya beberapa kali tanpa memesan, chat menawarkan "mau dikabari kalau ada promo?" dan menyimpan nomor WhatsApp atau emailnya. Hasilnya ada di menu Kontak.'
+                : 'Belum aktif di database. Jalankan supabase/migrations/rating_dan_kontak.sql di Supabase dulu.'}
+            </small>
+          </span>
+          <input id="b7l" type="checkbox" disabled={!leadReady} checked={f.lead_on} onChange={(e) => setF((p) => ({ ...p, lead_on: e.target.checked }))} />
+        </label>
+
         {f.general_on ? (
           <div className="fgrid one">
             <div>

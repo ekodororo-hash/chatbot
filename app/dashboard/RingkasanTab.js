@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Sk } from '../components/Skeleton';
 import orderLib from '@/lib/orders';
-import { authFetch, rp, startOfTodayWIB } from './helpers';
+import ratingLib from '@/lib/rating';
+import { Busy, authFetch, dayTime, rp, startOfTodayWIB } from './helpers';
 import { useRealtime } from './useRealtime';
 
 const DAY = 86400000;
@@ -35,9 +36,10 @@ function Stat({ label, value, note }) {
 
 const head = (q) => q.then((r) => (r.error ? null : r.count || 0));
 
-export default function RingkasanTab({ sb, shop, role, fail }) {
+export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast }) {
   const [d, setD] = useState(null);
   const [quota, setQuota] = useState(null);
+  const [busy, setBusy] = useState('');
   // Pemilik: kartu kuota ditahan tempatnya (kerangka) selagi data paket dimuat, supaya halaman tidak bergeser.
   const [quotaLoading, setQuotaLoading] = useState(role === 'owner');
 
@@ -63,6 +65,17 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
       // Penjualan bulan ini dari tabel orders. Null kalau tabelnya belum ada (migrasi belum dijalankan): kartunya disembunyikan.
       const ord = await sb.from('orders').select('status,items,subtotal').eq('shop_id', shop.id).gte('created_at', iso(month)).limit(5000);
       const sales = ord.error ? null : orderLib.summarize(ord.data || [], 5);
+      // Kepuasan 30 hari terakhir. Null kalau kolom rating belum ada (migrasi rating_dan_kontak.sql belum dijalankan): kartunya disembunyikan.
+      const since = iso(new Date(Date.now() - 30 * DAY));
+      const rated = await sb.from('conversations').select('rating').eq('shop_id', shop.id).not('rating', 'is', null).gte('rated_at', since).limit(5000);
+      let csat = null, bad = [];
+      if (!rated.error) {
+        csat = ratingLib.summarize(rated.data || []);
+        const b = await sb.from('conversations').select('id,rating_q,rated_at').eq('shop_id', shop.id)
+          .eq('rating', -1).eq('rating_done', false).order('rated_at', { ascending: false }).limit(5);
+        if (!b.error) bad = b.data || [];
+      }
+      const leads = await head(sb.from('leads').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id));
       const perDay = {};
       const byChannel = {};
       (week7.data || []).forEach((r) => {
@@ -82,7 +95,7 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
       setD({
         convToday, botToday, botMonth, human, unanswered,
         ordersNew: ordersNew || 0, ordersProses: ordersProses || 0, ordersOn: ordersNew !== null,
-        week: (week7.data || []).length, days, byChannel, sales
+        week: (week7.data || []).length, days, byChannel, sales, csat, bad, leads
       });
     } catch (e) { fail(e); }
   }, [sb, shop.id, fail]);
@@ -100,6 +113,15 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
       .finally(() => { if (alive) setQuotaLoading(false); });
     return () => { alive = false; };
   }, [sb, shop.id, role]);
+
+  async function markDone(id) {
+    setBusy(id);
+    const { error } = await sb.from('conversations').update({ rating_done: true }).eq('id', id);
+    setBusy('');
+    if (error) { fail(error); return; }
+    setD((x) => ({ ...x, bad: x.bad.filter((r) => r.id !== id) }));
+    toast('Ditandai beres.');
+  }
 
   if (!d) {
     return (
@@ -179,6 +201,59 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
           ) : pct >= 80 ? (
             <p className="hint note">Kuota hampir habis. Setelah habis, pesan pelanggan langsung masuk ke admin tanpa dijawab asisten.</p>
           ) : null}
+        </div>
+      ) : null}
+
+      {d.csat ? (
+        <div className="card">
+          <div className="chead">
+            <div>
+              <h2>Kepuasan pelanggan</h2>
+              <p className="hint">Penilaian jempol atas/bawah dari pelanggan chat web dalam 30 hari terakhir.</p>
+            </div>
+          </div>
+          {d.csat.total ? (
+            <div className="stats">
+              <Stat label="Puas" value={d.csat.pct + '%'} note={num(d.csat.total) + ' penilaian'} />
+              <Stat label="Jempol atas" value={num(d.csat.up)} note="puas" />
+              <Stat label="Jempol bawah" value={num(d.csat.down)} note="kurang puas" />
+            </div>
+          ) : <p className="hint">Belum ada penilaian. Pelanggan bisa menilai lewat tautan "Beri nilai percakapan" di chat, atau otomatis saat percakapan ditandai selesai.</p>}
+          {d.bad.length ? (
+            <>
+              <h3 style={{ margin: '4px 0 6px', fontSize: 15 }}>Dinilai kurang baik</h3>
+              <p className="hint">Pertanyaan pelanggan di percakapan ini bisa dijadikan FAQ, supaya asisten menjawabnya lebih baik lain kali.</p>
+              <div className="rows">
+                {d.bad.map((r) => (
+                  <div key={r.id} className="srow">
+                    <div className="t stack">
+                      <b style={{ whiteSpace: 'normal' }}>{r.rating_q || 'Pelanggan tidak menulis pertanyaan yang jelas'}</b>
+                      <small>{'Dinilai ' + dayTime(r.rated_at)}</small>
+                    </div>
+                    <div className="row">
+                      {r.rating_q ? <button className="btn sm" type="button" onClick={() => onMakeFaq(r.rating_q)}>Jadikan FAQ</button> : null}
+                      <Link className="btn ghost sm" href={'/dashboard?c=' + r.id}>Buka chat</Link>
+                      <button className="btn ghost sm" type="button" disabled={busy === r.id} onClick={() => markDone(r.id)}>
+                        <Busy on={busy === r.id} label="Menyimpan...">Tandai beres</Busy>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      {d.leads ? (
+        <div className="card">
+          <div className="chead">
+            <div>
+              <h2>Kontak pelanggan</h2>
+              <p className="hint">{num(d.leads) + ' pengunjung bersedia dikabari soal promo.'}</p>
+            </div>
+            <Link className="btn ghost sm" href="/dashboard/kontak">Lihat kontak</Link>
+          </div>
         </div>
       ) : null}
 

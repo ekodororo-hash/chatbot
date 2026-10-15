@@ -49,7 +49,10 @@ export async function GET(request, context) {
     logo: wc.logo,
     bubble: wc.bubble,
     hours: wc.hours,
-    eta: wc.eta
+    eta: wc.eta,
+    // Kolom lead_on ada hanya setelah migrasi rating_dan_kontak.sql dijalankan: sebelum itu, penilaian dan tawaran kontak tidak ditampilkan.
+    rating: Object.prototype.hasOwnProperty.call(shop, 'lead_on'),
+    lead: shop.lead_on === true
   };
   const html = TEMPLATE.replace('__CONFIG__', () => safeJson(cfg));
 

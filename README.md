@@ -38,6 +38,8 @@ app/page.js                  beranda
 app/login/                   halaman masuk dan daftar
 app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShell.js, satu route per menu: /dashboard, /produk, /faq, /toko, /bot, /pasang, /notifikasi, /tim, /langganan)
 app/api/chat/route.js        POST pesan pelanggan, GET polling balasan admin
+app/api/rating/route.js      POST penilaian jempol atas/bawah dari halaman chat
+app/api/lead/route.js        POST nomor/email pengunjung yang mau dikabari soal promo
 app/api/billing/route.js     status paket, checkout, periksa pembayaran (khusus pemilik)
 app/api/midtrans/route.js    webhook notifikasi pembayaran Midtrans
 app/api/doku/route.js        webhook notifikasi pembayaran DOKU
@@ -47,6 +49,8 @@ lib/bot.js                   alur percakapan, batas laju, batas harian, prompt, 
 lib/gemini.js                pemanggil Gemini (key dan model per paket dari /admin/ai; cadangan env GEMINI_API_KEY / GEMINI_MODEL)
 lib/plans.js                 paket, harga, kuota, diskon, perhitungan masa berlaku (bisa diubah dari /admin/paket)
 lib/billing.js               Midtrans Snap dan DOKU Checkout, verifikasi webhook, perpanjangan paket
+lib/rating.js                logika penilaian (memilih pertanyaan untuk FAQ, ringkasan kepuasan)
+lib/leads.js                 validasi nomor/email, format tampilan, ekspor CSV kontak
 lib/notify.js                notifikasi admin (Telegram) dan perintah /admin KODE
 lib/auth.js                  pemeriksaan anggota/pemilik toko untuk API dashboard (header X-Shop-Id)
 lib/domains.js               validasi domain dan pembuat CSP
@@ -55,7 +59,7 @@ lib/supabase.js              klien server (Secret/service role key)
 lib/supabaseBrowser.js       klien browser (Publishable/anon key)
 public/widget.js             widget yang ditempel di website klien (tampilan dibaca dari /api/widget/slug)
 supabase/schema.sql          tabel, indeks, dan aturan keamanan (RLS)
-tests/bot.test.js            60 tes untuk otak bot, saluran, notifikasi, pencarian katalog, dan langganan (npm test)
+tests/bot.test.js            82 tes untuk otak bot, saluran, notifikasi, pencarian katalog, dan langganan (npm test)
 ```
 
 **Kenapa halaman chat bukan komponen React?** Halaman `/chat/:slug` dipasang sebagai iframe di website klien, dan harus membawa
@@ -176,10 +180,24 @@ Midtrans dan DOKU boleh aktif bersamaan: pemilik toko memilih metode di halaman 
 
 Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), faktur/PPN, pengingat lewat email (yang ada baru lewat Telegram), dan pembatasan fitur per paket selain kuota balasan (jumlah toko, saluran Telegram/WhatsApp).
 
+## Rating percakapan dan kontak pelanggan
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/rating_dan_kontak.sql` di Supabase SQL Editor (aman dijalankan ulang; proyek baru sudah tercakup di `schema.sql`). Ini menambah kolom `conversations.rating`, `rated_at`, `rating_q`, `rating_done`, `lead_offered_at`, kolom `shops.lead_on`, dan tabel `leads`. Kalau belum dijalankan, bot dan halaman lain tetap jalan; kartu penilaian dan tawaran kontak tidak ditampilkan, dan menu Kontak memberi petunjuk menjalankan migrasi.
+
+**Rating (jempol atas/bawah).** Di chat web, kartu "Bagaimana pelayanan kami?" muncul sendiri saat percakapan ditandai selesai. Sebelum itu, pelanggan bisa membukanya lewat tautan kecil "Beri nilai percakapan" di bawah kolom pesan (muncul setelah ada balasan). Penilaian disimpan lewat `/api/rating`, hanya bisa dilakukan pemilik percakapan (token pengunjung), dan nilai terakhir yang berlaku.
+- **Ringkasan > Kepuasan pelanggan:** persen puas dan jumlah jempol atas/bawah selama 30 hari terakhir.
+- **Dinilai kurang baik:** setiap jempol bawah menyimpan satu pertanyaan pelanggan (dipilih otomatis: yang bernada pertanyaan, bukan tombol cepat atau "ok"). Tombol **Jadikan FAQ** membuka form FAQ dengan pertanyaan itu sudah terisi; setelah FAQ disimpan, barisnya hilang dari daftar. **Tandai beres** menghapusnya tanpa membuat FAQ.
+- Hanya chat web. Penilaian untuk Telegram/WhatsApp belum ada.
+
+**Kontak pelanggan (lead).** Mati secara bawaan; nyalakan di **Asisten AI > Tawarkan pengunjung dikabari soal promo**. Setelah pengunjung mengirim minimal 2 pesan, belum memesan, dan tidak sedang dioper ke admin, chat menampilkan kartu "Mau dikabari kalau ada promo?" **satu kali per percakapan**. Nomor (format Indonesia disatukan ke `62812...`, nomor luar negeri harus diawali `+`) atau email divalidasi di server dan disimpan di tabel `leads`, tanpa duplikat per toko. Batas: 3 kontak per percakapan dan 20 per menit per toko.
+- **Menu Kontak:** daftar kontak, salin, buka WhatsApp, buka chat asal, hapus, dan unduh CSV (sel diamankan dari rumus Excel). Ini bahan untuk fitur broadcast promo nanti; broadcast-nya sendiri belum dibuat.
+- Kartu menjanjikan "bisa minta berhenti kapan saja". Kalau pelanggan minta berhenti, hapus kontaknya di menu Kontak. Hubungi kontak hanya soal promo toko, sesuai yang ditawarkan.
+
 ## Yang belum ada (tahap berikutnya)
 
 - Perpanjangan otomatis (kartu tersimpan/langganan berulang). Pengingat masa langganan habis sudah ada, lihat bagian Pengingat langganan.
 - Pencarian produk berbasis makna (embedding) untuk katalog yang pelanggannya sering memakai sinonim.
+- Broadcast promo ke kontak yang terkumpul, dan penilaian untuk saluran Telegram/WhatsApp.
 
 ## Catatan Gemini
 
