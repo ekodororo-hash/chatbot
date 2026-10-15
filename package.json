@@ -8,7 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/bot.test.js && node tests/otak.test.js && node tests/gemini.test.js && node tests/widget.test.js && node tests/pasang.test.js"
+    "test": "node tests/bot.test.js && node tests/otak.test.js && node tests/gemini.test.js && node tests/widget.test.js && node tests/pasang.test.js && node tests/pengetahuan.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
