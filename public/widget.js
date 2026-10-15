@@ -12,6 +12,28 @@
   try { origin = new URL(s.src).origin; } catch (e) { return; }
   if (document.getElementById('isengin-chat-btn')) return;
 
+  /* Bahasa chat mengikuti bahasa situs. Urutan: (1) diatur manual lewat data-lang="id" di tag script atau
+     IsenginChat.setLang('id') dari kode situs, (2) ?lang= di URL, (3) segmen pertama path (/id/..., /en/...),
+     (4) atribut lang di <html>. Kalau bahasa situs berganti saat halaman terbuka (tanpa reload), chat ikut berganti. */
+  var SUPPORTED = ['id', 'en', 'it', 'es', 'fr', 'ar', 'de', 'ru'];
+  function langCode(v) {
+    var m = /^([a-z]{2})(?:[-_][a-z0-9]{2,8})?$/i.exec(String(v || '').trim());
+    var c = m ? m[1].toLowerCase() : '';
+    return SUPPORTED.indexOf(c) >= 0 ? c : '';
+  }
+  var dl = (s.getAttribute('data-lang') || '').trim().toLowerCase();
+  var langOverride = dl === 'auto' ? '' : langCode(dl);
+  var onLang = function () {};
+  window.IsenginChat = { setLang: function (l) { langOverride = langCode(l); onLang(); } };
+  function siteLang() {
+    if (langOverride) return langOverride;
+    var l = '';
+    try { l = langCode(new URLSearchParams(location.search).get('lang')); } catch (e) {}
+    if (!l) { try { l = langCode(location.pathname.split('/')[1]); } catch (e) {} }
+    if (!l) { try { l = langCode(document.documentElement.lang); } catch (e) {} }
+    return l;
+  }
+
   var fbColor = s.getAttribute('data-color') || '#0b7a75';
   if (!/^#[0-9a-fA-F]{6}$/.test(fbColor)) fbColor = '#0b7a75';
   var FALLBACK = { color: fbColor, pos: 'right', icon: '\uD83D\uDCAC', label: '', teaser: '', size: 'sedang', shape: 'bulat', ox: 20, oy: 20 };
@@ -167,7 +189,16 @@
       }
     }
 
-    var frame = null;
+    var frame = null, frameLang = '';
+    function frameSrc() {
+      frameLang = siteLang();
+      return origin + '/chat/' + encodeURIComponent(bot) + (frameLang ? '?lang=' + frameLang : '');
+    }
+    function syncLang() { if (frame && siteLang() !== frameLang) frame.src = frameSrc(); }
+    onLang = syncLang;
+    setInterval(syncLang, 1000);
+    try { new MutationObserver(syncLang).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); } catch (e) {}
+    window.addEventListener('popstate', syncLang);
     function tellFrame(type) {
       if (frame && frame.contentWindow) { try { frame.contentWindow.postMessage({ type: type }, '*'); } catch (e) {} }
     }
@@ -176,12 +207,9 @@
       clearBadge();
       if (!frame) {
         frame = document.createElement('iframe');
-        frame.src = origin + '/chat/' + encodeURIComponent(bot);
-        // Bahasa halaman situs (?lang= atau atribut lang) diteruskan ke chat, supaya status, pilihan cepat, dan balasan AI mengikutinya.
-        try {
-          var lg = (new URLSearchParams(location.search).get('lang') || document.documentElement.lang || '').toLowerCase().slice(0, 2);
-          if (/^[a-z]{2}$/.test(lg)) frame.src += '?lang=' + lg;
-        } catch (e) {}
+        frame.src = frameSrc();
+        // Setelah iframe (re)load, beri tahu chat apakah sedang terbuka atau tertutup.
+        frame.addEventListener('load', function () { tellFrame(box.classList.contains('show') ? 'isengin-open' : 'isengin-close'); });
         frame.title = 'Chat dengan asisten toko';
         box.appendChild(frame);
       }
