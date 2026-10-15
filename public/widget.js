@@ -74,10 +74,15 @@
       'box-shadow:0 6px 20px rgba(0,0,0,.25);font-family:system-ui,sans-serif}' +
       '#isengin-chat-btn span.l{font-size:15px;font-weight:600;white-space:nowrap}' +
       '#isengin-chat-btn:focus-visible,#isengin-chat-x:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px ' + color + '}' +
-      '#isengin-chat-box{display:none;position:fixed;' + side + ':20px;bottom:' + boxBottom + 'px;width:' + boxW + 'px;max-width:calc(100vw - 24px);' +
+      '#isengin-chat-box{position:fixed;' + side + ':20px;bottom:' + boxBottom + 'px;width:' + boxW + 'px;max-width:calc(100vw - 24px);' +
       'height:min(' + boxH + 'px,calc(100vh - ' + (boxBottom + 20) + 'px));border-radius:16px;overflow:hidden;background:#fff;z-index:2147483001;' +
-      'box-shadow:0 12px 40px rgba(0,0,0,.3)}' +
+      'box-shadow:0 12px 40px rgba(0,0,0,.3);opacity:0;visibility:hidden;transform:translateY(14px) scale(.98);pointer-events:none;' +
+      'transition:opacity .18s ease,transform .18s ease,visibility 0s .18s}' +
+      '#isengin-chat-box.show{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .18s ease,transform .18s ease}' +
+      '@media (prefers-reduced-motion:reduce){#isengin-chat-box{transition:opacity .12s ease,visibility 0s .12s}#isengin-chat-box.show{transition:opacity .12s ease}}' +
       '#isengin-chat-box iframe{width:100%;height:100%;border:0;display:block}' +
+      '#isengin-chat-badge{display:none;position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;' +
+      'background:#dc2626;box-shadow:0 0 0 2px #fff}' +
       '#isengin-chat-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;' +
       'background:rgba(0,0,0,.25);color:#fff;font-size:16px;cursor:pointer;z-index:2;font-family:system-ui,sans-serif}' +
       '#isengin-chat-tip{display:none;position:fixed;' + side + ':20px;bottom:' + boxBottom + 'px;max-width:min(260px,calc(100vw - 40px));' +
@@ -103,6 +108,13 @@
     }
     btn.setAttribute('aria-label', c.label ? 'Buka chat: ' + c.label : 'Buka chat');
     btn.setAttribute('aria-expanded', 'false');
+
+    var badge = document.createElement('span');
+    badge.id = 'isengin-chat-badge';
+    badge.setAttribute('aria-hidden', 'true');
+    btn.appendChild(badge);
+    function showBadge() { badge.style.display = 'block'; }
+    function clearBadge() { badge.style.display = 'none'; }
 
     var box = document.createElement('div');
     box.id = 'isengin-chat-box';
@@ -147,27 +159,38 @@
     }
 
     var frame = null;
+    function tellFrame(type) {
+      if (frame && frame.contentWindow) { try { frame.contentWindow.postMessage({ type: type }, '*'); } catch (e) {} }
+    }
     function open() {
       hideTip(true);
+      clearBadge();
       if (!frame) {
         frame = document.createElement('iframe');
         frame.src = origin + '/chat/' + encodeURIComponent(bot);
         frame.title = 'Chat dengan asisten toko';
         box.appendChild(frame);
       }
-      box.style.display = 'block';
+      box.classList.add('show');
       btn.classList.add('open');
       btn.setAttribute('aria-expanded', 'true');
+      tellFrame('isengin-open');
     }
     function close() {
-      box.style.display = 'none';
+      box.classList.remove('show');
       btn.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
       btn.focus();
+      tellFrame('isengin-close');
     }
-    btn.addEventListener('click', function () { box.style.display === 'block' ? close() : open(); });
+    btn.addEventListener('click', function () { box.classList.contains('show') ? close() : open(); });
     x.addEventListener('click', close);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && box.style.display === 'block') close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && box.classList.contains('show')) close(); });
+    window.addEventListener('message', function (e) {
+      if (!frame || e.source !== frame.contentWindow) return;
+      var d = e.data || {};
+      if (d.type === 'isengin-newmsg' && !box.classList.contains('show')) showBadge();
+    });
 
     document.body.appendChild(box);
     if (tip) document.body.appendChild(tip);
