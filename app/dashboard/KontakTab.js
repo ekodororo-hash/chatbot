@@ -61,7 +61,7 @@ export default function KontakTab({ sb, shop, fail, toast }) {
         <div className="chead">
           <div>
             <h2>{'Kontak pelanggan' + (rows && rows.length ? ' (' + rows.length + ')' : '')}</h2>
-            <p className="hint">Nomor WhatsApp atau email pengunjung yang mau dikabari kalau ada promo. Mereka mengisinya sendiri lewat kartu tawaran di chat.</p>
+            <p className="hint">Nomor WhatsApp atau email pengunjung yang mau dikabari kalau ada promo atau produk yang dicari tersedia. Mereka mengisinya sendiri lewat kartu tawaran di chat.</p>
           </div>
           {rows && rows.length ? <button className="btn ghost sm" type="button" onClick={download}>Unduh CSV</button> : null}
         </div>
