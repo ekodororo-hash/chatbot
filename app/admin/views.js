@@ -7,6 +7,7 @@ import { SkForm } from '../components/Skeleton';
 import { Panduan } from '../components/Panduan';
 import { useConfirm } from '../components/useConfirm';
 import { useAdmin } from './context';
+import WidgetEditor from './WidgetEditor';
 
 const dateOnly = (iso) => (iso ? new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
 const STATUS = { paid: 'Lunas', pending: 'Menunggu', failed: 'Gagal', expired: 'Kedaluwarsa' };
@@ -803,6 +804,47 @@ export function AiView() {
       </section>
 
       <p className="hint">Key disimpan terenkripsi di server dan tidak pernah ditampilkan penuh lagi setelah disimpan. Toko tanpa langganan aktif memakai paket Gratis. Nama model harus tersedia di akun penyedianya. Pakai tier gratis berarti kena batas laju penyedia, dan sebagian penyedia membatasi pemakaian komersial atau memakai data untuk pelatihan, jadi baca ketentuannya. Tombol “Tes” menguji pengaturan yang sudah tersimpan.</p>
+    </>
+  );
+}
+
+// Tampilan widget chat per toko. Bawaan: toko yang dipasang di situs sendiri (env WIDGET_BOT).
+export function WidgetView() {
+  const { data, post, toast } = useAdmin();
+  const shops = data.shops;
+  const start = (shops.find((s) => s.slug === data.widgetBot) || shops[0] || {}).id || '';
+  const [shopId, setShopId] = useState(start);
+  const [shop, setShop] = useState(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!shopId) return undefined;
+    let alive = true;
+    setShop(null); setErr('');
+    post({ action: 'get_widget', shopId }).then((r) => { if (alive) setShop(r.shop); }, (e) => { if (alive) setErr(e.message || 'Gagal memuat.'); });
+    return () => { alive = false; };
+  }, [shopId, post]);
+
+  async function onSave(patch) {
+    try { await post({ action: 'save_widget', shopId, widget: patch }); return ''; }
+    catch (e) { return e.message || 'Gagal menyimpan.'; }
+  }
+
+  if (!shops.length) return <section className="card"><Empty title="Belum ada toko">Widget diatur per toko, jadi buat toko dulu.</Empty></section>;
+  return (
+    <>
+      <section className="card">
+        <label htmlFor="wsel">Toko</label>
+        <select id="wsel" value={shopId} onChange={(e) => setShopId(e.target.value)}>
+          {shops.map((s) => <option key={s.id} value={s.id}>{s.name + ' (/' + s.slug + ')' + (s.slug === data.widgetBot ? ' - widget situs ini' : '')}</option>)}
+        </select>
+        {data.widgetBot
+          ? <p className="hint field-hint">{'Situs ini memasang widget toko "' + data.widgetBot + '" (env WIDGET_BOT). Perubahan berlaku tanpa deploy ulang.'}</p>
+          : <p className="hint field-hint">WIDGET_BOT belum diisi, jadi situs ini belum menampilkan widget. Isi dengan slug toko di env, lalu deploy sekali.</p>}
+      </section>
+      {err ? <p className="err" role="alert">{err}</p> : null}
+      {!shop && !err ? <div className="card"><SkForm fields={5} /></div> : null}
+      {shop ? <WidgetEditor key={shop.id} shop={shop} onSave={onSave} toast={toast} /> : null}
     </>
   );
 }

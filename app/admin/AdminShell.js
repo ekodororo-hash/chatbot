@@ -17,6 +17,7 @@ const TABS = [
   ['/admin/pengguna', 'Pengguna', 'pengguna'],
   ['/admin/paket', 'Paket', 'paket'],
   ['/admin/pembayaran', 'Pembayaran', 'pembayaran'],
+  ['/admin/widget', 'Widget', 'widget'],
   ['/admin/ai', 'AI', 'ai'],
   ['/admin/pengaturan', 'Pengaturan', 'pengaturan']
 ];
@@ -27,6 +28,7 @@ const SUBTITLE = {
   pengguna: 'Daftar akun pemilik dan anggota tim.',
   paket: 'Atur harga, kuota chat, dan diskon paket langganan.',
   pembayaran: 'Riwayat pembayaran langganan dari semua toko.',
+  widget: 'Tampilan chat di website: warna, posisi, ikon, label, dan pesan pop-up.',
   ai: 'API key dan model Gemini untuk tiap paket.',
   pengaturan: 'Koneksi penyedia pembayaran.'
 };
@@ -37,6 +39,7 @@ const ICON = {
   pengguna: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
   paket: 'M21 8 12 3 3 8v8l9 5 9-5ZM3 8l9 5 9-5M12 13v8',
   pembayaran: 'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2ZM2 10h20M6 15h4',
+  widget: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2ZM3 9h18M7 6h.01M11 6h.01',
   ai: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z',
   pengaturan: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z',
   dashboard: 'M3 3h7v9H3ZM14 3h7v5h-7ZM14 12h7v9h-7ZM3 16h7v5H3Z'
