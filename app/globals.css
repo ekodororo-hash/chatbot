@@ -46,6 +46,11 @@ button.li{cursor:pointer}
 .li.conv{position:relative}
 .li.conv .dot{position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--panel)}
 .li.conv.alert{background:color-mix(in srgb,var(--danger) 5%,var(--panel))}
+.iconpick{position:relative}
+.iconpick-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:6;display:flex;flex-wrap:wrap;gap:6px;width:max-content;max-width:260px;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.iconpick-i{width:36px;height:36px;display:grid;place-items:center;font-size:17px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;padding:0}
+.iconpick-i:hover{border-color:var(--accent)}
+.iconpick-i.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
 .li .open{flex:1;min-width:0;display:flex;gap:10px;align-items:center;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .li .t.stack b,.li .t.stack small{white-space:normal;overflow:visible}
 .li.edit{align-items:flex-start}

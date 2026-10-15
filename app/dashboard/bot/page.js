@@ -24,6 +24,33 @@ function fromShop(shop) {
   };
 }
 
+// Pratinjau jendela chat terbuka, dengan header, contoh percakapan, dan kolom tulis pesan.
+function ChatWindowPreview({ f }) {
+  const hex = /^#[0-9a-fA-F]{6}$/.test(f.accent) ? f.accent : WIDGET_DEFAULTS.accent;
+  const lum = (0.299 * parseInt(hex.slice(1, 3), 16) + 0.587 * parseInt(hex.slice(3, 5), 16) + 0.114 * parseInt(hex.slice(5, 7), 16)) / 255;
+  const onAccent = lum > 0.62 ? '#111' : '#fff';
+  const greeting = f.greeting.trim() || 'Halo kak, ada yang bisa dibantu?';
+  return (
+    <div aria-hidden="true" style={{ marginTop: 14, border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', maxWidth: 320 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: hex, color: onAccent }}>
+        <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', fontSize: 16, flex: 'none' }}>{f.widget_icon || DEFAULT_ICON}</span>
+        <div style={{ lineHeight: 1.25, minWidth: 0 }}>
+          <b style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.bot_name || 'Asisten'}</b>
+          <small style={{ opacity: .85, fontSize: 11 }}>Membalas otomatis</small>
+        </div>
+      </div>
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, background: '#f4f8f7', minHeight: 120 }}>
+        <div style={{ alignSelf: 'flex-start', maxWidth: '82%', background: '#fff', border: '1px solid #d3e4e0', borderRadius: '16px 16px 16px 4px', padding: '8px 12px', fontSize: 13, color: '#12262b' }}>{greeting}</div>
+        <div style={{ alignSelf: 'flex-end', maxWidth: '82%', background: hex, color: onAccent, borderRadius: '16px 16px 4px 16px', padding: '8px 12px', fontSize: 13 }}>Ada produk warna merah?</div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--line)', background: '#fff' }}>
+        <span style={{ flex: 1, border: '1px solid #d3e4e0', borderRadius: 999, padding: '8px 14px', fontSize: 13, color: '#587278', background: '#f4f8f7' }}>Tulis pesan...</span>
+        <span style={{ background: hex, color: onAccent, borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>Kirim</span>
+      </div>
+    </div>
+  );
+}
+
 // Pratinjau tombol chat seperti yang tampil di website klien.
 function WidgetPreview({ f }) {
   const px = SIZE_PX[f.widget_size] || 58;
@@ -58,6 +85,8 @@ export default function BotPage() {
   const [f, setF] = useState(() => fromShop(shop));
   const [saved, setSaved] = useState(() => fromShop(shop));
   const [busy, setBusy] = useState(false);
+  const [iconPicker, setIconPicker] = useState(false);
+  const [previewTab, setPreviewTab] = useState('tombol');
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
   const dirty = JSON.stringify(f) !== JSON.stringify(saved);
 
@@ -233,10 +262,27 @@ export default function BotPage() {
               <option value="kotak">Kotak membulat</option>
             </select>
           </div>
-          <div>
+          <div className="iconpick">
             <label htmlFor="w4">Ikon (emoji atau huruf)</label>
-            <input id="w4" maxLength={16} list="w4l" value={f.widget_icon} onChange={set('widget_icon')} />
-            <datalist id="w4l">{ICONS.map((e) => <option key={e} value={e} />)}</datalist>
+            <input
+              id="w4" maxLength={16} autoComplete="off" value={f.widget_icon} onChange={set('widget_icon')}
+              onFocus={() => setIconPicker(true)}
+              onBlur={() => setTimeout(() => setIconPicker(false), 150)}
+              role="combobox" aria-expanded={iconPicker} aria-controls="w4pop" aria-autocomplete="list"
+            />
+            {iconPicker ? (
+              <div className="iconpick-pop" id="w4pop" role="listbox" aria-label="Pilihan ikon">
+                {ICONS.map((e) => (
+                  <button
+                    key={e} type="button" role="option" aria-selected={f.widget_icon === e}
+                    className={'iconpick-i' + (f.widget_icon === e ? ' on' : '')}
+                    onMouseDown={(ev) => { ev.preventDefault(); setF((p) => ({ ...p, widget_icon: e })); setIconPicker(false); }}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div>
             <label htmlFor="w5">Teks di samping ikon (opsional)</label>
@@ -250,7 +296,11 @@ export default function BotPage() {
             <p className="hint field-hint">Muncul sekali di atas tombol setelah beberapa detik, dan tidak muncul lagi setelah ditutup.</p>
           </div>
         </div>
-        <WidgetPreview f={f} />
+        <div className="seg" role="group" aria-label="Pilih pratinjau" style={{ maxWidth: 260, marginTop: 14, marginBottom: 0 }}>
+          <button type="button" aria-pressed={previewTab === 'tombol'} onClick={() => setPreviewTab('tombol')}>Tombol</button>
+          <button type="button" aria-pressed={previewTab === 'chat'} onClick={() => setPreviewTab('chat')}>Jendela chat</button>
+        </div>
+        {previewTab === 'tombol' ? <WidgetPreview f={f} /> : <ChatWindowPreview f={f} />}
       </section>
 
       <div className="row savebar">
