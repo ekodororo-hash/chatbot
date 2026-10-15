@@ -141,6 +141,14 @@ export default function BotPage() {
   const [saved, setSaved] = useState(() => fromShop(shop));
   const [busy, setBusy] = useState(false);
   const [iconPicker, setIconPicker] = useState(false);
+  const iconPickRef = useRef(null);
+  useEffect(() => {
+    if (!iconPicker) return undefined;
+    const close = (ev) => { if (iconPickRef.current && !iconPickRef.current.contains(ev.target)) setIconPicker(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('touchstart', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close); };
+  }, [iconPicker]);
   const [previewTab, setPreviewTab] = useState('chat');
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
   async function pickLogo(e) {
@@ -365,47 +373,22 @@ export default function BotPage() {
 
             <h3 className="subh">Isi tombol</h3>
             <div className="fgrid">
-              <div className="iconpick">
-                <label htmlFor="w4">Ikon (pilih ikon, atau ketik emoji/huruf)</label>
-                {(() => {
-                  // Ikon SVG bawaan: tampilkan gambar + namanya, bukan teks mentah "svg:nama".
-                  const sk = iconPaths(f.widget_icon.trim()) ? f.widget_icon.trim().slice(4) : null;
-                  return (
-                    <div style={{ position: 'relative' }}>
-                      {sk ? (
-                        <span style={{ position: 'absolute', left: 12, top: 0, bottom: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                          <IconView icon={f.widget_icon.trim()} size={20} />
-                        </span>
-                      ) : null}
-                      <input
-                        id="w4" maxLength={16} autoComplete="off"
-                        value={sk ? SVG_ICONS[sk].label : f.widget_icon}
-                        readOnly={!!sk}
-                        style={sk ? { paddingLeft: 40, paddingRight: 40, cursor: 'pointer' } : undefined}
-                        onChange={set('widget_icon')}
-                        onFocus={() => setIconPicker(true)}
-                        onBlur={() => setTimeout(() => setIconPicker(false), 150)}
-                        role="combobox" aria-expanded={iconPicker} aria-controls="w4pop" aria-autocomplete="list"
-                      />
-                      {sk ? (
-                        <button
-                          type="button" aria-label="Hapus ikon, ketik emoji atau huruf sendiri" title="Ketik emoji/huruf sendiri"
-                          onMouseDown={(ev) => { ev.preventDefault(); setF((p) => ({ ...p, widget_icon: '' })); setTimeout(() => { const el = document.getElementById('w4'); if (el) el.focus(); }, 0); }}
-                          style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, border: 0, background: 'transparent', color: 'var(--mute)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
-                        >
-                          {'\u00D7'}
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })()}
+              <div className="iconpick" ref={iconPickRef}>
+                <label htmlFor="w4">Ikon tombol</label>
+                <button
+                  id="w4" type="button" className="iconpick-btn" aria-haspopup="listbox" aria-expanded={iconPicker} aria-controls="w4pop"
+                  aria-label="Pilih ikon tombol" onClick={() => setIconPicker((v) => !v)}
+                >
+                  <IconView icon={f.widget_icon.trim() || DEFAULT_ICON} size={24} />
+                  <span className="iconpick-chev" aria-hidden="true">{'\u25BE'}</span>
+                </button>
                 {iconPicker ? (
                   <div className="iconpick-pop" id="w4pop" role="listbox" aria-label="Pilihan ikon">
                     {ICONS.map((e) => (
                       <button
                         key={e} type="button" role="option" aria-selected={f.widget_icon === e}
                         className={'iconpick-i' + (f.widget_icon === e ? ' on' : '')}
-                        onMouseDown={(ev) => { ev.preventDefault(); setF((p) => ({ ...p, widget_icon: e })); setIconPicker(false); }}
+                        onClick={() => { setF((p) => ({ ...p, widget_icon: e })); setIconPicker(false); }}
                       >
                         {e}
                       </button>
@@ -416,12 +399,18 @@ export default function BotPage() {
                         <button
                           key={v} type="button" role="option" aria-selected={f.widget_icon === v} aria-label={SVG_ICONS[k].label} title={SVG_ICONS[k].label}
                           className={'iconpick-i' + (f.widget_icon === v ? ' on' : '')}
-                          onMouseDown={(ev) => { ev.preventDefault(); setF((p) => ({ ...p, widget_icon: v })); setIconPicker(false); }}
+                          onClick={() => { setF((p) => ({ ...p, widget_icon: v })); setIconPicker(false); }}
                         >
                           <IconView icon={v} size={20} />
                         </button>
                       );
                     })}
+                    <input
+                      className="iconpick-own" maxLength={16} autoComplete="off" placeholder="Atau ketik emoji/huruf"
+                      aria-label="Ketik emoji atau huruf sendiri"
+                      value={iconPaths(f.widget_icon.trim()) ? '' : f.widget_icon}
+                      onChange={set('widget_icon')}
+                    />
                   </div>
                 ) : null}
               </div>
