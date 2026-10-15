@@ -517,3 +517,60 @@ html{scroll-behavior:smooth}
   .wcols{grid-template-columns:1fr}
   .wprev{position:static;order:-1}
 }
+
+/* ===== Pasang: peringatan domain, panduan platform, cek pemasangan, QR ===== */
+.btn.copy{min-width:104px}
+.btn.done{background:var(--ok);color:var(--onaccent)}
+.btn .ico{width:13px;height:13px;margin-right:5px;vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pwarn{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;margin:0 0 14px;border:1px solid var(--danger);border-radius:12px;background:color-mix(in srgb,var(--danger) 8%,var(--panel))}
+.pwarn-i{flex:none;width:22px;height:22px;margin-top:1px;border-radius:50%;background:var(--danger);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700;line-height:1}
+.pwarn-b{flex:1;min-width:0}
+.pwarn-b strong{display:block;line-height:1.4}
+.pwarn-b .hint{margin:4px 0 0;line-height:1.55}
+.pwarn-f{display:flex;gap:8px;margin-top:10px}
+.pwarn-f input{flex:1;min-width:0}
+.pwarn-f .btn{flex:none}
+.pwarn .err{min-height:0;margin-top:6px}
+.pwarn .err:empty{display:none}
+.pplat-h{margin:18px 0 8px}
+.ptabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px}
+.ptabs button{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:450;font-size:14px;padding:6px 13px;border-radius:999px;cursor:pointer}
+.ptabs button[aria-selected="true"]{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+.ppanel{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg)}
+.ppanel ol{margin:0;padding-left:20px;display:grid;gap:8px;font-size:14px;line-height:1.55}
+.ppanel-code{margin-top:12px;background:var(--panel)}
+.ic{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 5px;word-break:break-word}
+.ppanel .ic{background:var(--panel)}
+.chkres .ic,.chk .ic{background:var(--panel)}
+.chk-form{display:flex;gap:8px}
+.chk-form input{flex:1;min-width:0}
+.chk-form .btn{flex:none}
+.chkres{margin-top:6px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.chkres.chk-ok{border-color:var(--ok)}
+.chkres.chk-warn{border-color:var(--warn)}
+.chkres.chk-bad{border-color:var(--danger)}
+.chkres .hint{line-height:1.55}
+.chk-h{margin:0;font-size:16px;font-weight:550}
+.chk{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+.chk li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5}
+.chk-i{flex:none;width:20px;height:20px;margin-top:1px;border-radius:50%;display:grid;place-items:center}
+.chk-i svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.chk li.chk-ok .chk-i{background:var(--ok);color:var(--onaccent)}
+.chk li.chk-bad .chk-i{background:var(--danger);color:#fff}
+.chk-act{margin-top:8px}
+.chk-tips{margin:12px 0 0;padding-left:18px}
+.chk-tips li{margin:3px 0}
+.chk-n{margin:10px 0 0}
+.qrbox{display:flex;gap:16px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.qrimg{flex:none;width:152px;height:152px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.qrimg svg{display:block;width:100%;height:100%}
+.qrinfo{min-width:0}
+.qrinfo h3{margin:0 0 4px}
+.qrinfo .hint{margin:0 0 4px;line-height:1.55}
+@media (max-width:560px){
+  .pwarn{padding:12px}
+  .pwarn-f,.chk-form{flex-direction:column}
+  .pwarn-f .btn,.chk-form .btn{width:100%}
+  .qrbox{flex-direction:column;align-items:flex-start}
+  .qrimg{align-self:center}
+}

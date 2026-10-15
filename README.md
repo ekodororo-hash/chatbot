@@ -40,6 +40,7 @@ app/dashboard/               dashboard pemilik toko (layout + sidebar di DashShe
 app/api/chat/route.js        POST pesan pelanggan, GET polling balasan admin
 app/api/rating/route.js      POST penilaian jempol atas/bawah dari halaman chat
 app/api/lead/route.js        POST nomor/email pengunjung yang mau dikabari soal promo
+app/api/pasang/cek/route.js  POST cek pemasangan: ambil situs klien, cari kode widget, cocokkan domain (anggota toko)
 app/api/billing/route.js     status paket, checkout, periksa pembayaran (khusus pemilik)
 app/api/midtrans/route.js    webhook notifikasi pembayaran Midtrans
 app/api/doku/route.js        webhook notifikasi pembayaran DOKU
@@ -54,11 +55,14 @@ lib/leads.js                 validasi nomor/email, format tampilan, ekspor CSV k
 lib/notify.js                notifikasi admin (Telegram) dan perintah /admin KODE
 lib/auth.js                  pemeriksaan anggota/pemilik toko untuk API dashboard (header X-Shop-Id)
 lib/domains.js               validasi domain dan pembuat CSP
+lib/siteCheck.js             pengambil halaman untuk Cek pemasangan (penjaga SSRF) dan pencari kode widget di HTML
+lib/qr.js                    pembuat QR code tanpa dependensi (byte mode, koreksi M, sampai 213 byte) untuk link chat
 lib/chatTemplate.js          halaman chat pelanggan (dokumen mandiri, lihat catatan di bawah)
 lib/supabase.js              klien server (Secret/service role key)
 lib/supabaseBrowser.js       klien browser (Publishable/anon key)
 public/widget.js             widget yang ditempel di website klien (tampilan dibaca dari /api/widget/slug)
 supabase/schema.sql          tabel, indeks, dan aturan keamanan (RLS)
+tests/pasang.test.js         tes Cek pemasangan (penjaga SSRF, pencari kode widget, cocok domain) dan QR code
 tests/bot.test.js            82 tes untuk otak bot, saluran, notifikasi, pencarian katalog, dan langganan (npm test)
 ```
 
@@ -123,6 +127,7 @@ Pada toko berkatalog besar (lebih dari 100 produk atau FAQ), nama produk dicari 
 - **RLS di semua tabel.** Pemilik toko hanya bisa membaca dan mengubah data tokonya. Pelanggan (anon) tidak punya akses langsung.
 - **Secret key / service role key hanya di `app/api`, `app/chat`, dan `lib/`.** Jangan pernah menaruhnya di `public/` atau memberinya awalan `NEXT_PUBLIC_`.
 - **Domain yang diizinkan** dipaksa lewat header CSP `frame-ancestors`: browser menolak menampilkan chat di situs lain. Ini mencegah orang menempelkan botmu di situs mereka lewat browser. Ini tidak menghentikan orang yang memanggil `/api/chat` langsung (curl), karena header bisa dipalsukan.
+- **Cek pemasangan** (`/api/pasang/cek`) membuat server membuka alamat yang diketik pengguna, jadi dijaga dari SSRF: harus login sebagai anggota toko, hanya http/https port 80/443, hanya nama domain (bukan IP atau localhost), dan setiap alamat hasil DNS diperiksa saat koneksi dibuat (juga di setiap redirect) sehingga alamat privat, loopback, dan link-local ditolak. Balasan dibatasi 2 MB dan 8 detik. Kode widget yang dipasang lewat Google Tag Manager atau disuntik penuh oleh JavaScript tidak terlihat oleh pengecekan ini.
 - **Pengaman biaya yang sebenarnya:** batas 8 pesan per menit per percakapan, 60 per menit per toko, dan batas balasan bot per hari per toko (atur di halaman Bot). Setelah batas tercapai, pesan masuk ke admin tanpa memanggil Gemini.
 - **Prompt injection:** pesan pelanggan hanya masuk sebagai giliran user, dan prompt menyuruh bot menjawab hanya dari data toko. Ini mengurangi risiko, bukan menghilangkannya. Karena itu bot tidak diberi kemampuan mengubah harga, stok, atau pesanan; admin yang mengonfirmasi pesanan.
 - **Privasi:** pesan pelanggan disimpan di databasemu, dan halaman chat memberi tahu hal itu. Sebelum jualan ke klien, siapkan kebijakan privasi dan perjanjian pemrosesan data sederhana.
