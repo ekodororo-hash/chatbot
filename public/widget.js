@@ -177,6 +177,11 @@
       if (!frame) {
         frame = document.createElement('iframe');
         frame.src = origin + '/chat/' + encodeURIComponent(bot);
+        // Bahasa halaman situs (?lang= atau atribut lang) diteruskan ke chat, supaya status, pilihan cepat, dan balasan AI mengikutinya.
+        try {
+          var lg = (new URLSearchParams(location.search).get('lang') || document.documentElement.lang || '').toLowerCase().slice(0, 2);
+          if (/^[a-z]{2}$/.test(lg)) frame.src += '?lang=' + lg;
+        } catch (e) {}
         frame.title = 'Chat dengan asisten toko';
         box.appendChild(frame);
       }

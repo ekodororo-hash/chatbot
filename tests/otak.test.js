@@ -442,6 +442,40 @@ t('wa.me tulisan model dibuang dan diganti satu tombol dengan label bersih (tida
   assert.ok(!/hubungi tim kami melalui/.test(r.reply));
 });
 
+
+t('bahasa: pesan pendek memakai bahasa halaman (?lang), bukan bahasa percakapan sebelumnya', () => {
+  const sys = otak.buildSystem('RULES', { lastText: 'i dont know', siteLang: 'en', recentTexts: ['kok lama amat', 'halo saya mau tanya'] });
+  assert.ok(/Website language chosen by the visitor: English/.test(sys));
+  assert.ok(!/NOT in Indonesian by default/.test(sys));
+});
+t('bahasa: balasan Indonesia untuk pengunjung berbahasa Inggris dicoba ulang sekali dan diberi arahan bahasa', async () => {
+  const s = ownerShop();
+  geminiCalls = []; alerts = [];
+  let n = 0;
+  geminiImpl = async () => JSON.stringify({ reply: n++ === 0 ? 'Harga mulai dari $50 per 100 gram. Untuk detailnya, silakan kunjungi daftar harga kami.' : 'Prices start from $50 per 100 grams. Please see our price list for details.' });
+  const r = await bot.handleMessage({ slug: s.slug, text: 'can i have price list', lang: 'en' });
+  assert.strictEqual(geminiCalls.length, 2);
+  assert.ok(/write your whole reply in English/.test(JSON.stringify(geminiCalls[0].contents)));
+  assert.ok(/do NOT use Indonesian/.test(JSON.stringify(geminiCalls[1].contents)));
+  const out = r.messages.filter(m => m.role === 'bot').map(m => m.content).join('\n');
+  assert.ok(/Prices start from/.test(out) && !/Harga mulai/.test(out));
+});
+t('anti-spam: tautan spesifik (price-list) boleh dikirim ulang, hanya halaman induk yang tidak diulang', () => {
+  const recentBot = ['Lihat.\n\nhttps://shop.emahairshop.com/price-list'];
+  const r = otak.parseOutput('{"reply":"Prices start from $50.\\n\\nhttps://shop.emahairshop.com/price-list"}', TPL_WA, { userText: 'price list please', recentBot });
+  assert.ok(/shop\.emahairshop\.com\/price-list/.test(r.reply));
+});
+
+
+t('price list diminta tapi model lupa tautan: server menambahkan tautan price-list (tidak dobel, tidak untuk pertanyaan lain)', () => {
+  const miss = otak.parseOutput('{"reply":"Prices start from $50 per 100 grams. For full details, please visit our price list."}', TPL_WA, { userText: 'can i have price list please', recentBot: ['x'] });
+  assert.ok(/\n\nhttps:\/\/shop\.emahairshop\.com\/price-list$/.test(miss.reply));
+  const has = otak.parseOutput('{"reply":"Ok.\\n\\nhttps://shop.emahairshop.com/price-list"}', TPL_WA, { userText: 'price list', recentBot: [] });
+  assert.strictEqual((has.reply.match(/price-list/g) || []).length, 1);
+  const other = otak.parseOutput('{"reply":"Bisa pakai JNE."}', TPL_WA, { userText: 'bisa kirim pake jne', recentBot: [] });
+  assert.ok(!/price-list/.test(other.reply));
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

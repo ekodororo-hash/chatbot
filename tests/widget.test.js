@@ -55,9 +55,9 @@ function hoursAt(h, iso) {
 }
 const wk = { on: true, open: '09:00', close: '17:00', days: [1, 2, 3, 4, 5], tz: 'Asia/Jakarta' };
 assert.deepStrictEqual(hoursAt(wk, '2026-10-15T03:00:00Z'), { on: true });                    // Kamis 10:00 WIB
-assert.deepStrictEqual(hoursAt(wk, '2026-10-15T12:00:00Z'), { on: false, next: 'besok 09:00' }); // Kamis 19:00 WIB
-assert.deepStrictEqual(hoursAt(wk, '2026-10-17T03:00:00Z'), { on: false, next: 'Sen 09:00' });   // Sabtu 10:00 WIB
-assert.deepStrictEqual(hoursAt(wk, '2026-10-15T00:30:00Z'), { on: false, next: 'hari ini 09:00' }); // Kamis 07:30 WIB
+assert.deepStrictEqual(hoursAt(wk, '2026-10-15T12:00:00Z'), { on: false, nd: -2, open: '09:00' }); // Kamis 19:00 WIB
+assert.deepStrictEqual(hoursAt(wk, '2026-10-17T03:00:00Z'), { on: false, nd: 1, open: '09:00' });   // Sabtu 10:00 WIB
+assert.deepStrictEqual(hoursAt(wk, '2026-10-15T00:30:00Z'), { on: false, nd: -1, open: '09:00' }); // Kamis 07:30 WIB
 assert.deepStrictEqual(hoursAt({ ...wk, open: '20:00', close: '02:00' }, '2026-10-15T18:00:00Z'), { on: true }); // Jumat 01:00 WIB, jam kamis yang lewat tengah malam
 assert.strictEqual(hoursAt({ ...wk, on: false }, '2026-10-15T03:00:00Z'), null);
 assert.strictEqual(wc.clean({ widget_bubble: 'lancip' }).bubble, 'lancip');

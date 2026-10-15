@@ -27,7 +27,7 @@ export async function POST(request) {
   b = b || {};
   try {
     return json(await bot.handleMessage({
-      slug: b.slug, conversationId: b.conversationId, token: b.token, text: b.text, after: b.after
+      slug: b.slug, conversationId: b.conversationId, token: b.token, text: b.text, after: b.after, lang: typeof b.lang === 'string' ? b.lang.slice(0, 5) : ''
     }));
   } catch (e) { return fail(e); }
 }
