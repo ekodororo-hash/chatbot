@@ -189,12 +189,20 @@
       }
     }
 
-    var frame = null, frameLang = '';
+    var frame = null, frameLang = '', srcLang = '';
     function frameSrc() {
-      frameLang = siteLang();
+      frameLang = srcLang = siteLang();
       return origin + '/chat/' + encodeURIComponent(bot) + (frameLang ? '?lang=' + frameLang : '');
     }
-    function syncLang() { if (frame && siteLang() !== frameLang) frame.src = frameSrc(); }
+    // Bahasa berganti: chat di dalam iframe mengganti teksnya sendiri lewat pesan, tanpa memuat ulang iframe.
+    function sendLang(l) {
+      try { frame.contentWindow.postMessage({ type: 'isengin-lang', lang: l || 'id' }, '*'); } catch (e) {}
+    }
+    function syncLang() {
+      if (!frame || siteLang() === frameLang) return;
+      frameLang = siteLang();
+      sendLang(frameLang);
+    }
     onLang = syncLang;
     setInterval(syncLang, 1000);
     try { new MutationObserver(syncLang).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); } catch (e) {}
@@ -209,7 +217,10 @@
         frame = document.createElement('iframe');
         frame.src = frameSrc();
         // Setelah iframe (re)load, beri tahu chat apakah sedang terbuka atau tertutup.
-        frame.addEventListener('load', function () { tellFrame(box.classList.contains('show') ? 'isengin-open' : 'isengin-close'); });
+        frame.addEventListener('load', function () {
+          tellFrame(box.classList.contains('show') ? 'isengin-open' : 'isengin-close');
+          if (siteLang() !== srcLang) sendLang(siteLang()); // bahasa berganti selagi iframe masih dimuat
+        });
         frame.title = 'Chat dengan asisten toko';
         box.appendChild(frame);
       }
