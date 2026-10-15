@@ -47,6 +47,7 @@ export async function GET(request, context) {
     accent: wc.color,
     icon: wc.icon,
     logo: wc.logo,
+    bubble: wc.bubble,
     hours: wc.hours,
     eta: wc.eta
   };

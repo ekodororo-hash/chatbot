@@ -24,7 +24,7 @@ export async function GET(request, context) {
     if (r.error) throw r.error;
     if (!r.data) return reply({ error: 'Bot tidak ditemukan' }, 404, 'public, max-age=60');
     // Logo (data URL, bisa puluhan KB) hanya dipakai halaman chat, jadi tidak ikut dikirim ke widget.
-    const { logo, hours, eta, ...cfg } = widgetConfig.clean(r.data);
+    const { logo, hours, eta, bubble, ...cfg } = widgetConfig.clean(r.data);
     return reply(cfg, 200, 'public, max-age=60, s-maxage=60');
   } catch (e) {
     console.error(e);

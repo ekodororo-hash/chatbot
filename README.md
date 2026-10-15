@@ -194,3 +194,4 @@ Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemin
 - **Jarak tombol**: `widget_ox` (samping) dan `widget_oy` (bawah), 0 sampai 200 px. Jendela chat dan pop-up ikut bergeser.
 - **Pratinjau jendela chat** di dashboard adalah halaman chat asli (`/chat/slug?preview=1`) yang menerima pengaturan yang belum disimpan lewat `postMessage`. Mode pratinjau tidak mengirim pesan ke server.
 - Mode gelap manual sudah dihapus. Halaman chat tetap mengikuti tema terang/gelap dari sistem pelanggan.
+- **Bentuk bubble pesan** (bulat, kotak, lancip): jalankan juga `supabase/migrations/widget_bubble.sql` sebelum deploy. Diatur di Asisten AI > Tampilan chat, tersimpan di `shops.widget_bubble`.

@@ -9,7 +9,7 @@ const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
 const ICONS = [DEFAULT_ICON, '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16', '\uD83D\uDC4B', '\u2753', '\uD83D\uDCDE'];
 const WIDGET_DEFAULTS = {
   accent: '#0b7a75', widget_pos: 'right', widget_icon: DEFAULT_ICON, widget_label: '',
-  widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20'
+  widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_bubble: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20'
 };
 const DAYS = [['1', 'Sen'], ['2', 'Sel'], ['3', 'Rab'], ['4', 'Kam'], ['5', 'Jum'], ['6', 'Sab'], ['0', 'Min']];
 const LOGO_MAX = 55000;
@@ -52,7 +52,7 @@ function fromShop(shop) {
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat',
-    widget_logo: shop.widget_logo || '',
+    widget_logo: shop.widget_logo || '', widget_bubble: shop.widget_bubble || 'bulat',
     widget_ox: String(shop.widget_ox == null ? 20 : shop.widget_ox), widget_oy: String(shop.widget_oy == null ? 20 : shop.widget_oy),
     hours_on: shop.hours_on === true, hours_open: shop.hours_open || '09:00', hours_close: shop.hours_close || '17:00',
     hours_days: daysOf(shop.hours_days), hours_tz: shop.hours_tz || 'Asia/Jakarta',
@@ -71,6 +71,7 @@ function ChatWindowPreview({ f, slug }) {
     accent: /^#[0-9a-fA-F]{6}$/.test(f.accent) ? f.accent : WIDGET_DEFAULTS.accent,
     icon: f.widget_icon.trim() || DEFAULT_ICON,
     logo: f.widget_logo,
+    bubble: f.widget_bubble,
     hours: { on: f.hours_on, open: f.hours_open, close: f.hours_close, days: f.hours_days.map(Number), tz: f.hours_tz },
     eta: toInt(f.reply_eta) || 0
   });
@@ -168,7 +169,7 @@ export default function BotPage() {
       general_on: f.general_on, general_topic: f.general_topic.trim(), reply_language: f.reply_language,
       widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
       widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape,
-      widget_logo: f.widget_logo, widget_ox: ox, widget_oy: oy,
+      widget_logo: f.widget_logo, widget_bubble: f.widget_bubble, widget_ox: ox, widget_oy: oy,
       hours_on: f.hours_on, hours_open: f.hours_open || '09:00', hours_close: f.hours_close || '17:00',
       hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
@@ -369,6 +370,18 @@ export default function BotPage() {
                 <label htmlFor="w6">Pesan pop-up (opsional)</label>
                 <input id="w6" maxLength={100} placeholder="Halo, ada yang bisa dibantu?" value={f.widget_teaser} onChange={set('widget_teaser')} />
                 <p className="hint field-hint">Muncul sekali di atas tombol setelah beberapa detik, dan tidak muncul lagi setelah ditutup.</p>
+              </div>
+            </div>
+
+            <h3 className="subh">Bubble pesan</h3>
+            <div className="fgrid one">
+              <div>
+                <label htmlFor="w10">Bentuk bubble</label>
+                <select id="w10" value={f.widget_bubble} onChange={set('widget_bubble')}>
+                  <option value="bulat">Bulat</option>
+                  <option value="kotak">Kotak</option>
+                  <option value="lancip">Lancip (ekor runcing seperti WhatsApp)</option>
+                </select>
               </div>
             </div>
 

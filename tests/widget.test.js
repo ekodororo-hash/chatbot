@@ -5,7 +5,7 @@ const wc = require('../lib/widgetConfig');
 
 const d = wc.clean({});
 assert.deepStrictEqual(d, {
-  color: '#0b7a75', pos: 'right', icon: '\uD83D\uDCAC', logo: '', label: '', teaser: '', size: 'sedang', shape: 'bulat', ox: 20, oy: 20,
+  color: '#0b7a75', pos: 'right', icon: '\uD83D\uDCAC', logo: '', label: '', teaser: '', size: 'sedang', shape: 'bulat', bubble: 'bulat', ox: 20, oy: 20,
   hours: { on: false, open: '09:00', close: '17:00', days: [1, 2, 3, 4, 5, 6], tz: 'Asia/Jakarta' }, eta: 0
 });
 
@@ -60,4 +60,6 @@ assert.deepStrictEqual(hoursAt(wk, '2026-10-17T03:00:00Z'), { on: false, next: '
 assert.deepStrictEqual(hoursAt(wk, '2026-10-15T00:30:00Z'), { on: false, next: 'hari ini 09:00' }); // Kamis 07:30 WIB
 assert.deepStrictEqual(hoursAt({ ...wk, open: '20:00', close: '02:00' }, '2026-10-15T18:00:00Z'), { on: true }); // Jumat 01:00 WIB, jam kamis yang lewat tengah malam
 assert.strictEqual(hoursAt({ ...wk, on: false }, '2026-10-15T03:00:00Z'), null);
+assert.strictEqual(wc.clean({ widget_bubble: 'lancip' }).bubble, 'lancip');
+assert.strictEqual(wc.clean({ widget_bubble: 'segitiga' }).bubble, 'bulat');
 console.log('widget config ok');
