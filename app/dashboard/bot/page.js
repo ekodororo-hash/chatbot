@@ -367,12 +367,38 @@ export default function BotPage() {
             <div className="fgrid">
               <div className="iconpick">
                 <label htmlFor="w4">Ikon (pilih ikon, atau ketik emoji/huruf)</label>
-                <input
-                  id="w4" maxLength={16} autoComplete="off" value={f.widget_icon} onChange={set('widget_icon')}
-                  onFocus={() => setIconPicker(true)}
-                  onBlur={() => setTimeout(() => setIconPicker(false), 150)}
-                  role="combobox" aria-expanded={iconPicker} aria-controls="w4pop" aria-autocomplete="list"
-                />
+                {(() => {
+                  // Ikon SVG bawaan: tampilkan gambar + namanya, bukan teks mentah "svg:nama".
+                  const sk = iconPaths(f.widget_icon.trim()) ? f.widget_icon.trim().slice(4) : null;
+                  return (
+                    <div style={{ position: 'relative' }}>
+                      {sk ? (
+                        <span style={{ position: 'absolute', left: 12, top: 0, bottom: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                          <IconView icon={f.widget_icon.trim()} size={20} />
+                        </span>
+                      ) : null}
+                      <input
+                        id="w4" maxLength={16} autoComplete="off"
+                        value={sk ? SVG_ICONS[sk].label : f.widget_icon}
+                        readOnly={!!sk}
+                        style={sk ? { paddingLeft: 40, paddingRight: 40, cursor: 'pointer' } : undefined}
+                        onChange={set('widget_icon')}
+                        onFocus={() => setIconPicker(true)}
+                        onBlur={() => setTimeout(() => setIconPicker(false), 150)}
+                        role="combobox" aria-expanded={iconPicker} aria-controls="w4pop" aria-autocomplete="list"
+                      />
+                      {sk ? (
+                        <button
+                          type="button" aria-label="Hapus ikon, ketik emoji atau huruf sendiri" title="Ketik emoji/huruf sendiri"
+                          onMouseDown={(ev) => { ev.preventDefault(); setF((p) => ({ ...p, widget_icon: '' })); setTimeout(() => { const el = document.getElementById('w4'); if (el) el.focus(); }, 0); }}
+                          style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, border: 0, background: 'transparent', color: 'var(--mute)', fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+                        >
+                          {'\u00D7'}
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })()}
                 {iconPicker ? (
                   <div className="iconpick-pop" id="w4pop" role="listbox" aria-label="Pilihan ikon">
                     {ICONS.map((e) => (
