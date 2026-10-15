@@ -189,7 +189,7 @@ Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemin
 
 **Persiapan database (sekali):** jalankan `supabase/migrations/widget_logo_jam_offset.sql` di Supabase SQL Editor **sebelum** deploy (aman dijalankan ulang; setelah `tampilan_widget.sql`). Kalau belum dijalankan, menyimpan di halaman Asisten AI akan gagal karena kolom barunya belum ada.
 
-- **Logo toko**: diunggah di Asisten AI > Tampilan chat. Gambar dipotong persegi, dikecilkan, lalu disimpan sebagai data URL di `shops.widget_logo` (maks. 60 KB), jadi tidak perlu storage terpisah. Dipakai di avatar header chat dan tombol widget; kalau gagal dimuat, kembali ke ikon emoji.
+- **Logo toko**: diunggah di Asisten AI > Tampilan chat. Gambar dipotong persegi, dikecilkan, lalu disimpan sebagai data URL di `shops.widget_logo` (maks. 60 KB), jadi tidak perlu storage terpisah. Hanya dipakai sebagai avatar di header jendela chat (tombol widget tetap memakai ikon emoji); kalau gagal dimuat, kembali ke ikon.
 - **Jam operasional**: status header ("Admin online", "Admin offline, buka besok 09:00") dihitung di browser pelanggan memakai zona waktu toko. Mendukung jam yang melewati tengah malam. Asisten tetap membalas otomatis di luar jam. "Admin biasanya balas dalam X menit" tampil kalau `reply_eta` > 0.
 - **Jarak tombol**: `widget_ox` (samping) dan `widget_oy` (bawah), 0 sampai 200 px. Jendela chat dan pop-up ikut bergeser.
 - **Pratinjau jendela chat** di dashboard adalah halaman chat asli (`/chat/slug?preview=1`) yang menerima pengaturan yang belum disimpan lewat `postMessage`. Mode pratinjau tidak mengirim pesan ke server.

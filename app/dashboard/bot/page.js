@@ -109,9 +109,7 @@ function WidgetPreview({ f }) {
         color: lum > 0.62 ? '#111' : '#fff', fontSize: Math.round(px * 0.45),
         borderRadius: f.widget_shape === 'kotak' ? 16 : (label ? 999 : '50%'), boxShadow: '0 4px 14px rgba(0,0,0,.25)'
       }}>
-        {f.widget_logo
-          ? <img src={f.widget_logo} alt="" style={{ width: Math.round(px * 0.62), height: Math.round(px * 0.62), objectFit: 'cover', borderRadius: f.widget_shape === 'kotak' ? 8 : '50%' }} />
-          : <span>{f.widget_icon || DEFAULT_ICON}</span>}
+        <span>{f.widget_icon || DEFAULT_ICON}</span>
         {label ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span> : null}
       </div>
     </div>
@@ -374,7 +372,7 @@ export default function BotPage() {
               </div>
             </div>
 
-            <h3 className="subh">Logo toko</h3>
+            <h3 className="subh">Logo di header chat</h3>
             <div className="logorow">
               {f.widget_logo
                 ? <img src={f.widget_logo} alt="Logo saat ini" width={48} height={48} className="logoimg" />
@@ -383,7 +381,7 @@ export default function BotPage() {
               <label htmlFor="w9" className="btn ghost sm">{f.widget_logo ? 'Ganti logo' : 'Unggah logo'}</label>
               {f.widget_logo ? <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, widget_logo: '' }))}>Hapus</button> : null}
             </div>
-            <p className="hint field-hint">Menggantikan ikon di header chat dan tombol widget. Gambar otomatis dipotong persegi dan dikecilkan.</p>
+            <p className="hint field-hint">Hanya tampil sebagai avatar di header jendela chat. Tombol widget tetap memakai ikon di atas. Gambar otomatis dipotong persegi dan dikecilkan.</p>
 
             <h3 className="subh">Status admin di header chat</h3>
             <label htmlFor="h0" className="swrow">
