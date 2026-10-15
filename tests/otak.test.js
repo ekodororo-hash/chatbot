@@ -476,6 +476,22 @@ t('price list diminta tapi model lupa tautan: server menambahkan tautan price-li
   assert.ok(!/price-list/.test(other.reply));
 });
 
+
+t('pelanggan mengakhiri percakapan: status selesai, token salah ditolak, pesan baru membuka lagi', async () => {
+  const s = ownerShop();
+  geminiImpl = say('Halo, ada yang bisa dibantu?');
+  const r = await chat(s, 'Halo');
+  await assert.rejects(() => bot.closeConversation({ slug: s.slug, conversationId: r.conversationId, token: '00000000-0000-4000-8000-000000000000' }));
+  assert.strictEqual(conv(r).status, 'bot');
+  const c = await bot.closeConversation({ slug: s.slug, conversationId: r.conversationId, token: r.token });
+  assert.deepStrictEqual(c, { ok: true, status: 'selesai' });
+  assert.strictEqual(conv(r).status, 'selesai');
+  assert.strictEqual(conv(r).closed_by_customer, true, 'ditandai ditutup pelanggan');
+  const r2 = await chat(s, 'Satu lagi ya', r);
+  assert.strictEqual(conv(r2).status, 'bot');
+  assert.strictEqual(conv(r2).closed_by_customer, false, 'dibuka lagi = penanda dihapus');
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

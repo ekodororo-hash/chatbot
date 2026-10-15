@@ -8,6 +8,14 @@ import { useRealtime } from './useRealtime';
 
 const STATUS = { bot: ['Dijawab AI', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at,channel';
+// Kolom closed_by_customer berasal dari migrasi ditutup_pelanggan.sql. Belum dijalankan (kode 42703) = ulangi tanpa kolom itu,
+// supaya daftar percakapan tidak ikut gagal.
+async function selConv(make) {
+  let r = await make(CONV_COLS + ',closed_by_customer');
+  if (r.error && r.error.code === '42703') r = await make(CONV_COLS);
+  return r;
+}
+const statusLabel = (c) => (c.status === 'selesai' && c.closed_by_customer ? 'Ditutup pelanggan' : STATUS[c.status][0]);
 const CHANNEL = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
 
 function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
@@ -19,9 +27,9 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
   const [guess] = useState(() => readCount('conv:' + shop.id));
 
   const load = useCallback(async () => {
-    const { data, error } = await sb.from('conversations')
-      .select(CONV_COLS)
-      .eq('shop_id', shop.id).order('updated_at', { ascending: false }).limit(50);
+    const { data, error } = await selConv((cols) => sb.from('conversations')
+      .select(cols)
+      .eq('shop_id', shop.id).order('updated_at', { ascending: false }).limit(50));
     if (error) { fail(error); return; }
     const p = {};
     if (data.length) {
@@ -79,7 +87,7 @@ function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
               <span className="tags">
                 {CHANNEL[c.channel] ? <span className="tag">{CHANNEL[c.channel]}</span> : null}
                 {c.flag ? <span className="tag a">{c.flag}</span> : null}
-                <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
+                <span className={'tag ' + STATUS[c.status][1]}>{statusLabel(c)}</span>
               </span>
             </button>
             <button className="btn danger sm del" type="button" disabled={deleting === c.id} onClick={() => remove(c)}>
@@ -122,7 +130,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
 
   // Status percakapan bisa diubah admin lain; ikuti perubahannya.
   const reloadConv = useCallback(async () => {
-    const { data } = await sb.from('conversations').select(CONV_COLS).eq('id', conv.id).maybeSingle();
+    const { data } = await selConv((cols) => sb.from('conversations').select(cols).eq('id', conv.id).maybeSingle());
     if (data) setC(data);
   }, [sb, conv.id]);
   useRealtime(sb, 'conversations', 'id=eq.' + conv.id, reloadConv, 60000);
@@ -135,10 +143,12 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     const patch = { status: s };
     if (s !== 'human') patch.unanswered = false;
     setPending(s);
-    const { error } = await sb.from('conversations').update(patch).eq('id', c.id);
+    // Status diubah admin = bukan lagi "ditutup pelanggan". Kolom belum ada (migrasi belum jalan) = ulangi tanpa kolom itu.
+    let { error } = await sb.from('conversations').update({ ...patch, closed_by_customer: false }).eq('id', c.id);
+    if (error && error.code === '42703') ({ error } = await sb.from('conversations').update(patch).eq('id', c.id));
     setPending('');
     if (error) { fail(error); return; }
-    setC((p) => ({ ...p, status: s }));
+    setC((p) => ({ ...p, status: s, closed_by_customer: false }));
     if (!silent) toast('Status diubah.');
     refreshHumanCount();
   }
@@ -192,7 +202,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
           <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
         </form>
         <div className="row">
-          <span className={'tag ' + STATUS[c.status][1]}>{STATUS[c.status][0]}</span>
+          <span className={'tag ' + STATUS[c.status][1]}>{statusLabel(c)}</span>
           {c.status !== 'selesai' && (
             <button className="btn ghost sm" type="button" disabled={!!pending} onClick={() => setStatus('selesai')}>
               <Busy on={pending === 'selesai'} label="Menyimpan...">Tandai selesai</Busy>
@@ -222,8 +232,8 @@ export default function ChatTab({ sb, shop, onHumanCount, refreshHumanCount, onM
     if (!id || (conv && conv.id === id)) return;
     let alive = true;
     (async () => {
-      const { data, error } = await sb.from('conversations').select(CONV_COLS)
-        .eq('id', id).eq('shop_id', shop.id).maybeSingle();
+      const { data, error } = await selConv((cols) => sb.from('conversations').select(cols)
+        .eq('id', id).eq('shop_id', shop.id).maybeSingle());
       if (!alive) return;
       if (error || !data) {
         if (error) fail(error); else toast('Percakapan tidak ditemukan.');

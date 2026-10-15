@@ -506,3 +506,10 @@ where role = 'bot'
   and content not like 'Maaf %, kuota balasan otomatis %'
 group by 1, 2
 on conflict (shop_id, day) do update set n = greatest(public.bot_usage.n, excluded.n);
+
+-- ============================================================
+-- BAGIAN TAMBAHAN: percakapan ditutup oleh pelanggan.
+-- Sama dengan supabase/migrations/ditutup_pelanggan.sql.
+-- ============================================================
+alter table public.conversations add column if not exists closed_by_customer boolean not null default false;
+grant update (closed_by_customer) on public.conversations to authenticated;
