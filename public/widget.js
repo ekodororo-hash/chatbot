@@ -1,6 +1,6 @@
 /* Widget chat. Dipasang klien dengan satu baris:
    <script src="https://DOMAINMU/widget.js" data-bot="slug-toko" defer></script>
-   Tampilan (warna, posisi, ikon, label, ukuran, bentuk, pesan pop-up) diambil dari dashboard lewat
+   Tampilan (warna, posisi, jarak dari tepi, ikon/logo, label, ukuran, bentuk, pesan pop-up) diambil dari dashboard lewat
    /api/widget/slug-toko, jadi perubahan langsung berlaku tanpa pasang ulang kode.
    data-color masih dibaca sebagai cadangan untuk kode lama kalau server tidak terjangkau. */
 (function () {
@@ -14,9 +14,10 @@
 
   var fbColor = s.getAttribute('data-color') || '#0b7a75';
   if (!/^#[0-9a-fA-F]{6}$/.test(fbColor)) fbColor = '#0b7a75';
-  var FALLBACK = { color: fbColor, pos: 'right', icon: '\uD83D\uDCAC', label: '', teaser: '', size: 'sedang', shape: 'bulat' };
+  var FALLBACK = { color: fbColor, pos: 'right', icon: '\uD83D\uDCAC', label: '', teaser: '', size: 'sedang', shape: 'bulat', logo: '', ox: 20, oy: 20 };
 
   function pick(v, list, def) { return list.indexOf(v) >= 0 ? v : def; }
+  function num(v, min, max, def) { return typeof v === 'number' && v % 1 === 0 && v >= min && v <= max ? v : def; }
   function text(v, max, def) {
     if (typeof v !== 'string') return def;
     var t = v.replace(/[\u0000-\u001f\u007f]/g, '').trim();
@@ -32,7 +33,10 @@
       label: text(c.label, 30, ''),
       teaser: text(c.teaser, 100, ''),
       size: pick(c.size, ['kecil', 'sedang', 'besar'], 'sedang'),
-      shape: pick(c.shape, ['bulat', 'kotak'], 'bulat')
+      shape: pick(c.shape, ['bulat', 'kotak'], 'bulat'),
+      logo: typeof c.logo === 'string' && c.logo.length <= 60000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/=]+$/.test(c.logo) ? c.logo : '',
+      ox: num(c.ox, 0, 200, 20),
+      oy: num(c.oy, 0, 200, 20)
     };
   }
 
@@ -64,17 +68,18 @@
     var boxW = { kecil: 330, sedang: 370, besar: 420 }[c.size];
     var boxH = { kecil: 500, sedang: 580, besar: 680 }[c.size];
     var radius = c.shape === 'kotak' ? '16px' : (c.label ? '999px' : '50%');
-    var boxBottom = 20 + px + 12;
+    var boxBottom = c.oy + px + 12;
 
     var css = document.createElement('style');
     css.textContent =
-      '#isengin-chat-btn{position:fixed;' + side + ':20px;bottom:20px;min-width:' + px + 'px;height:' + px + 'px;' +
+      '#isengin-chat-btn{position:fixed;' + side + ':' + c.ox + 'px;bottom:' + c.oy + 'px;min-width:' + px + 'px;height:' + px + 'px;' +
       'padding:' + (c.label ? '0 20px' : '0') + ';border-radius:' + radius + ';border:0;display:flex;align-items:center;justify-content:center;gap:8px;' +
       'background:' + color + ';color:' + onColor + ';font-size:' + iconPx + 'px;line-height:1;cursor:pointer;z-index:2147483000;' +
       'box-shadow:0 6px 20px rgba(0,0,0,.25);font-family:system-ui,sans-serif}' +
+      '#isengin-chat-btn img.lg{width:' + Math.round(px * 0.62) + 'px;height:' + Math.round(px * 0.62) + 'px;object-fit:cover;border-radius:' + (c.shape === 'kotak' ? '8px' : '50%') + ';display:block}' +
       '#isengin-chat-btn span.l{font-size:15px;font-weight:600;white-space:nowrap}' +
       '#isengin-chat-btn:focus-visible,#isengin-chat-x:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px ' + color + '}' +
-      '#isengin-chat-box{position:fixed;' + side + ':20px;bottom:' + boxBottom + 'px;width:' + boxW + 'px;max-width:calc(100vw - 24px);' +
+      '#isengin-chat-box{position:fixed;' + side + ':' + c.ox + 'px;bottom:' + boxBottom + 'px;width:' + boxW + 'px;max-width:calc(100vw - 24px);' +
       'height:min(' + boxH + 'px,calc(100vh - ' + (boxBottom + 20) + 'px));border-radius:16px;overflow:hidden;background:#fff;z-index:2147483001;' +
       'box-shadow:0 12px 40px rgba(0,0,0,.3);opacity:0;visibility:hidden;transform:translateY(14px) scale(.98);pointer-events:none;' +
       'transition:opacity .18s ease,transform .18s ease,visibility 0s .18s}' +
@@ -85,7 +90,7 @@
       'background:#dc2626;box-shadow:0 0 0 2px #fff}' +
       '#isengin-chat-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;' +
       'background:rgba(0,0,0,.25);color:#fff;font-size:16px;cursor:pointer;z-index:2;font-family:system-ui,sans-serif}' +
-      '#isengin-chat-tip{display:none;position:fixed;' + side + ':20px;bottom:' + boxBottom + 'px;max-width:min(260px,calc(100vw - 40px));' +
+      '#isengin-chat-tip{display:none;position:fixed;' + side + ':' + c.ox + 'px;bottom:' + boxBottom + 'px;max-width:min(260px,calc(100vw - 40px));' +
       'background:#fff;color:#12262b;border-radius:14px;padding:10px 32px 10px 14px;font:14px/1.4 system-ui,sans-serif;cursor:pointer;' +
       'z-index:2147483000;box-shadow:0 8px 28px rgba(0,0,0,.25)}' +
       '#isengin-chat-tipx{position:absolute;top:4px;right:4px;width:24px;height:24px;border:0;border-radius:50%;background:none;color:#587278;font-size:13px;cursor:pointer}' +
@@ -99,7 +104,17 @@
     var ic = document.createElement('span');
     ic.textContent = c.icon;
     ic.setAttribute('aria-hidden', 'true');
-    btn.appendChild(ic);
+    if (c.logo) {
+      var im = document.createElement('img');
+      im.className = 'lg';
+      im.alt = '';
+      im.setAttribute('aria-hidden', 'true');
+      im.addEventListener('error', function () { if (im.parentNode) im.parentNode.replaceChild(ic, im); });
+      im.src = c.logo;
+      btn.appendChild(im);
+    } else {
+      btn.appendChild(ic);
+    }
     if (c.label) {
       var lb = document.createElement('span');
       lb.className = 'l';

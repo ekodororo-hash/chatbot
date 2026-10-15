@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Busy, startOfTodayWIB, toInt } from '../helpers';
 import { useDash } from '../context';
 import { SkUsage } from '../../components/Skeleton';
@@ -9,8 +9,39 @@ const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
 const ICONS = [DEFAULT_ICON, '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16', '\uD83D\uDC4B', '\u2753', '\uD83D\uDCDE'];
 const WIDGET_DEFAULTS = {
   accent: '#0b7a75', widget_pos: 'right', widget_icon: DEFAULT_ICON, widget_label: '',
-  widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat'
+  widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20'
 };
+const DAYS = [['1', 'Sen'], ['2', 'Sel'], ['3', 'Rab'], ['4', 'Kam'], ['5', 'Jum'], ['6', 'Sab'], ['0', 'Min']];
+const LOGO_MAX = 55000;
+
+// Kecilkan logo jadi persegi (potong tengah) supaya cukup disimpan langsung di database, tanpa penyimpanan file terpisah.
+function fileToLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) return reject(new Error('Pakai gambar PNG, JPG, WEBP, atau GIF.'));
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const m = Math.min(img.width, img.height);
+      if (!m) return reject(new Error('Gambar tidak bisa dibaca.'));
+      for (const size of [128, 96, 64]) {
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        c.getContext('2d').drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, size, size);
+        let out = c.toDataURL('image/webp', 0.85);
+        if (out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/png');
+        if (out.length <= LOGO_MAX) return resolve(out);
+      }
+      reject(new Error('Gambar terlalu rumit. Coba logo yang lebih sederhana.'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gambar tidak bisa dibaca.')); };
+    img.src = url;
+  });
+}
+
+function daysOf(v) {
+  return String(v == null ? '1,2,3,4,5,6' : v).split(',').filter((d) => /^[0-6]$/.test(d));
+}
 
 function fromShop(shop) {
   return {
@@ -20,34 +51,40 @@ function fromShop(shop) {
     reply_language: shop.reply_language === 'auto' ? 'auto' : 'id',
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
-    widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat'
+    widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat',
+    widget_logo: shop.widget_logo || '',
+    widget_ox: String(shop.widget_ox == null ? 20 : shop.widget_ox), widget_oy: String(shop.widget_oy == null ? 20 : shop.widget_oy),
+    hours_on: shop.hours_on === true, hours_open: shop.hours_open || '09:00', hours_close: shop.hours_close || '17:00',
+    hours_days: daysOf(shop.hours_days), hours_tz: shop.hours_tz || 'Asia/Jakarta',
+    reply_eta: String(shop.reply_eta || 0)
   };
 }
 
-// Pratinjau jendela chat terbuka, dengan header, contoh percakapan, dan kolom tulis pesan.
-function ChatWindowPreview({ f }) {
-  const hex = /^#[0-9a-fA-F]{6}$/.test(f.accent) ? f.accent : WIDGET_DEFAULTS.accent;
-  const lum = (0.299 * parseInt(hex.slice(1, 3), 16) + 0.587 * parseInt(hex.slice(3, 5), 16) + 0.114 * parseInt(hex.slice(5, 7), 16)) / 255;
-  const onAccent = lum > 0.62 ? '#111' : '#fff';
-  const greeting = f.greeting.trim() || 'Halo kak, ada yang bisa dibantu?';
+// Pratinjau jendela chat: halaman chat asli (mode pratinjau) yang menerima pengaturan yang belum disimpan.
+function ChatWindowPreview({ f, slug }) {
+  const ref = useRef(null);
+  const loaded = useRef(false);
+  const cfg = JSON.stringify({
+    botName: f.bot_name.trim() || 'Asisten',
+    greeting: f.greeting.trim() || 'Halo {k}, ada yang bisa dibantu?',
+    tone: f.tone,
+    accent: /^#[0-9a-fA-F]{6}$/.test(f.accent) ? f.accent : WIDGET_DEFAULTS.accent,
+    icon: f.widget_icon.trim() || DEFAULT_ICON,
+    logo: f.widget_logo,
+    hours: { on: f.hours_on, open: f.hours_open, close: f.hours_close, days: f.hours_days.map(Number), tz: f.hours_tz },
+    eta: toInt(f.reply_eta) || 0
+  });
+  const send = useCallback(() => {
+    const w = ref.current && ref.current.contentWindow;
+    if (w && loaded.current) w.postMessage({ type: 'isengin-preview', cfg: JSON.parse(cfg) }, window.location.origin);
+  }, [cfg]);
+  useEffect(() => { send(); }, [send]);
   return (
-    <div aria-hidden="true" style={{ marginTop: 14, border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', maxWidth: 320 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: hex, color: onAccent }}>
-        <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', fontSize: 16, flex: 'none' }}>{f.widget_icon || DEFAULT_ICON}</span>
-        <div style={{ lineHeight: 1.25, minWidth: 0 }}>
-          <b style={{ display: 'block', fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.bot_name || 'Asisten'}</b>
-          <small style={{ opacity: .85, fontSize: 11 }}>Membalas otomatis</small>
-        </div>
-      </div>
-      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, background: '#f4f8f7', minHeight: 120 }}>
-        <div style={{ alignSelf: 'flex-start', maxWidth: '82%', background: '#fff', border: '1px solid #d3e4e0', borderRadius: '16px 16px 16px 4px', padding: '8px 12px', fontSize: 13, color: '#12262b' }}>{greeting}</div>
-        <div style={{ alignSelf: 'flex-end', maxWidth: '82%', background: hex, color: onAccent, borderRadius: '16px 16px 4px 16px', padding: '8px 12px', fontSize: 13 }}>Ada produk warna merah?</div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--line)', background: '#fff' }}>
-        <span style={{ flex: 1, border: '1px solid #d3e4e0', borderRadius: 999, padding: '8px 14px', fontSize: 13, color: '#587278', background: '#f4f8f7' }}>Tulis pesan...</span>
-        <span style={{ background: hex, color: onAccent, borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>Kirim</span>
-      </div>
-    </div>
+    <iframe
+      ref={ref} className="preview" title="Pratinjau jendela chat" src={'/chat/' + slug + '?preview=1'}
+      style={{ height: 520, maxWidth: 380, marginTop: 14, display: 'block' }}
+      onLoad={() => { loaded.current = true; send(); }}
+    />
   );
 }
 
@@ -59,19 +96,22 @@ function WidgetPreview({ f }) {
   const side = f.widget_pos === 'left' ? 'left' : 'right';
   const label = f.widget_label.trim();
   const teaser = f.widget_teaser.trim();
+  const ox = Math.min(Math.max(toInt(f.widget_ox) || 0, 0), 200), oy = Math.min(Math.max(toInt(f.widget_oy) || 0, 0), 200);
   return (
-    <div aria-hidden="true" style={{ position: 'relative', height: teaser ? 160 : 120, marginTop: 14, border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg)', overflow: 'hidden' }}>
+    <div aria-hidden="true" style={{ position: 'relative', height: Math.max(120, Math.min(oy, 80) + px + 40 + (teaser ? 52 : 0)), marginTop: 14, border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg)', overflow: 'hidden' }}>
       <small style={{ position: 'absolute', top: 8, left: 12, color: 'var(--mute)' }}>Pratinjau di website</small>
       {teaser ? (
-        <div style={{ position: 'absolute', [side]: 14, bottom: px + 26, maxWidth: '70%', background: '#fff', color: '#12262b', borderRadius: 14, padding: '8px 12px', fontSize: 13, boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>{teaser}</div>
+        <div style={{ position: 'absolute', [side]: Math.min(ox, 120), bottom: Math.min(oy, 80) + px + 12, maxWidth: '70%', background: '#fff', color: '#12262b', borderRadius: 14, padding: '8px 12px', fontSize: 13, boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>{teaser}</div>
       ) : null}
       <div style={{
-        position: 'absolute', [side]: 14, bottom: 14, height: px, minWidth: px, padding: label ? '0 18px' : 0,
+        position: 'absolute', [side]: Math.min(ox, 120), bottom: Math.min(oy, 80), height: px, minWidth: px, padding: label ? '0 18px' : 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: hex,
         color: lum > 0.62 ? '#111' : '#fff', fontSize: Math.round(px * 0.45),
         borderRadius: f.widget_shape === 'kotak' ? 16 : (label ? 999 : '50%'), boxShadow: '0 4px 14px rgba(0,0,0,.25)'
       }}>
-        <span>{f.widget_icon || DEFAULT_ICON}</span>
+        {f.widget_logo
+          ? <img src={f.widget_logo} alt="" style={{ width: Math.round(px * 0.62), height: Math.round(px * 0.62), objectFit: 'cover', borderRadius: f.widget_shape === 'kotak' ? 8 : '50%' }} />
+          : <span>{f.widget_icon || DEFAULT_ICON}</span>}
         {label ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span> : null}
       </div>
     </div>
@@ -88,6 +128,18 @@ export default function BotPage() {
   const [iconPicker, setIconPicker] = useState(false);
   const [previewTab, setPreviewTab] = useState('tombol');
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+  async function pickLogo(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const logo = await fileToLogo(file);
+      setF((p) => ({ ...p, widget_logo: logo }));
+    } catch (err) {
+      toast(err.message || 'Logo gagal dibaca.');
+    }
+  }
+  const toggleDay = (d) => setF((p) => ({ ...p, hours_days: p.hours_days.includes(d) ? p.hours_days.filter((x) => x !== d) : p.hours_days.concat(d) }));
   const dirty = JSON.stringify(f) !== JSON.stringify(saved);
 
   const loadUsed = useCallback(async () => {
@@ -105,13 +157,22 @@ export default function BotPage() {
     if (!(limit >= 1 && limit <= 5000)) return toast('Batas harian: 1 sampai 5000.');
     if (f.general_on && !f.general_topic.trim()) return toast('Isi bidang toko untuk jawaban umum.');
     if (!icon || Array.from(icon).length > 8) return toast('Ikon tombol: 1 sampai 8 karakter (boleh emoji).');
+    const ox = toInt(f.widget_ox), oy = toInt(f.widget_oy), eta = toInt(f.reply_eta);
+    if (!(ox >= 0 && ox <= 200 && oy >= 0 && oy <= 200)) return toast('Jarak tombol dari tepi: 0 sampai 200 px.');
+    if (!(eta >= 0 && eta <= 1440)) return toast('Estimasi balasan admin: 0 sampai 1440 menit.');
+    if (f.hours_on && !f.hours_days.length) return toast('Pilih minimal satu hari operasional.');
+    if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_open + '') ) return toast('Isi jam buka.');
+    if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_close + '')) return toast('Isi jam tutup.');
     setBusy(true);
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
       fallback: f.fallback.trim(), daily_limit: limit, accent: f.accent,
       general_on: f.general_on, general_topic: f.general_topic.trim(), reply_language: f.reply_language,
       widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
-      widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape
+      widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape,
+      widget_logo: f.widget_logo, widget_ox: ox, widget_oy: oy,
+      hours_on: f.hours_on, hours_open: f.hours_open || '09:00', hours_close: f.hours_close || '17:00',
+      hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -288,6 +349,26 @@ export default function BotPage() {
             <label htmlFor="w5">Teks di samping ikon (opsional)</label>
             <input id="w5" maxLength={30} placeholder="Tanya kami" value={f.widget_label} onChange={set('widget_label')} />
           </div>
+          <div>
+            <label htmlFor="w7">Jarak dari tepi samping (px)</label>
+            <input id="w7" type="number" inputMode="numeric" min="0" max="200" value={f.widget_ox} onChange={set('widget_ox')} />
+          </div>
+          <div>
+            <label htmlFor="w8">Jarak dari tepi bawah (px)</label>
+            <input id="w8" type="number" inputMode="numeric" min="0" max="200" value={f.widget_oy} onChange={set('widget_oy')} />
+          </div>
+        </div>
+        <p className="hint field-hint">Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp, banner cookie, atau widget lain.</p>
+        <div className="fgrid one" style={{ marginTop: 12 }}>
+          <div>
+            <label htmlFor="w9">Logo toko (opsional, menggantikan ikon)</label>
+            <div className="colorrow">
+              {f.widget_logo ? <img src={f.widget_logo} alt="Logo saat ini" width={44} height={44} style={{ borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--line)' }} /> : null}
+              <input id="w9" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={pickLogo} />
+              {f.widget_logo ? <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, widget_logo: '' }))}>Hapus logo</button> : null}
+            </div>
+            <p className="hint field-hint">Dipakai sebagai avatar di header chat dan di tombol widget. Gambar otomatis dipotong persegi dan dikecilkan.</p>
+          </div>
         </div>
         <div className="fgrid one" style={{ marginTop: 12 }}>
           <div>
@@ -296,11 +377,54 @@ export default function BotPage() {
             <p className="hint field-hint">Muncul sekali di atas tombol setelah beberapa detik, dan tidak muncul lagi setelah ditutup.</p>
           </div>
         </div>
+        <h3 className="fsec">Jam operasional admin</h3>
+        <label htmlFor="h0" className="swrow">
+          <span className="swrow-t">
+            <b>Tampilkan status admin di header chat</b>
+            <small>Pelanggan melihat "Admin online" atau "Admin offline, buka ..." sesuai jam di bawah. Asisten tetap membalas otomatis di luar jam.</small>
+          </span>
+          <input id="h0" type="checkbox" checked={f.hours_on} onChange={(e) => setF((p) => ({ ...p, hours_on: e.target.checked }))} />
+        </label>
+        {f.hours_on ? (
+          <>
+            <div className="fgrid" style={{ marginTop: 12 }}>
+              <div>
+                <label htmlFor="h1">Buka</label>
+                <input id="h1" type="time" value={f.hours_open} onChange={set('hours_open')} />
+              </div>
+              <div>
+                <label htmlFor="h2">Tutup</label>
+                <input id="h2" type="time" value={f.hours_close} onChange={set('hours_close')} />
+              </div>
+              <div>
+                <label htmlFor="h3">Zona waktu</label>
+                <select id="h3" value={f.hours_tz} onChange={set('hours_tz')}>
+                  <option value="Asia/Jakarta">WIB</option>
+                  <option value="Asia/Makassar">WITA</option>
+                  <option value="Asia/Jayapura">WIT</option>
+                </select>
+              </div>
+            </div>
+            <div className="chips" role="group" aria-label="Hari operasional">
+              {DAYS.map(([d, n]) => (
+                <label key={d} className="swrow" style={{ padding: '6px 10px', gap: 8, fontSize: 13 }}>
+                  <input type="checkbox" checked={f.hours_days.includes(d)} onChange={() => toggleDay(d)} />{n}
+                </label>
+              ))}
+            </div>
+          </>
+        ) : null}
+        <div className="fgrid one" style={{ marginTop: 12 }}>
+          <div>
+            <label htmlFor="h4">Admin biasanya membalas dalam (menit, 0 = jangan tampilkan)</label>
+            <input id="h4" type="number" inputMode="numeric" min="0" max="1440" value={f.reply_eta} onChange={set('reply_eta')} />
+          </div>
+        </div>
         <div className="seg" role="group" aria-label="Pilih pratinjau" style={{ maxWidth: 260, marginTop: 14, marginBottom: 0 }}>
           <button type="button" aria-pressed={previewTab === 'tombol'} onClick={() => setPreviewTab('tombol')}>Tombol</button>
           <button type="button" aria-pressed={previewTab === 'chat'} onClick={() => setPreviewTab('chat')}>Jendela chat</button>
         </div>
-        {previewTab === 'tombol' ? <WidgetPreview f={f} /> : <ChatWindowPreview f={f} />}
+        {previewTab === 'tombol' ? <WidgetPreview f={f} /> : <ChatWindowPreview f={f} slug={shop.slug} />}
       </section>
 
       <div className="row savebar">

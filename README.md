@@ -184,3 +184,13 @@ Yang belum ada: perpanjangan otomatis (kartu tersimpan/langganan berulang), fakt
 ## Catatan Gemini
 
 Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemini (tersimpan terenkripsi, tanpa deploy ulang). Tiap paket (Gratis, Starter, Bisnis) bisa punya sampai 3 API key sendiri. Key dipakai bergantian supaya beban terbagi, dan kalau satu key kena limit (429), ditolak, atau server Gemini error, bot otomatis mencoba key berikutnya. Paket tanpa key sendiri memakai key bawaan. Paket yang modelnya dikosongkan memakai `GEMINI_MODEL` (default `gemini-3.5-flash-lite`); toko tanpa langganan aktif memakai model paket Gratis. Nama model dan parameter yang didukung bisa berubah, jadi cek dokumentasi Google sebelum meluncur. Untuk model Gemini 3.x, `lib/gemini.js` sengaja tidak mengirim `temperature`, `top_p`, atau `top_k`.
+
+## Logo, jam operasional, dan jarak tombol widget
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/widget_logo_jam_offset.sql` di Supabase SQL Editor **sebelum** deploy (aman dijalankan ulang; setelah `tampilan_widget.sql`). Kalau belum dijalankan, menyimpan di halaman Asisten AI akan gagal karena kolom barunya belum ada.
+
+- **Logo toko**: diunggah di Asisten AI > Tampilan chat. Gambar dipotong persegi, dikecilkan, lalu disimpan sebagai data URL di `shops.widget_logo` (maks. 60 KB), jadi tidak perlu storage terpisah. Dipakai di avatar header chat dan tombol widget; kalau gagal dimuat, kembali ke ikon emoji.
+- **Jam operasional**: status header ("Admin online", "Admin offline, buka besok 09:00") dihitung di browser pelanggan memakai zona waktu toko. Mendukung jam yang melewati tengah malam. Asisten tetap membalas otomatis di luar jam. "Admin biasanya balas dalam X menit" tampil kalau `reply_eta` > 0.
+- **Jarak tombol**: `widget_ox` (samping) dan `widget_oy` (bawah), 0 sampai 200 px. Jendela chat dan pop-up ikut bergeser.
+- **Pratinjau jendela chat** di dashboard adalah halaman chat asli (`/chat/slug?preview=1`) yang menerima pengaturan yang belum disimpan lewat `postMessage`. Mode pratinjau tidak mengirim pesan ke server.
+- Mode gelap manual sudah dihapus. Halaman chat tetap mengikuti tema terang/gelap dari sistem pelanggan.

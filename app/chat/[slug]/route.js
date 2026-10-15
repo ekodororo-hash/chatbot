@@ -45,7 +45,10 @@ export async function GET(request, context) {
     greeting: shop.greeting,
     tone: shop.tone,
     accent: wc.color,
-    icon: wc.icon
+    icon: wc.icon,
+    logo: wc.logo,
+    hours: wc.hours,
+    eta: wc.eta
   };
   const html = TEMPLATE.replace('__CONFIG__', () => safeJson(cfg));
 
@@ -56,7 +59,7 @@ export async function GET(request, context) {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy':
-        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; " +
+        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; " +
         "base-uri 'none'; form-action 'none'; " + domains.frameAncestors(shop.allowed_domains)
     }
   });
