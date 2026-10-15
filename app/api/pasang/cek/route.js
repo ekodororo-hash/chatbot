@@ -40,7 +40,8 @@ export async function POST(request) {
       match: a.match,
       others: a.others.slice(0, 3),
       redirected: page.redirected ? finalUrl.origin : '',
-      truncated: !!page.truncated
+      truncated: !!page.truncated,
+      certWarn: !!page.certWarn
     });
   } catch (e) {
     const code = e.httpStatus || 500;

@@ -403,6 +403,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
                 </ul>
               ) : null}
               {res.redirected ? <p className="hint chk-n">{'Alamat dialihkan ke ' + res.redirected + '. Itulah yang dicek.'}</p> : null}
+              {res.certWarn ? <p className="hint chk-n">Sertifikat HTTPS situs ini bermasalah (misalnya rantai sertifikat tidak lengkap atau sudah kedaluwarsa). Halamannya tetap terbaca, tapi sebagian browser atau HP bisa menampilkan peringatan keamanan ke pengunjung. Minta penyedia hosting memperbaiki atau memasang ulang SSL-nya.</p> : null}
               {res.truncated ? <p className="hint chk-n">Halamannya sangat besar, jadi hanya sebagian yang dibaca.</p> : null}
               <p className="hint chk-n">Hanya halaman yang kamu masukkan yang diperiksa. Kode di halaman lain bisa dicek dengan alamat halaman itu.</p>
             </div>
