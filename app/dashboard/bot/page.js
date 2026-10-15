@@ -4,6 +4,18 @@ import { Busy, startOfTodayWIB, toInt } from '../helpers';
 import { useDash } from '../context';
 import { SkUsage } from '../../components/Skeleton';
 import usage from '@/lib/usage';
+import { SVG_ICONS, iconPaths } from '@/lib/widgetIcons';
+
+// Ikon di tombol: SVG bawaan ("svg:nama") atau emoji/huruf biasa. Warna SVG mengikuti warna teks.
+function IconView({ icon, size }) {
+  const paths = iconPaths(icon);
+  if (!paths) return <>{icon}</>;
+  return (
+    <svg width={size || '1em'} height={size || '1em'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+      {paths.map((d) => <path key={d} d={d} />)}
+    </svg>
+  );
+}
 
 const DEFAULT_ICON = '\uD83D\uDCAC';
 const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
@@ -72,6 +84,7 @@ function ChatWindowPreview({ f, slug }) {
     tone: f.tone,
     accent: /^#[0-9a-fA-F]{6}$/.test(f.accent) ? f.accent : WIDGET_DEFAULTS.accent,
     icon: f.widget_icon.trim() || DEFAULT_ICON,
+    svg: iconPaths(f.widget_icon.trim()),
     logo: f.widget_logo,
     bubble: f.widget_bubble,
     hours: { on: f.hours_on, open: f.hours_open, close: f.hours_close, days: f.hours_days.map(Number), tz: f.hours_tz },
@@ -112,7 +125,7 @@ function WidgetPreview({ f }) {
         color: lum > 0.62 ? '#111' : '#fff', fontSize: Math.round(px * 0.45),
         borderRadius: f.widget_shape === 'kotak' ? 16 : (label ? 999 : '50%'), boxShadow: '0 4px 14px rgba(0,0,0,.25)'
       }}>
-        <span>{f.widget_icon || DEFAULT_ICON}</span>
+        <span style={{ display: 'flex' }}><IconView icon={f.widget_icon || DEFAULT_ICON} /></span>
         {label ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span> : null}
       </div>
     </div>
@@ -156,7 +169,7 @@ export default function BotPage() {
     if (!f.bot_name.trim()) return toast('Isi nama asisten.');
     if (!(limit >= 1 && limit <= 5000)) return toast('Batas harian: 1 sampai 5000.');
     if (f.general_on && !f.general_topic.trim()) return toast('Isi bidang toko untuk jawaban umum.');
-    if (!icon || Array.from(icon).length > 8) return toast('Ikon tombol: 1 sampai 8 karakter (boleh emoji).');
+    if (!icon || (!iconPaths(icon) && Array.from(icon).length > 8)) return toast('Ikon tombol: pilih ikon dari daftar, atau 1 sampai 8 karakter (boleh emoji).');
     const ox = toInt(f.widget_ox), oy = toInt(f.widget_oy), eta = toInt(f.reply_eta);
     if (!(ox >= 0 && ox <= 200 && oy >= 0 && oy <= 200)) return toast('Jarak tombol dari tepi: 0 sampai 200 px.');
     if (!(eta >= 0 && eta <= 1440)) return toast('Estimasi balasan admin: 0 sampai 1440 menit.');
@@ -353,7 +366,7 @@ export default function BotPage() {
             <h3 className="subh">Isi tombol</h3>
             <div className="fgrid">
               <div className="iconpick">
-                <label htmlFor="w4">Ikon (emoji atau huruf)</label>
+                <label htmlFor="w4">Ikon (pilih ikon, atau ketik emoji/huruf)</label>
                 <input
                   id="w4" maxLength={16} autoComplete="off" value={f.widget_icon} onChange={set('widget_icon')}
                   onFocus={() => setIconPicker(true)}
@@ -371,6 +384,18 @@ export default function BotPage() {
                         {e}
                       </button>
                     ))}
+                    {Object.keys(SVG_ICONS).map((k) => {
+                      const v = 'svg:' + k;
+                      return (
+                        <button
+                          key={v} type="button" role="option" aria-selected={f.widget_icon === v} aria-label={SVG_ICONS[k].label} title={SVG_ICONS[k].label}
+                          className={'iconpick-i' + (f.widget_icon === v ? ' on' : '')}
+                          onMouseDown={(ev) => { ev.preventDefault(); setF((p) => ({ ...p, widget_icon: v })); setIconPicker(false); }}
+                        >
+                          <IconView icon={v} size={20} />
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -403,7 +428,7 @@ export default function BotPage() {
             <div className="logorow">
               {f.widget_logo
                 ? <img src={f.widget_logo} alt="Logo saat ini" width={48} height={48} className="logoimg" />
-                : <span className="logoimg ph" aria-hidden="true">{f.widget_icon || DEFAULT_ICON}</span>}
+                : <span className="logoimg ph" aria-hidden="true"><IconView icon={f.widget_icon || DEFAULT_ICON} /></span>}
               <input id="w9" className="vh" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={pickLogo} />
               <label htmlFor="w9" className="btn ghost sm">{f.widget_logo ? 'Ganti logo' : 'Unggah logo'}</label>
               {f.widget_logo ? <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, widget_logo: '' }))}>Hapus</button> : null}

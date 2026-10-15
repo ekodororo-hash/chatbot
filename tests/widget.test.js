@@ -5,7 +5,7 @@ const wc = require('../lib/widgetConfig');
 
 const d = wc.clean({});
 assert.deepStrictEqual(d, {
-  color: '#0b7a75', pos: 'right', icon: '\uD83D\uDCAC', logo: '', label: '', teaser: '', size: 'sedang', shape: 'bulat', bubble: 'bulat', ox: 20, oy: 20,
+  color: '#0b7a75', pos: 'right', icon: '\uD83D\uDCAC', svg: null, logo: '', label: '', teaser: '', size: 'sedang', shape: 'bulat', bubble: 'bulat', ox: 20, oy: 20,
   hours: { on: false, open: '09:00', close: '17:00', days: [1, 2, 3, 4, 5, 6], tz: 'Asia/Jakarta' }, eta: 0
 });
 
@@ -63,3 +63,14 @@ assert.strictEqual(hoursAt({ ...wk, on: false }, '2026-10-15T03:00:00Z'), null);
 assert.strictEqual(wc.clean({ widget_bubble: 'lancip' }).bubble, 'lancip');
 assert.strictEqual(wc.clean({ widget_bubble: 'segitiga' }).bubble, 'bulat');
 console.log('widget config ok');
+
+// ikon SVG bawaan: "svg:nama" dikenali dan menghasilkan path; nama asing, emoji, dan nama prototipe tidak
+const sv = wc.clean({ widget_icon: 'svg:headset' });
+assert.strictEqual(sv.icon, 'svg:headset');
+assert.ok(Array.isArray(sv.svg) && sv.svg.length >= 1 && sv.svg.every((d) => /^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\s-]+$/.test(d)));
+assert.strictEqual(wc.clean({ widget_icon: 'svg:tidakada' }).svg, null);
+assert.strictEqual(wc.clean({ widget_icon: 'svg:constructor' }).svg, null);
+assert.strictEqual(wc.clean({ widget_icon: '\uD83D\uDED2' }).svg, null);
+const icons = require('../lib/widgetIcons');
+for (const k of Object.keys(icons.SVG_ICONS)) assert.ok(('svg:' + k).length <= 16 && icons.iconPaths('svg:' + k), k);
+console.log('ikon svg ok');

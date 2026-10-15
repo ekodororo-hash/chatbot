@@ -46,12 +46,21 @@
     t = Array.from ? Array.from(t).slice(0, max).join('') : t.slice(0, max);
     return t || def;
   }
+  // Ikon SVG bawaan dari server: hanya daftar path (maks 8, karakter path saja); selain itu dianggap tidak ada.
+  function svgPaths(v) {
+    if (!Array.isArray(v) || !v.length || v.length > 8) return null;
+    for (var i = 0; i < v.length; i++) {
+      if (typeof v[i] !== 'string' || v[i].length > 400 || !/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\s-]+$/.test(v[i])) return null;
+    }
+    return v;
+  }
   function norm(c) {
     c = c || {};
     return {
       color: /^#[0-9a-fA-F]{6}$/.test(c.color) ? c.color : FALLBACK.color,
       pos: pick(c.pos, ['right', 'left'], 'right'),
-      icon: text(c.icon, 8, FALLBACK.icon),
+      icon: text(c.icon, 16, FALLBACK.icon),
+      svg: svgPaths(c.svg),
       label: text(c.label, 30, ''),
       teaser: text(c.teaser, 100, ''),
       size: pick(c.size, ['kecil', 'sedang', 'besar'], 'sedang'),
@@ -128,7 +137,21 @@
     btn.id = 'isengin-chat-btn';
     btn.type = 'button';
     var ic = document.createElement('span');
-    ic.textContent = c.icon;
+    if (c.svg) {
+      var NS = 'http://www.w3.org/2000/svg';
+      var sv = document.createElementNS(NS, 'svg');
+      sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('width', '1em'); sv.setAttribute('height', '1em');
+      sv.setAttribute('fill', 'none'); sv.setAttribute('stroke', 'currentColor'); sv.setAttribute('stroke-width', '2');
+      sv.setAttribute('stroke-linecap', 'round'); sv.setAttribute('stroke-linejoin', 'round');
+      sv.style.display = 'block';
+      for (var pi = 0; pi < c.svg.length; pi++) {
+        var pt = document.createElementNS(NS, 'path');
+        pt.setAttribute('d', c.svg[pi]);
+        sv.appendChild(pt);
+      }
+      ic.style.display = 'flex';
+      ic.appendChild(sv);
+    } else ic.textContent = c.icon;
     ic.setAttribute('aria-hidden', 'true');
     btn.appendChild(ic);
     if (c.label) {

@@ -47,6 +47,7 @@ export async function GET(request, context) {
     tone: shop.tone,
     accent: wc.color,
     icon: wc.icon,
+    svg: wc.svg,
     logo: wc.logo,
     bubble: wc.bubble,
     hours: wc.hours,
