@@ -97,7 +97,9 @@ export default async function Beranda() {
             <div><dt>Menjawab dari datamu</dt><dd>Kalau jawabannya tidak ada di data, asisten meneruskan ke kamu, bukan menebak.</dd></div>
             <div><dt>Balas langsung dari dashboard</dt><dd>Percakapan yang butuh admin diberi tanda, jadi tidak ada pelanggan yang terlewat.</dd></div>
             <div><dt>Biaya terkendali</dt><dd>Atur batas balasan otomatis per hari. Setelah batas, pesan baru masuk ke admin.</dd></div>
-            <div><dt>Widget hanya di situsmu</dt><dd>Daftarkan domain yang boleh memasang chat. Situs lain tidak bisa memakai AI-mu.</dd></div>
+            <div><dt>Widget hanya di situsmu</dt><dd>Daftarkan domain yang boleh memasang chat. Situs lain tidak bisa menampilkan widget-mu.</dd></div>
+            <div><dt>Web, Telegram, dan WhatsApp</dt><dd>Asisten yang sama bisa melayani ketiga saluran. Semua percakapan masuk ke satu dashboard.</dd></div>
+            <div><dt>Tim admin dan banyak toko</dt><dd>Undang admin tambahan lewat email. Satu akun bisa mengelola sampai 5 toko.</dd></div>
           </dl>
         </section>
 
