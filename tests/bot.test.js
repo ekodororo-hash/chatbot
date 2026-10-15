@@ -139,7 +139,8 @@ t('jawaban umum: mati secara bawaan, menyala hanya bila ada topik, topik dibersi
 t('parseModelOutput: JSON, berpagar kode, sampah', async () => {
   assert.deepStrictEqual(I.parseModelOutput('{"reply":"Halo","handoff":false,"order":true}'), { reply: 'Halo', handoff: false, order: true });
   assert.strictEqual(I.parseModelOutput('```json\n{"reply":"Hai","handoff":true}\n```').handoff, true);
-  assert.strictEqual(I.parseModelOutput('bukan json'), null);
+  assert.deepStrictEqual(I.parseModelOutput('Halo kak, ada yang bisa dibantu?'), { reply: 'Halo kak, ada yang bisa dibantu?', handoff: false, order: false });   // teks biasa tetap dipakai
+  assert.strictEqual(I.parseModelOutput('{"reply":"terpotong'), null);   // JSON terpotong tetap gagal
   assert.strictEqual(I.parseModelOutput('{"reply":"   "}'), null);
   assert.strictEqual(I.parseModelOutput('{"reply":"x","handoff":"true"}').handoff, false);
 });
@@ -235,7 +236,7 @@ t('Gemini error atau keluaran rusak: dicoba ulang, gangguan pertama tetap dipega
   assert.notStrictEqual(r1.status, 'human'); assert.ok(/gangguan/.test(r1.messages[1].content));
   const r1b = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'halo lagi' });
   assert.strictEqual(r1b.status, 'human');
-  const s2 = seedShop(); geminiImpl = async () => 'ini bukan json';
+  const s2 = seedShop(); geminiImpl = async () => '{"reply":"ini terpotong';
   const r2 = await bot.handleMessage({ slug: s2.slug, text: 'halo' });
   const r2b = await bot.handleMessage({ slug: s2.slug, conversationId: r2.conversationId, token: r2.token, text: 'halo' });
   console.error = oldErr;
