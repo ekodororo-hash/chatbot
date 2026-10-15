@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Busy, startOfTodayWIB, toInt } from '../helpers';
 import { useDash } from '../context';
 import { SkUsage } from '../../components/Skeleton';
+import usage from '@/lib/usage';
 
 const DEFAULT_ICON = '\uD83D\uDCAC';
 const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
@@ -144,9 +145,7 @@ export default function BotPage() {
   const dirty = JSON.stringify(f) !== JSON.stringify(saved);
 
   const loadUsed = useCallback(async () => {
-    const { count } = await sb.from('messages').select('id', { count: 'exact', head: true })
-      .eq('shop_id', shop.id).eq('role', 'bot').gte('created_at', startOfTodayWIB().toISOString());
-    setUsed(count || 0);
+    try { setUsed(await usage.repliesSince(sb, shop.id, startOfTodayWIB())); } catch (e) { setUsed(0); }
   }, [sb, shop.id]);
 
   useEffect(() => { loadUsed(); }, [loadUsed]);

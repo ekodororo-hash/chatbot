@@ -39,6 +39,12 @@ class Q {
       if (this.t === 'messages') r.id = this.db._mid++;
       if (this.t === 'conversations') Object.assign(r, { id: crypto.randomUUID(), visitor_token: crypto.randomUUID(), status: 'bot', unanswered: false, flag: null });
       rows.push(r);
+      // Tiruan trigger bot_usage_count (hanya bila tabel bot_usage disediakan oleh tes).
+      if (this.t === 'messages' && r.role === 'bot' && this.db.bot_usage) {
+        const day = require('../lib/usage').dayKey(r.created_at);
+        const u = this.db.bot_usage.find(x => x.shop_id === r.shop_id && x.day === day);
+        if (u) u.n += 1; else this.db.bot_usage.push({ shop_id: r.shop_id, day, n: 1 });
+      }
       return { data: this.ret ? r : null, error: null, count: null };
     }
     let m = rows.filter(r => this.f.every(fn => fn(r)));
@@ -720,6 +726,36 @@ t('periksa pembayaran: menanyakan status ke Midtrans, dan hanya untuk tagihan to
   const s3 = seedShop(); const p3 = await payFor(s3, 'starter', 1);
   midtransImpl = async () => ({ status: 404, body: {} });
   assert.strictEqual((await billing.syncOrder(s3, p3.order_id)).status, 'pending');
+});
+t('pemakaian balasan: menghapus percakapan tidak mengembalikan kuota harian maupun bulanan', async () => {
+  const usage = require('../lib/usage');
+  assert.strictEqual(usage.dayKey(new Date('2026-10-31T16:59:00Z')), '2026-10-31');
+  assert.strictEqual(usage.dayKey(new Date('2026-10-31T17:00:00Z')), '2026-11-01');
+  db.bot_usage = [];                                   // tabel hasil migrasi pemakaian_bot.sql
+  try {
+    const s = seedShop({ daily_limit: 2 }); geminiImpl = reply('ok');
+    const r1 = await bot.handleMessage({ slug: s.slug, text: 'a' });
+    await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'b' });
+    assert.strictEqual((await billing.status(fake, s, undefined, { brief: true })).used, 2);
+    // Pemilik menghapus percakapan: pesan ikut terhapus (ON DELETE CASCADE), bot_usage tidak.
+    db.conversations = db.conversations.filter(c => c.id !== r1.conversationId);
+    db.messages = db.messages.filter(m => m.conversation_id !== r1.conversationId);
+    assert.strictEqual(db.messages.filter(m => m.shop_id === s.id && m.role === 'bot').length, 0);
+    assert.strictEqual((await billing.status(fake, s, undefined, { brief: true })).used, 2, 'kuota bulanan tetap terpakai');
+    geminiCalls = [];
+    const r = await bot.handleMessage({ slug: s.slug, text: 'c' });
+    assert.strictEqual(geminiCalls.length, 0, 'batas harian tetap berlaku'); assert.strictEqual(r.status, 'human');
+    assert.strictEqual(await usage.repliesSince(fake, s.id, plans.startOfMonthWIB()), 3, 'balasan penolakan juga tercatat');
+    // Toko lain tidak ikut terhitung
+    const o = seedShop();
+    assert.strictEqual(await usage.repliesSince(fake, o.id, plans.startOfMonthWIB()), 0);
+  } finally { delete db.bot_usage; }
+});
+t('pemakaian balasan: tabel bot_usage belum ada -> menghitung dari pesan seperti sebelumnya', async () => {
+  const usage = require('../lib/usage');
+  assert.strictEqual(db.bot_usage, undefined);
+  const s = seedShop(); fillMonth(s, 4);
+  assert.strictEqual(await usage.repliesSince(fake, s.id, plans.startOfMonthWIB()), 4);
 });
 t('status halaman Langganan: paket, pemakaian bulan ini, dan riwayat', async () => {
   const s = seedShop(); fillMonth(s, 7); await billing.handleNotification(notif(await payFor(s, 'bisnis', 1)));

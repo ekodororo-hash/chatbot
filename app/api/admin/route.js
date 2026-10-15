@@ -1,5 +1,6 @@
 import admin from '@/lib/admin';
 import plans from '@/lib/plans';
+import usage from '@/lib/usage';
 import shops from '@/lib/shops';
 import settings from '@/lib/settings';
 import gemini from '@/lib/gemini';
@@ -53,7 +54,7 @@ export async function GET(request) {
     // Hitung per toko secara paralel (head count, tanpa menarik isi pesan).
     const rows = await Promise.all((shops || []).map(async (s) => {
       const [used, convs] = await Promise.all([
-        count(sb.from('messages').select('id', { count: 'exact', head: true }).eq('shop_id', s.id).eq('role', 'bot').gte('created_at', monthStart)),
+        usage.repliesSince(sb, s.id, plans.startOfMonthWIB(now)),
         count(sb.from('conversations').select('id', { count: 'exact', head: true }).eq('shop_id', s.id))
       ]);
       const plan = plans.effectivePlan(billBy[s.id], now);
@@ -66,11 +67,12 @@ export async function GET(request) {
       };
     }));
 
-    const [totalShops, totalConvs, botToday] = await Promise.all([
+    const [totalShops, totalConvs] = await Promise.all([
       count(sb.from('shops').select('id', { count: 'exact', head: true })),
-      count(sb.from('conversations').select('id', { count: 'exact', head: true })),
-      count(sb.from('messages').select('id', { count: 'exact', head: true }).eq('role', 'bot').gte('created_at', monthStart))
+      count(sb.from('conversations').select('id', { count: 'exact', head: true }))
     ]);
+    // Total balasan bulan ini = jumlah pemakaian per toko di atas (dari bot_usage, tidak berkurang saat percakapan dihapus).
+    const botToday = rows.reduce((sum, r) => sum + r.used, 0);
 
     const allSettings = await settings.getAll();
     const meta = await settings.describe();

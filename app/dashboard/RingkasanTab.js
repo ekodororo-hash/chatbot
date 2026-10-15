@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Sk } from '../components/Skeleton';
 import ratingLib from '@/lib/rating';
+import usage from '@/lib/usage';
 import { Busy, authFetch, dayTime, startOfTodayWIB } from './helpers';
 import { useRealtime } from './useRealtime';
 
@@ -48,12 +49,13 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
     const month = startOfMonthWIB();
     const iso = (x) => x.toISOString();
     const c = () => sb.from('conversations').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id);
-    const m = () => sb.from('messages').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id).eq('role', 'bot');
+    // Balasan bot dibaca dari bot_usage, jadi tidak berkurang saat percakapan dihapus.
+    const m = (from) => usage.repliesSince(sb, shop.id, from).catch(() => null);
     try {
       const [convToday, botToday, botMonth, human, unanswered, ordersNew, ordersProses, week7] = await Promise.all([
         head(c().gte('created_at', iso(today))),
-        head(m().gte('created_at', iso(today))),
-        head(m().gte('created_at', iso(month))),
+        m(today),
+        m(month),
         head(c().eq('status', 'human')),
         head(c().eq('unanswered', true)),
         head(c().eq('order_status', 'baru')),      // null bila migrasi pesanan belum dijalankan

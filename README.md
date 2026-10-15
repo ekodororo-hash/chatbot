@@ -116,6 +116,12 @@ Hal yang perlu diketahui:
 - **Notifikasi kuota** (`lib/quotaAlert.js`): lewat Telegram admin toko, sekali saat kuota balasan bulan ini terpakai 80% dan sekali saat habis, per bulan kalender (WIB). Tidak ada penerima Telegram berarti tidak ada kiriman dan jatah bulan itu tidak terpakai. Batas 80% diatur di `WARN_AT`.
 - **Pengingat masa aktif** sudah ada sebelumnya (`lib/reminder.js`, tahap 7, 3, 1 hari dan habis) dan butuh `CRON_SECRET` serta cron-job.org seperti di bagian langganan.
 
+## Pemakaian balasan (kuota tidak kembali saat percakapan dihapus)
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/pemakaian_bot.sql` di Supabase SQL Editor (aman dijalankan ulang; proyek baru sudah tercakup di `schema.sql`).
+
+Kuota harian (`daily_limit`) dan kuota bulanan paket dihitung dari tabel `bot_usage` (satu baris per toko per hari WIB, diisi trigger setiap bot membalas), bukan dari jumlah pesan. Pesan ikut terhapus saat percakapan dihapus (`ON DELETE CASCADE`), sehingga dulu pemakaian bisa kembali ke 0 setelah semua percakapan dihapus. Pembacaan ada di `lib/usage.js`. Kalau tabel belum ada, aplikasi tetap jalan dan menghitung dari pesan seperti sebelumnya. Balasan yang sudah terlanjur terhapus sebelum migrasi tidak bisa dipulihkan.
+
 ## Bahasa
 
 Asisten **memahami pesan dalam bahasa apa pun** tetapi **selalu membalas dalam bahasa Indonesia** (aturan 5a di `buildSystem`, `lib/bot.js`). Pesan otomatis non-AI (kuota habis, gangguan, tulisan widget) juga tetap Indonesia.

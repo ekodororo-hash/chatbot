@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Busy, Field, startOfTodayWIB, toInt } from './helpers';
 import { SkUsage } from '../components/Skeleton';
+import usage from '@/lib/usage';
 
 export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
   const [used, setUsed] = useState(null);
@@ -14,9 +15,7 @@ export default function BotTab({ sb, shop, onShopChange, fail, toast }) {
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
 
   const loadUsed = useCallback(async () => {
-    const { count } = await sb.from('messages').select('id', { count: 'exact', head: true })
-      .eq('shop_id', shop.id).eq('role', 'bot').gte('created_at', startOfTodayWIB().toISOString());
-    setUsed(count || 0);
+    try { setUsed(await usage.repliesSince(sb, shop.id, startOfTodayWIB())); } catch (e) { setUsed(0); }
   }, [sb, shop.id]);
 
   useEffect(() => { loadUsed(); }, [loadUsed]);

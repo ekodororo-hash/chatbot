@@ -2,6 +2,7 @@ import bot from '@/lib/bot';
 import supabase from '@/lib/supabase';
 import gemini from '@/lib/gemini';
 import billing from '@/lib/billing';
+import usage from '@/lib/usage';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -42,9 +43,7 @@ export async function POST(request) {
     shop.bot_on ? 'Tersimpan aktif.' : 'Di database bot masih nonaktif. Buka halaman Bot, centang "Bot aktif", lalu klik Simpan.');
 
   try {
-    const { count } = await sb.from('messages').select('id', { count: 'exact', head: true })
-      .eq('shop_id', shop.id).eq('role', 'bot').gte('created_at', bot._internal.startOfTodayWIB().toISOString());
-    const used = count || 0;
+    const used = await usage.repliesSince(sb, shop.id, bot._internal.startOfTodayWIB());
     add('kuota', 'Kuota balasan hari ini', used < shop.daily_limit,
       used + ' dari batas ' + shop.daily_limit + (used < shop.daily_limit ? '.' : '. Naikkan batas di halaman Bot.'));
   } catch (e) { add('kuota', 'Kuota balasan hari ini', false, 'Gagal membaca: ' + e.message); }
