@@ -1058,6 +1058,8 @@ t('kata kasar: prompt toko klien memuat aturan peringatan bertahap (3 langkah), 
   }
   assert.ok(I.buildSystem(Object.assign({}, base, { reply_language: 'auto' }), [], [], false).includes('dalam bahasa pelanggan'));
   assert.ok(I.buildSystem(base, [], [], false).includes('dalam bahasa Indonesia'));
+  const named = I.buildSystem(Object.assign({}, base, { bot_name: 'Ayu' }), [], [], false);
+  assert.ok(named.includes('asisten bernama \\"Ayu\\"') || named.includes('asisten bernama "Ayu"'), 'peringatan menyebut nama asisten dari Identitas');
 });
 
 t('bahasa: pengaturan "ikuti bahasa pelanggan" membuat bot membalas dengan bahasa pelanggan, bukan dipaksa Indonesia', async () => {
