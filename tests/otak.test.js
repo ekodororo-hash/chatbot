@@ -443,10 +443,18 @@ t('wa.me tulisan model dibuang dan diganti satu tombol dengan label bersih (tida
 });
 
 
-t('bahasa: pesan pendek memakai bahasa halaman (?lang), bukan bahasa percakapan sebelumnya', () => {
+t('bahasa: pesan pendek melanjutkan bahasa percakapan sebelumnya; bahasa halaman (?lang) hanya cadangan kalau belum ada riwayat', () => {
   const sys = otak.buildSystem('RULES', { lastText: 'i dont know', siteLang: 'en', recentTexts: ['kok lama amat', 'halo saya mau tanya'] });
-  assert.ok(/Website language chosen by the visitor: English/.test(sys));
-  assert.ok(!/NOT in Indonesian by default/.test(sys));
+  assert.ok(/reply in Indonesian, NOT in Indonesian by default|wrote in Indonesian: reply in Indonesian/.test(sys));
+  assert.ok(!/Website language chosen by the visitor/.test(sys));
+  const sys2 = otak.buildSystem('RULES', { lastText: 'ok', siteLang: 'en', recentTexts: [] });
+  assert.ok(/Website language chosen by the visitor: English/.test(sys2));
+});
+t('bahasa: "no price very expensive" terdeteksi Inggris; balasan campuran ("Boleh tahu nama Anda?") terdeteksi sebagai kebocoran Indonesia', () => {
+  assert.strictEqual(otak.detectLang('no price very expensive'), 'English');
+  assert.ok(otak.indoLeak('I understand, we have various tiers. Boleh tahu nama Anda?') >= 2);
+  assert.ok(otak.indoLeak('Prices start from $50 per 100 grams. For details, please check our price list.') < 2);
+  assert.ok(/LANGUAGE PURITY/.test(otak.buildSystem('RULES', { lastText: 'hello' })));
 });
 t('bahasa: balasan Indonesia untuk pengunjung berbahasa Inggris dicoba ulang sekali dan diberi arahan bahasa', async () => {
   const s = ownerShop();
