@@ -1205,6 +1205,15 @@ t('kontak: menyimpan lead, nomor yang sama tidak ganda, dan semua penolakan', as
   await rejects(bot.saveLead({ slug: other.slug, conversationId: r.conversationId, token: r.token, contact: 'a@b.co' }), 404);
 });
 
+t('daftar produk: prompt menyuruh menyebut contoh nama produk, bukan menolak, baik katalog kecil maupun besar', async () => {
+  const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
+  const prods = [{ name: 'Pashmina Ceruti', price: 45000, stock: 3, description: '' }];
+  for (const partial of [false, true]) {
+    const sys = I.buildSystem(Object.assign({}, base), prods, [], partial);
+    assert.ok(sys.includes('ada produk apa saja') && sys.includes('JANGAN menolak'), 'partial=' + partial);
+  }
+});
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {
