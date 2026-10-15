@@ -16,12 +16,7 @@ const STATUS = { baru: ['Baru', 'w'], diproses: ['Diproses', 'a'], selesai: ['Se
 const FILTERS = [['baru', 'Baru'], ['diproses', 'Diproses'], ['selesai', 'Selesai'], ['batal', 'Dibatalkan'], ['semua', 'Semua']];
 const ROLE = { customer: 'Pelanggan', bot: 'Asisten', admin: 'Admin' };
 const PERIODS = [['bulan', 'Bulan ini'], ['30', '30 hari terakhir'], ['semua', 'Semua']];
-const NOTIFY_KEY = (shopId) => 'pesanan-kabari:' + shopId;
 const WIB = 7 * 3600000;
-
-function readNotifyPref(shopId) {
-  try { return window.localStorage.getItem(NOTIFY_KEY(shopId)) === '1'; } catch (e) { return false; }   // mati bawaan: asisten hanya mencatat, admin yang menghubungi pelanggan
-}
 
 // Awal periode ekspor menurut WIB. null = tanpa batas.
 function periodStart(key) {
@@ -100,7 +95,6 @@ export default function PesananTab({ sb, shop, refreshBadges, fail, toast }) {
   const [busy, setBusy] = useState('');
   const [period, setPeriod] = useState('bulan');
   const [exporting, setExporting] = useState(false);
-  const [notifyOn, setNotifyOn] = useState(() => readNotifyPref(shop.id));
   const [ask, confirmNode] = useConfirm();
 
   const load = useCallback(async () => {
@@ -123,11 +117,6 @@ export default function PesananTab({ sb, shop, refreshBadges, fail, toast }) {
   useRealtime(sb, 'conversations', 'shop_id=eq.' + shop.id, load, 60000);
   useRealtime(sb, 'orders', 'shop_id=eq.' + shop.id, load, 300000);
 
-  function changeNotify(on) {
-    setNotifyOn(on);
-    try { window.localStorage.setItem(NOTIFY_KEY(shop.id), on ? '1' : '0'); } catch (e) { /* abaikan */ }
-  }
-
   const counts = useMemo(() => {
     const c = { semua: 0 };
     (rows || []).forEach((r) => { c[r.order_status] = (c[r.order_status] || 0) + 1; c.semua++; });
@@ -139,19 +128,16 @@ export default function PesananTab({ sb, shop, refreshBadges, fail, toast }) {
   async function setStatus(r, next, msg) {
     setBusy(r.id + next);
     try {
-      const res = await authFetch(sb, shop.id, '/api/orders/status', 'POST', { conversationId: r.id, status: next, notifyCustomer: notifyOn });
+      await authFetch(sb, shop.id, '/api/orders/status', 'POST', { conversationId: r.id, status: next });
       setRows((list) => list.map((x) => (x.id === r.id ? { ...x, order_status: next } : x)));
       setDetails((m) => (m[r.id] ? { ...m, [r.id]: { ...m[r.id], status: next } } : m));
       refreshBadges();
-      if (res.notified === 'sent') toast(msg + ' Pelanggan sudah dikabari.');
-      else if (res.notified === 'saved') toast(msg + ' Kabar disimpan di chat pelanggan.');
-      else if (res.notified === 'failed') toast(msg + ' Tapi pesan ke pelanggan gagal terkirim' + (res.notifyError ? ': ' + res.notifyError : '.'));
-      else toast(msg);
+      toast(msg);
     } catch (e) { fail(e); } finally { setBusy(''); }
   }
 
   async function cancel(r) {
-    const ok = await ask({ title: 'Batalkan pesanan?', message: 'Pesanan dari ' + ((details[r.id] && details[r.id].customer_name) || r.customer_name) + ' ditandai dibatalkan' + (notifyOn ? ' dan pelanggan dikabari' : '') + '. Percakapannya tetap ada.', okLabel: 'Batalkan pesanan' });
+    const ok = await ask({ title: 'Batalkan pesanan?', message: 'Pesanan dari ' + ((details[r.id] && details[r.id].customer_name) || r.customer_name) + ' ditandai dibatalkan' + '. Percakapannya tetap ada.', okLabel: 'Batalkan pesanan' });
     if (ok) setStatus(r, 'batal', 'Pesanan dibatalkan.');
   }
 
@@ -181,11 +167,7 @@ export default function PesananTab({ sb, shop, refreshBadges, fail, toast }) {
     <div className="card">
       {confirmNode}
       <h2>Pesanan dari pelanggan</h2>
-      <p className="hint">Pesanan yang dicatat asisten dari chat. Konfirmasi total dan ongkir langsung ke pelanggan lewat percakapan, lalu ubah statusnya di sini.</p>
-      <label className="sw" htmlFor="pk">
-        <input id="pk" type="checkbox" checked={notifyOn} onChange={(e) => changeNotify(e.target.checked)} />
-        Kirim pesan otomatis ke pelanggan saat status berubah (bawaan: mati)
-      </label>
+      <p className="hint">Pesanan yang dicatat asisten dari chat. Status di sini hanya catatan untuk admin dan tidak dikirim ke pelanggan. Konfirmasi total dan ongkir langsung ke pelanggan lewat percakapan atau WhatsApp, lalu ubah statusnya di sini.</p>
       {!detailsOn ? <p className="hint note">Rincian barang dan total belum aktif. Jalankan migrasi <b>pesanan_terstruktur.sql</b> di Supabase.</p> : null}
       <div className="chips" role="group" aria-label="Filter status pesanan">
         {FILTERS.map(([k, label]) => (
