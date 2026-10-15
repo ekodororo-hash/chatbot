@@ -176,6 +176,8 @@ t('label tombol WhatsApp mengikuti bahasa pengunjung (sama dengan portal)', asyn
   assert.strictEqual(wa('mau minta price list dong'), 'Tanya lewat WhatsApp: ' + WA);
   assert.strictEqual(wa('ciao vorrei il listino prezzi'), 'Chiedi su WhatsApp: ' + WA);
   assert.strictEqual(wa('ok'), 'Tanya lewat WhatsApp: ' + WA, 'tidak terdeteksi: bahasa halaman (Indonesia)');
+  const short = otak.parseOutput('{"reply":"Hi [[WA]]"}', otak.DEFAULT_TEMPLATE, { userText: 'good', recentTexts: ['good', 'can i have price list'] }).reply.split('\n').pop();
+  assert.strictEqual(short, 'Ask on WhatsApp: ' + WA, 'pesan pendek: label ikut bahasa percakapan');
   assert.strictEqual(wa('olá gostaria de preços, obrigado'), 'Ask on WhatsApp: ' + WA, 'bahasa di luar daftar: Inggris');
 });
 
@@ -215,6 +217,21 @@ t('gayaPortal: hanya toko owner (dan saklar menyala) yang tampil seperti portal;
   const keep = fake.auth; fake.auth = undefined; otak._ownerCache.clear();
   assert.strictEqual(await gp.aktif(fake, mine), false, 'gagal baca: false, tidak melempar');
   fake.auth = keep; otak._ownerCache.clear();
+});
+
+t('bahasa: pesan terakhir terlalu pendek ("good") melanjutkan bahasa percakapan, bukan Indonesia', async () => {
+  const hist = ['good', 'what your country', 'can i have price list'];   // terbaru dulu
+  assert.strictEqual(otak.detectLang('good'), '');
+  assert.strictEqual(otak.convLang(hist), 'English');
+  const sys = otak.buildSystem('ATURAN', { lastText: 'good', recentTexts: hist });
+  assert.ok(sys.includes('too short to tell its language') && sys.includes('wrote in English: reply in English, NOT in Indonesian'), sys.slice(-700));
+  // Pesan terakhir jelas: arahan utama, tanpa cadangan.
+  const clear = otak.buildSystem('ATURAN', { lastText: 'mau minta price list dong', recentTexts: ['mau minta price list dong', 'can i have price list'] });
+  assert.ok(clear.includes('LAST message: Indonesian') && !clear.includes('too short to tell'));
+  // Tidak ada riwayat yang bisa dideteksi: tidak menambah arahan apa pun.
+  assert.ok(!otak.buildSystem('ATURAN', { lastText: 'ok', recentTexts: ['ok', 'halo'] }).includes('Automatic language') );
+  assert.ok(!otak.buildSystem('ATURAN', { lastText: 'ok', recentTexts: ['ok'] }).includes('too short to tell'));
+  assert.strictEqual(otak.convLang(undefined), '');
 });
 
 t('parseOutput: penanda dibuang, tindakannya dicatat, tautan WA ditambahkan', async () => {
