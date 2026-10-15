@@ -26,6 +26,26 @@ const WIDGET_DEFAULTS = {
 };
 const DAYS = [['1', 'Sen'], ['2', 'Sel'], ['3', 'Rab'], ['4', 'Kam'], ['5', 'Jum'], ['6', 'Sab'], ['0', 'Min']];
 const LOGO_MAX = 55000;
+const QUICK_DEFAULT = ['Tanya produk', 'Cek status pesanan', 'Bicara dengan admin'];
+const QUICK_MAX = 5;
+const QUICK_LEN = 40;
+
+// Isi kolom pilihan cepat: selalu 5 kotak (yang kosong tidak ditampilkan di chat).
+function quickSlots(v) {
+  const base = Array.isArray(v) ? v.slice(0, QUICK_MAX) : QUICK_DEFAULT.slice();
+  while (base.length < QUICK_MAX) base.push('');
+  return base;
+}
+
+// Bersihkan isian: buang yang kosong dan kembar, maksimal 5.
+function quickClean(list) {
+  const out = [];
+  list.forEach((x) => {
+    const t = String(x || '').replace(/\s+/g, ' ').trim().slice(0, QUICK_LEN);
+    if (t && !out.some((o) => o.toLowerCase() === t.toLowerCase()) && out.length < QUICK_MAX) out.push(t);
+  });
+  return out;
+}
 
 // Kecilkan logo jadi persegi (potong tengah) supaya cukup disimpan langsung di database, tanpa penyimpanan file terpisah.
 function fileToLogo(file) {
@@ -63,6 +83,7 @@ function fromShop(shop) {
     general_on: shop.general_on === true, general_topic: shop.general_topic || '',
     reply_language: shop.reply_language === 'auto' ? 'auto' : 'id',
     lead_on: shop.lead_on === true,
+    quick_on: shop.quick_on !== false, quick_replies: quickSlots(shop.quick_replies),
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat',
@@ -88,7 +109,8 @@ function ChatWindowPreview({ f, slug }) {
     logo: f.widget_logo,
     bubble: f.widget_bubble,
     hours: { on: f.hours_on, open: f.hours_open, close: f.hours_close, days: f.hours_days.map(Number), tz: f.hours_tz },
-    eta: toInt(f.reply_eta) || 0
+    eta: toInt(f.reply_eta) || 0,
+    quick: { on: f.quick_on, items: quickClean(f.quick_replies) }
   });
   const send = useCallback(() => {
     const w = ref.current && ref.current.contentWindow;
@@ -136,6 +158,7 @@ function WidgetPreview({ f }) {
 export default function BotPage() {
   const { sb, shop, onShopChange, fail, toast } = useDash();
   const leadReady = Object.prototype.hasOwnProperty.call(shop, 'lead_on');
+  const quickReady = Object.prototype.hasOwnProperty.call(shop, 'quick_replies');   // kolom ada setelah migrasi pilihan_cepat.sql
   const [used, setUsed] = useState(null);
   const [f, setF] = useState(() => fromShop(shop));
   const [saved, setSaved] = useState(() => fromShop(shop));
@@ -195,6 +218,7 @@ export default function BotPage() {
       hours_on: f.hours_on, hours_open: f.hours_open || '09:00', hours_close: f.hours_close || '17:00',
       hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
+    if (quickReady) { patch.quick_on = f.quick_on; patch.quick_replies = quickClean(f.quick_replies); }
     if (leadReady) patch.lead_on = f.lead_on;   // kolom ini baru ada setelah migrasi rating_dan_kontak.sql
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -317,6 +341,34 @@ export default function BotPage() {
             <textarea id="b4" maxLength={300} value={f.fallback} onChange={set('fallback')} />
           </div>
         </div>
+
+        <h3 className="fsec">Pilihan cepat</h3>
+        <label htmlFor="bq0" className="swrow">
+          <span className="swrow-t">
+            <b>Tampilkan pilihan cepat di chat</b>
+            <small>
+              {quickReady
+                ? 'Tombol di bawah sapaan pembuka, supaya pelanggan tidak perlu mengetik dari nol. Kalau dimatikan, tombol tidak muncul sama sekali.'
+                : 'Belum aktif di database. Jalankan supabase/migrations/pilihan_cepat.sql di Supabase dulu.'}
+            </small>
+          </span>
+          <input id="bq0" type="checkbox" disabled={!quickReady} checked={f.quick_on} onChange={(e) => setF((p) => ({ ...p, quick_on: e.target.checked }))} />
+        </label>
+        {quickReady && f.quick_on ? (
+          <div className="fgrid one">
+            {f.quick_replies.map((t, i) => (
+              <div key={i}>
+                <label htmlFor={'bq' + (i + 1)}>{'Pilihan ' + (i + 1)}{i >= 1 ? ' (opsional)' : ''}</label>
+                <input id={'bq' + (i + 1)} maxLength={QUICK_LEN} value={t} placeholder="Kosongkan kalau tidak dipakai"
+                  onChange={(e) => { const v = e.target.value; setF((p) => ({ ...p, quick_replies: p.quick_replies.map((x, j) => (j === i ? v : x)) })); }} />
+              </div>
+            ))}
+            <p className="hint field-hint">{'Maksimal 5 pilihan, masing-masing sampai ' + QUICK_LEN + ' karakter. Teks yang diketuk pelanggan dikirim sebagai pesan, jadi tulis seperti pertanyaan, contoh: "Ada stok warna hitam?". Kolom kosong tidak ditampilkan.'}</p>
+            <div className="row">
+              <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, quick_replies: quickSlots(QUICK_DEFAULT) }))}>Kembalikan bawaan</button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="card wsec" aria-labelledby="bw">

@@ -513,3 +513,12 @@ on conflict (shop_id, day) do update set n = greatest(public.bot_usage.n, exclud
 -- ============================================================
 alter table public.conversations add column if not exists closed_by_customer boolean not null default false;
 grant update (closed_by_customer) on public.conversations to authenticated;
+
+-- ============================================================
+-- BAGIAN TAMBAHAN: pilihan cepat chat (bisa diedit, maks 5, bisa dimatikan).
+-- Sama dengan supabase/migrations/pilihan_cepat.sql.
+-- ============================================================
+alter table public.shops add column if not exists quick_on boolean not null default true;
+alter table public.shops add column if not exists quick_replies text[] not null default array['Tanya produk','Cek status pesanan','Bicara dengan admin'];
+alter table public.shops drop constraint if exists shops_quick_replies_chk;
+alter table public.shops add constraint shops_quick_replies_chk check (cardinality(quick_replies) <= 5);

@@ -75,3 +75,15 @@ assert.strictEqual(wc.clean({ widget_icon: '\uD83D\uDED2' }).svg, null);
 const icons = require('../lib/widgetIcons');
 for (const k of Object.keys(icons.SVG_ICONS)) assert.ok(('svg:' + k).length <= 16 && icons.iconPaths('svg:' + k), k);
 console.log('ikon svg ok');
+
+// Pilihan cepat: bawaan, dimatikan, dibatasi 5, dibersihkan.
+{
+  const assert = require('assert');
+  const wc = require('../lib/widgetConfig');
+  assert.deepStrictEqual(wc.quick({}).items, ['Tanya produk', 'Cek status pesanan', 'Bicara dengan admin']);
+  assert.strictEqual(wc.quick({}).on, true);
+  assert.strictEqual(wc.quick({ quick_on: false, quick_replies: ['a'] }).on, false);
+  assert.deepStrictEqual(wc.quick({ quick_replies: ['a', 'A', ' b ', '', 'c', 'd', 'e', 'f'] }).items, ['a', 'b', 'c', 'd', 'e']);
+  assert.deepStrictEqual(wc.quick({ quick_replies: [] }).items, []);
+  console.log('pilihan cepat ok');
+}
