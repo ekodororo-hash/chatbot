@@ -221,6 +221,7 @@
     ld.setAttribute('aria-hidden', 'true');
     ld.innerHTML = '<i></i><i></i><i></i>';
     box.appendChild(ld);
+    function hideLd() { ld.classList.add('done'); }
 
     var tip = null, tipTimer = null, TIPKEY = 'isengin-tip-' + bot;
     function hideTip(remember) {
@@ -292,7 +293,7 @@
         frame.src = frameSrc();
         // Setelah iframe (re)load, beri tahu chat apakah sedang terbuka atau tertutup.
         frame.addEventListener('load', function () {
-          ld.classList.add('done');
+          setTimeout(hideLd, 6000); // cadangan kalau sinyal siap dari chat tidak datang
           tellFrame(box.classList.contains('show') ? 'isengin-open' : 'isengin-close');
           if (siteLang() !== srcLang) sendLang(siteLang()); // bahasa berganti selagi iframe masih dimuat
         });
@@ -318,6 +319,7 @@
       if (!frame || e.source !== frame.contentWindow) return;
       var d = e.data || {};
       if (d.type === 'isengin-newmsg' && !box.classList.contains('show')) showBadge();
+      if (d.type === 'isengin-ready') hideLd();
     });
 
     document.body.appendChild(box);
