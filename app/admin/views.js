@@ -808,43 +808,59 @@ export function AiView() {
   );
 }
 
-// Tampilan widget chat per toko. Bawaan: toko yang dipasang di situs sendiri (env WIDGET_BOT).
+// Tampilan widget chat. Dua bagian terpisah: widget admin (situs ini sendiri, toko di env WIDGET_BOT)
+// dan widget toko (semua toko lain milik klien). Daftar dan editornya tidak dicampur.
 export function WidgetView() {
   const { data, post, toast } = useAdmin();
-  const shops = data.shops;
-  const start = (shops.find((s) => s.slug === data.widgetBot) || shops[0] || {}).id || '';
-  const [shopId, setShopId] = useState(start);
+  const adminShop = data.shops.find((s) => s.slug === data.widgetBot) || null;
+  const shops = data.shops.filter((s) => s.slug !== data.widgetBot);
+  const [tab, setTab] = useState('admin');
+  const [shopId, setShopId] = useState((shops[0] || {}).id || '');
+  const id = tab === 'admin' ? (adminShop ? adminShop.id : '') : shopId;
   const [shop, setShop] = useState(null);
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (!shopId) return undefined;
-    let alive = true;
     setShop(null); setErr('');
-    post({ action: 'get_widget', shopId }).then((r) => { if (alive) setShop(r.shop); }, (e) => { if (alive) setErr(e.message || 'Gagal memuat.'); });
+    if (!id) return undefined;
+    let alive = true;
+    post({ action: 'get_widget', shopId: id }).then((r) => { if (alive) setShop(r.shop); }, (e) => { if (alive) setErr(e.message || 'Gagal memuat.'); });
     return () => { alive = false; };
-  }, [shopId, post]);
+  }, [id, post]);
 
   async function onSave(patch) {
-    try { await post({ action: 'save_widget', shopId, widget: patch }); return ''; }
+    try { await post({ action: 'save_widget', shopId: id, widget: patch }); return ''; }
     catch (e) { return e.message || 'Gagal menyimpan.'; }
   }
 
-  if (!shops.length) return <section className="card"><Empty title="Belum ada toko">Widget diatur per toko, jadi buat toko dulu.</Empty></section>;
-  return (
-    <>
-      <section className="card">
+  let head;
+  if (tab === 'admin') {
+    head = data.widgetBot
+      ? <p className="hint field-hint">{adminShop ? 'Widget untuk situs ini sendiri (env WIDGET_BOT = "' + data.widgetBot + '"). Tidak ikut mengubah widget toko mana pun. Perubahan berlaku tanpa deploy ulang.' : 'WIDGET_BOT berisi "' + data.widgetBot + '" tapi toko dengan slug itu tidak ada. Buat tokonya dulu atau perbaiki isi env.'}</p>
+      : <p className="hint field-hint">WIDGET_BOT belum diisi, jadi situs ini belum menampilkan widget. Isi dengan slug toko khusus admin di env, lalu deploy sekali.</p>;
+  } else if (!shops.length) {
+    head = <Empty title="Belum ada toko klien">Widget toko diatur per toko, jadi buat tokonya dulu.</Empty>;
+  } else {
+    head = (
+      <>
         <label htmlFor="wsel">Toko</label>
         <select id="wsel" value={shopId} onChange={(e) => setShopId(e.target.value)}>
-          {shops.map((s) => <option key={s.id} value={s.id}>{s.name + ' (/' + s.slug + ')' + (s.slug === data.widgetBot ? ' - widget situs ini' : '')}</option>)}
+          {shops.map((s) => <option key={s.id} value={s.id}>{s.name + ' (/' + s.slug + ')'}</option>)}
         </select>
-        {data.widgetBot
-          ? <p className="hint field-hint">{'Situs ini memasang widget toko "' + data.widgetBot + '" (env WIDGET_BOT). Perubahan berlaku tanpa deploy ulang.'}</p>
-          : <p className="hint field-hint">WIDGET_BOT belum diisi, jadi situs ini belum menampilkan widget. Isi dengan slug toko di env, lalu deploy sekali.</p>}
-      </section>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="seg" role="group" aria-label="Jenis widget">
+        <button type="button" aria-pressed={tab === 'admin'} onClick={() => setTab('admin')}>Widget admin</button>
+        <button type="button" aria-pressed={tab === 'toko'} onClick={() => setTab('toko')}>Widget toko</button>
+      </div>
+      <section className="card">{head}</section>
       {err ? <p className="err" role="alert">{err}</p> : null}
-      {!shop && !err ? <div className="card"><SkForm fields={5} /></div> : null}
-      {shop ? <WidgetEditor key={shop.id} shop={shop} onSave={onSave} toast={toast} /> : null}
+      {id && !shop && !err ? <div className="card"><SkForm fields={5} /></div> : null}
+      {id && shop ? <WidgetEditor key={tab + shop.id} shop={shop} onSave={onSave} toast={toast} /> : null}
     </>
   );
 }
