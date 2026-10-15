@@ -145,6 +145,13 @@
       '#isengin-chat-box.show{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .18s ease,transform .18s ease}' +
       '@media (prefers-reduced-motion:reduce){#isengin-chat-box{transition:opacity .12s ease,visibility 0s .12s}#isengin-chat-box.show{transition:opacity .12s ease}}' +
       '#isengin-chat-box iframe{width:100%;height:100%;border:0;display:block}' +
+      '#isengin-chat-ld{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#f4f8f7;transition:opacity .2s ease,visibility 0s .2s}' +
+      '#isengin-chat-ld.done{opacity:0;visibility:hidden;pointer-events:none}' +
+      '#isengin-chat-ld i{width:10px;height:10px;border-radius:50%;background:' + color + ';opacity:.35;animation:isengin-dot 1.1s ease-in-out infinite}' +
+      '#isengin-chat-ld i:nth-child(2){animation-delay:.18s}#isengin-chat-ld i:nth-child(3){animation-delay:.36s}' +
+      '@keyframes isengin-dot{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-7px);opacity:1}}' +
+      '@media (prefers-color-scheme:dark){#isengin-chat-ld{background:#0e1b1e}}' +
+      '@media (prefers-reduced-motion:reduce){#isengin-chat-ld i{animation:none;opacity:.7}}' +
       '#isengin-chat-badge{display:none;position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;' +
       'background:#dc2626;box-shadow:0 0 0 2px #fff}' +
       '#isengin-chat-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;' +
@@ -207,6 +214,13 @@
     x.textContent = '\u2715';
     x.setAttribute('aria-label', 'Tutup chat');
     box.appendChild(x);
+
+    // Animasi tiga titik selama chat di dalam iframe masih dimuat, supaya panel tidak terlihat kosong.
+    var ld = document.createElement('div');
+    ld.id = 'isengin-chat-ld';
+    ld.setAttribute('aria-hidden', 'true');
+    ld.innerHTML = '<i></i><i></i><i></i>';
+    box.appendChild(ld);
 
     var tip = null, tipTimer = null, TIPKEY = 'isengin-tip-' + bot;
     function hideTip(remember) {
@@ -278,6 +292,7 @@
         frame.src = frameSrc();
         // Setelah iframe (re)load, beri tahu chat apakah sedang terbuka atau tertutup.
         frame.addEventListener('load', function () {
+          ld.classList.add('done');
           tellFrame(box.classList.contains('show') ? 'isengin-open' : 'isengin-close');
           if (siteLang() !== srcLang) sendLang(siteLang()); // bahasa berganti selagi iframe masih dimuat
         });
