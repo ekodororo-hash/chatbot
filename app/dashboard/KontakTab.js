@@ -22,7 +22,24 @@ export default function KontakTab({ sb, shop, fail, toast }) {
       if (error.code === '42P01' || error.code === 'PGRST205') { setMissing(true); setRows([]); return; }
       fail(error); return;
     }
-    setRows(data || []);
+    const list = data || [];
+    // Konteks tiap kontak: pesan pelanggan di percakapan itu sampai kontak ditinggalkan (maksimal 3 terakhir).
+    // Gagal membaca pesan tidak mengganggu daftar kontak, hanya tanpa keterangan.
+    try {
+      const ids = Array.from(new Set(list.map((r) => r.conversation_id).filter(Boolean)));
+      if (ids.length) {
+        const m = await sb.from('messages').select('conversation_id,content,created_at')
+          .in('conversation_id', ids).eq('role', 'customer').order('created_at', { ascending: true }).limit(5000);
+        if (m.error) throw m.error;
+        const by = {};
+        (m.data || []).forEach((x) => { (by[x.conversation_id] = by[x.conversation_id] || []).push(x); });
+        list.forEach((r) => {
+          const msgs = (by[r.conversation_id] || []).filter((x) => x.created_at <= r.created_at).slice(-3);
+          r.topic = msgs.map((x) => { const t = String(x.content || '').replace(/\s+/g, ' ').trim(); return t.length > 80 ? t.slice(0, 80) + '...' : t; }).filter(Boolean).join(' · ');
+        });
+      }
+    } catch (e) { /* abaikan: kontak tetap tampil */ }
+    setRows(list);
   }, [sb, shop.id, fail]);
 
   useEffect(() => { load(); }, [load]);
@@ -81,6 +98,7 @@ export default function KontakTab({ sb, shop, fail, toast }) {
                 <div className="t stack">
                   <b style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{label}</b>
                   <small>{(r.kind === 'email' ? 'Email' : 'Telepon') + ' · ' + dayTime(r.created_at)}</small>
+                  {r.topic ? <small style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{'Bertanya: ' + r.topic}</small> : null}
                 </div>
                 <div className="row">
                   <button className="btn ghost sm" type="button" onClick={() => copy(r.kind === 'email' ? r.contact : '+' + r.contact)}>Salin</button>
