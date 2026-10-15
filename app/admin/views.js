@@ -548,6 +548,63 @@ export function PengaturanView() {
 // Contoh nama model untuk saran saat mengetik. Admin boleh mengisi nama model apa pun yang tersedia di akun Gemini-nya.
 const MODEL_HINTS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
 
+// Otak EMAHAIRSHOP: aturan perilaku + info perusahaan yang dipakai asisten untuk toko milik email di ADMIN_EMAILS.
+// Teksnya hanya ada di server; halaman ini (khusus super admin) satu-satunya tempat melihat dan mengubahnya.
+function OtakCard() {
+  const { data, act } = useAdmin();
+  const o = data.ai.otak;
+  const [text, setText] = useState(o ? o.text : '');
+  const [busy, setBusy] = useState('');
+  const serverText = o ? o.text : '';
+  useEffect(() => { setText(serverText); }, [serverText]);
+  if (!o) return null;
+  const dirty = text.trim() !== serverText.trim();
+  async function run(tag, body, okMsg) {
+    setBusy(tag);
+    await act(body, okMsg);
+    setBusy('');
+  }
+  return (
+    <section className="card">
+      <div className="chead">
+        <div>
+          <h2>Otak EMAHAIRSHOP</h2>
+          <p className="hint">Aturan dan info perusahaan yang dipakai asisten untuk toko milik email di ADMIN_EMAILS. Toko lain tetap memakai data tokonya sendiri. Teks ini tidak pernah tampil di dashboard toko.</p>
+        </div>
+        {!o.adminEmails ? <span className="tag w">ADMIN_EMAILS kosong</span>
+          : o.on ? <span className="tag a">Aktif</span> : <span className="tag w">Dimatikan</span>}
+      </div>
+      {!o.adminEmails ? <p className="hint" role="alert">ADMIN_EMAILS belum diatur di Vercel, jadi otak ini belum dipakai di toko mana pun.</p> : null}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink)', fontSize: 15, margin: '4px 0 12px' }}>
+        <input type="checkbox" style={{ width: 'auto' }} checked={o.on} disabled={!!busy}
+          onChange={(e) => run('mode', { action: 'set_otak_mode', on: e.target.checked }, e.target.checked ? 'Otak diaktifkan.' : 'Otak dimatikan; toko kembali memakai data tokonya.')} />
+        Pakai otak ini (kalau mati, semua toko memakai data toko biasa)
+      </label>
+      <div className="fgrid one">
+        <label>
+          <span className="flabel">{'Teks otak · ' + (o.custom ? 'buatan admin' : 'bawaan') + ' · ' + text.length + ' / ' + o.max + ' karakter'}</span>
+          <textarea rows={18} spellCheck="false" value={text} onChange={(e) => setText(e.target.value)}
+            style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 13, lineHeight: 1.5, minHeight: 280 }} />
+        </label>
+      </div>
+      <p className="hint">Penanda internal ([[WA]], [[HUMAN]], [[URGENT]], [[FRAUD]], [[UNKNOWN]], [[LEAD]], [[NAME]], [[OFFTOPIC]]) diurai otomatis dan dibuang sebelum balasan dilihat pelanggan. Jangan menghapus aturannya kecuali kamu paham akibatnya. Perubahan berlaku dalam sekitar 15 detik.</p>
+      <div className="row">
+        <button className="btn sm" type="button" disabled={!!busy || !dirty} onClick={() => run('save', { action: 'save_otak', text }, 'Teks otak disimpan.')}>
+          <Busy on={busy === 'save'} label="Menyimpan...">Simpan</Busy>
+        </button>
+        <button className="btn ghost sm" type="button" disabled={!!busy || !o.hasPrev}
+          onClick={() => { if (window.confirm('Kembalikan teks otak ke versi sebelum perubahan terakhir? Versi sekarang jadi cadangan.')) run('restore', { action: 'restore_otak' }, 'Versi sebelumnya dikembalikan.'); }}>
+          <Busy on={busy === 'restore'} label="Mengembalikan...">Batalkan perubahan terakhir</Busy>
+        </button>
+        <button className="btn ghost sm" type="button" disabled={!!busy || !o.custom}
+          onClick={() => { if (window.confirm('Buang teks buatan sendiri dan kembali ke teks bawaan (' + o.defaultLength + ' karakter)? Teks sekarang tersimpan sebagai cadangan.')) run('reset', { action: 'reset_otak' }, 'Kembali ke teks bawaan.'); }}>
+          <Busy on={busy === 'reset'} label="Mengembalikan...">Kembalikan ke bawaan</Busy>
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function AiView() {
   const { data, act, post } = useAdmin();
   const ai = data.ai;
@@ -630,6 +687,9 @@ export function AiView() {
         <div className="stat"><span className="hint">Key khusus paket</span><b>{totalOwn} / {data.plans.length * perPlan}</b><small>{totalOwn ? 'Paket tanpa key ikut key bawaan' : 'Semua paket ikut key bawaan'}</small></div>
         <div className="stat"><span className="hint">Model bawaan</span><b className="mono">{ai.defaultModel}</b><small>Untuk paket tanpa model sendiri</small></div>
       </div>
+
+      <h2 className="sect">Otak asisten</h2>
+      <OtakCard />
 
       <h2 className="sect">Key dan model per paket</h2>
       <datalist id="model-hints">{MODEL_HINTS.map((m) => <option key={m} value={m} />)}</datalist>

@@ -203,6 +203,27 @@ test('penyedia lain: key kena limit (429) pindah ke key berikutnya; galat membaw
 });
 
 
+test('maxTokens dan lowThinking (otak EMAHAIRSHOP): hanya berlaku bila diminta; bawaan tidak berubah', async () => {
+  const bodies = [];
+  const keep = global.fetch;
+  global.fetch = async (url, init) => { bodies.push({ url, body: JSON.parse(init.body) }); return keep(url, init); };
+  try {
+    store = { GEMINI_API_KEY: 'k', AI_CONFIG: JSON.stringify({ models: { free: 'gemini-3.5-flash-lite', starter: 'gemini-2.5-flash', bisnis: 'gemini-3.5-pro' } }) };
+    await gemini.generate({ system: 's', contents: [], plan: 'free' });
+    assert.deepStrictEqual(bodies[0].body.generationConfig, { responseMimeType: 'application/json', maxOutputTokens: 1024 });
+    await gemini.generate({ system: 's', contents: [], plan: 'free', maxTokens: 2048, lowThinking: true });
+    assert.deepStrictEqual(bodies[1].body.generationConfig, { responseMimeType: 'application/json', maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: 'minimal' } });
+    await gemini.generate({ system: 's', contents: [], plan: 'starter', lowThinking: true });
+    assert.deepStrictEqual(bodies[2].body.generationConfig.thinkingConfig, { thinkingBudget: 0 });
+    await gemini.generate({ system: 's', contents: [], plan: 'bisnis', lowThinking: true });
+    assert.deepStrictEqual(bodies[3].body.generationConfig.thinkingConfig, { thinkingLevel: 'low' });
+    store = { GEMINI_API_KEY: 'k', AI_CONFIG: JSON.stringify({ models: { free: 'model-lain-x' } }) };
+    await gemini.generate({ system: 's', contents: [], plan: 'free', lowThinking: true });
+    assert.strictEqual(bodies[4].body.generationConfig.thinkingConfig, undefined, 'model tak dikenal: tidak diatur');
+  } finally { global.fetch = keep; }
+});
+
+
 (async () => {
   let fail = 0;
   for (const [name, fn] of tests) {

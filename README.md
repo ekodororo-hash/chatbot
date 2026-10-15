@@ -219,6 +219,29 @@ Tiap paket punya pilihan **Penyedia AI** di `/admin/ai`: Gemini (bawaan), Groq, 
 - Tidak ada pindah otomatis antarpenyedia: kalau semua key penyedia sebuah paket gagal, bot meminta pelanggan mengirim ulang lalu meneruskan ke admin seperti biasa.
 - Tier gratis punya batas laju, dan sebagian penyedia membatasi pemakaian komersial atau memakai data untuk pelatihan. Baca ketentuannya sebelum dipakai untuk chat pelanggan.
 
+## Otak EMAHAIRSHOP (khusus pemilik layanan)
+
+Asisten bisa memakai "otak" yang sama dengan asisten di portal emahairshop.com: aturan perilaku dan info perusahaan ditulis sekali di server, jadi pemilik layanan tidak perlu mengisi produk, FAQ, atau data toko lagi.
+
+- **Siapa yang memakai:** hanya toko yang pemiliknya berurusan dengan email di `ADMIN_EMAILS` (cadangan: `DEVELOPER_EMAILS`). Toko lain tetap memakai data tokonya sendiri (produk, FAQ, nada). Kalau `ADMIN_EMAILS` kosong, tidak ada toko yang memakai otak ini.
+- **Di mana teksnya:** bawaan di `lib/otak.template.js` (dipindah dari `api/chat.js` portal). Admin bisa menggantinya di `/admin/ai` > Otak asisten tanpa deploy; tersedia saklar, "Batalkan perubahan terakhir" (satu tingkat), dan "Kembalikan ke bawaan". Teksnya tidak pernah dikirim ke browser pemilik toko, dan hanya halaman super admin yang bisa melihatnya.
+- **Cara kerja:** `lib/bot.js` memanggil `lib/otak.js`. Model membalas JSON `{"reply":"..."}`; penanda portal di akhir `reply` diurai di server dan dibuang sebelum dilihat pelanggan:
+
+| Penanda | Tindakan di chatbot |
+|---|---|
+| `[[HUMAN]]` | percakapan diserahkan ke admin + notifikasi |
+| `[[URGENT]]`, `[[FRAUD]]` | notifikasi ke admin; bot tetap menjawab; percakapan ditandai belum dibalas |
+| `[[UNKNOWN]]` | percakapan ditandai belum dibalas (tampil di dashboard), tanpa notifikasi |
+| `[[LEAD]]` | percakapan ditandai belum dibalas dengan ringkasan calon pembeli, tanpa notifikasi |
+| `[[NAME]]` | nama disimpan sebagai nama pelanggan (hanya chat web) |
+| `[[WA]]` | tautan WhatsApp resmi (diambil dari teks otak) ditambahkan di akhir balasan |
+| `[[OFFTOPIC]]` | dibuang (balasan singkat penolakan ditulis model sendiri) |
+| `[[ADMIN_DRAFT]]` | dibuang (belum dipakai) |
+
+- **Yang berbeda dari portal:** pengetahuan hanya dari teks otak (produk/FAQ di database tidak dimuat); kartu tawaran kontak dan pencatatan pesanan chatbot biasa tidak dipakai; antrean, arsip Telegram, dan pelacak pengunjung portal tidak dipindah. Batas harian toko, kuota paket, dan model per paket tetap berlaku. Aturan privasi data chat di teks otak sudah disesuaikan (di chatbot percakapan disimpan di database).
+- **Sapaan:** otak mengira pengunjung sudah melihat sapaan pembuka. Samakan kolom Sapaan di dashboard > Asisten AI dengan sapaan portal (mis. "Halo, saya asisten AI EMAHAIRSHOP. Ada yang bisa saya bantu?").
+- **Tes:** `node tests/otak.test.js` (juga dijalankan `npm test`).
+
 ## Catatan Gemini
 
 Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemini (tersimpan terenkripsi, tanpa deploy ulang). Tiap paket (Gratis, Starter, Bisnis) bisa punya sampai 3 API key sendiri. Key dipakai bergantian supaya beban terbagi, dan kalau satu key kena limit (429), ditolak, atau server Gemini error, bot otomatis mencoba key berikutnya. Paket tanpa key sendiri memakai key bawaan. Paket yang modelnya dikosongkan memakai `GEMINI_MODEL` (default `gemini-3.5-flash-lite`); toko tanpa langganan aktif memakai model paket Gratis. Nama model dan parameter yang didukung bisa berubah, jadi cek dokumentasi Google sebelum meluncur. Untuk model Gemini 3.x, `lib/gemini.js` sengaja tidak mengirim `temperature`, `top_p`, atau `top_k`.

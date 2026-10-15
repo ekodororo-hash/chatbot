@@ -4,6 +4,8 @@ import usage from '@/lib/usage';
 import shops from '@/lib/shops';
 import settings from '@/lib/settings';
 import gemini from '@/lib/gemini';
+import otak from '@/lib/otak';
+import adminLib from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -98,10 +100,26 @@ export async function GET(request) {
         models: gemini.parseModels(allSettings.AI_CONFIG),
         providers: gemini.parseProviders(allSettings.AI_CONFIG),
         providerList: Object.values(gemini.PROVIDERS).map((p) => ({ id: p.id, label: p.label, keyHint: p.keyHint, defaultModel: p.model })),
-        defaultModel: gemini.DEFAULT_MODEL
+        defaultModel: gemini.DEFAULT_MODEL,
+        // Otak EMAHAIRSHOP (lib/otak.js). Teks lengkap hanya dikirim ke super admin; tidak ada jalur lain ke browser.
+        otak: await otakInfo(allSettings)
       }
     });
   } catch (e) { return fail(e); }
+}
+
+// Ringkasan otak untuk halaman /admin/ai. text = teks yang sedang berlaku (buatan admin atau bawaan).
+async function otakInfo(allSettings) {
+  const custom = String(allSettings.OTAK_TEMPLATE || '').trim();
+  return {
+    on: String(allSettings.OTAK_MODE || '').trim().toLowerCase() !== 'off',
+    custom: !!custom,
+    hasPrev: !!String(allSettings.OTAK_TEMPLATE_PREV || '').trim(),
+    text: custom || otak.DEFAULT_TEMPLATE,
+    defaultLength: otak.DEFAULT_TEMPLATE.length,
+    max: otak.MAX_TEMPLATE,
+    adminEmails: adminLib.adminEmails().length
+  };
 }
 
 // Paket yang sedang berlaku (sudah termasuk pengaturan admin), untuk halaman /admin/paket.
@@ -186,6 +204,29 @@ export async function POST(request) {
       if (Object.keys(clean).length) cfg.models = clean;
       if (Object.keys(provs).length) cfg.providers = provs;
       await settings.save({ AI_CONFIG: Object.keys(cfg).length ? JSON.stringify(cfg) : '' });
+      return json({ ok: true });
+    }
+    // Otak EMAHAIRSHOP: saklar, simpan teks, kembali ke bawaan, batalkan perubahan terakhir. Versi sebelumnya disimpan satu tingkat.
+    if (b.action === 'set_otak_mode') {
+      await settings.save({ OTAK_MODE: b.on === false ? 'off' : '' });
+      return json({ ok: true });
+    }
+    if (b.action === 'save_otak' || b.action === 'reset_otak' || b.action === 'restore_otak') {
+      const all = await settings.getAll();
+      const cur = String(all.OTAK_TEMPLATE || '').trim();
+      let next;
+      if (b.action === 'reset_otak') next = '';
+      else if (b.action === 'restore_otak') {
+        next = String(all.OTAK_TEMPLATE_PREV || '').trim();
+        if (!next) return json({ error: 'Belum ada versi sebelumnya untuk dikembalikan.' }, 400);
+      } else {
+        next = String(b.text == null ? '' : b.text).replace(/\r\n/g, '\n').trim();
+        if (next.length < 200) return json({ error: 'Teks otak terlalu pendek (minimal 200 karakter). Untuk kembali ke bawaan, pakai tombol Kembalikan ke bawaan.' }, 400);
+        if (next.length > otak.MAX_TEMPLATE) return json({ error: 'Teks otak terlalu panjang (maksimal ' + otak.MAX_TEMPLATE + ' karakter).' }, 400);
+        if (next === otak.DEFAULT_TEMPLATE.trim()) next = '';   // sama dengan bawaan: tidak perlu disimpan, ikut bawaan
+      }
+      if (next === cur) return json({ ok: true, unchanged: true });
+      await settings.save({ OTAK_TEMPLATE_PREV: cur, OTAK_TEMPLATE: next });
       return json({ ok: true });
     }
     if (b.action === 'test_ai') {
