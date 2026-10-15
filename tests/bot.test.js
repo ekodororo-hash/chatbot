@@ -1048,6 +1048,18 @@ t('bahasa: prompt menyuruh paham bahasa apa pun tetapi selalu membalas Indonesia
     assert.ok(sys.includes('dalam bahasa apa pun') && sys.includes('SELALU balas dalam bahasa Indonesia'));
   }
 });
+t('kata kasar: prompt toko klien memuat aturan peringatan bertahap (3 langkah), tanpa handoff', async () => {
+  const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
+  for (const shop of [base, Object.assign({}, base, { general_on: true, general_topic: 'hijab' }), Object.assign({}, base, { reply_language: 'auto' })]) {
+    const sys = I.buildSystem(shop, [], [], false);
+    assert.ok(sys.includes('KATA KASAR / HINAAN'), 'aturan kata kasar ada');
+    assert.ok(sys.includes('Langkah 1') && sys.includes('Langkah 2') && sys.includes('Langkah 3'), 'tiga langkah peringatan');
+    assert.ok(sys.includes('handoff=false, order=false'), 'kata kasar tidak boleh memicu handoff atau pesanan');
+  }
+  assert.ok(I.buildSystem(Object.assign({}, base, { reply_language: 'auto' }), [], [], false).includes('dalam bahasa pelanggan'));
+  assert.ok(I.buildSystem(base, [], [], false).includes('dalam bahasa Indonesia'));
+});
+
 t('bahasa: pengaturan "ikuti bahasa pelanggan" membuat bot membalas dengan bahasa pelanggan, bukan dipaksa Indonesia', async () => {
   const base = { name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf {k}, belum tahu.' };
   for (const extra of [{}, { general_on: true, general_topic: 'hijab' }]) {
