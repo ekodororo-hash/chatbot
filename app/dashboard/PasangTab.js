@@ -348,9 +348,26 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
         <div aria-live="polite">
           {res && !res.fetched ? (
             <div className="chkres chk-warn">
-              <p className="chk-h">Situs belum bisa dicek</p>
+              <p className="chk-h">Isi situs belum bisa dibaca</p>
               <p className="hint">{res.reason}</p>
-              <p className="hint">Kalau situsnya bisa kamu buka di browser, mungkin ada proteksi bot di situs itu. Coba buka situsnya langsung dan lihat apakah tombol chat muncul.</p>
+              <p className="hint">{res.blocked
+                ? 'Kalau tombol chat sudah muncul saat kamu membuka situsnya di browser, berarti widget sudah beres. Pengecekan otomatis memang tidak bisa menembus proteksi seperti ini.'
+                : 'Kalau situsnya bisa kamu buka di browser, coba lihat langsung apakah tombol chat muncul.'}</p>
+              {res.domain ? (
+                <ul className="chk">
+                  <li className={res.domainOk ? 'chk-ok' : 'chk-bad'}>
+                    <Ico k={res.domainOk ? 'ok' : 'bad'} />
+                    <div>
+                      {res.domainOk ? <>Domain {code(res.domain)} sudah terdaftar.</> : <>Domain {code(res.domain)} belum terdaftar, jadi chat tidak akan tampil di sana.</>}
+                      {!res.domainOk ? (
+                        <div className="row chk-act">
+                          <button className="btn sm" type="button" disabled={adding || busy} onClick={addFromCheck}><Busy on={adding} label="Menambah...">{'Daftarkan ' + res.domain}</Busy></button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </li>
+                </ul>
+              ) : null}
             </div>
           ) : null}
 

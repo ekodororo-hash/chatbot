@@ -29,7 +29,7 @@ export async function POST(request) {
     const domain = domains.normalizeDomain(finalUrl.hostname);
     const domainOk = siteCheck.isRegistered(finalUrl.hostname, allowed);
 
-    if (!page.fetched) return json({ fetched: false, reason: page.reason, domain, domainOk });
+    if (!page.fetched) return json({ fetched: false, blocked: !!page.blocked, reason: page.reason, domain, domainOk });
 
     const a = siteCheck.analyzeHtml(page.body, shop.slug);
     return json({

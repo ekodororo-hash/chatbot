@@ -45,6 +45,14 @@ assert.strictEqual(a.match, true);
 a = sc.analyzeHtml('<script>self.__next_f.push([1,"{\\"src\\":\\"https://app.id/widget.js\\",\\"data-bot\\":\\"toko-ayu\\"}"])</script>', 'toko-ayu');
 assert.strictEqual(a.match, true);
 
+// --- halaman penghadang bot
+const iff = '<html><body><script type="text/javascript" src="/aes.js"></script><script>function toNumbers(d){}var a=toNumbers("f6"),slowAES.decrypt;document.cookie="__test="+toHex(slowAES.decrypt(c,2,a,b))+"; expires=Thu, 31-Dec-37 23:55:55 GMT; path=/"; location.href="http://x.rf.gd/?i=1";</script></body></html>';
+assert.strictEqual(sc.looksLikeBotWall(iff, {}), true);
+assert.strictEqual(sc.looksLikeBotWall('<title>Just a moment...</title>', {}), true);
+assert.strictEqual(sc.looksLikeBotWall('<html></html>', { 'cf-mitigated': 'challenge' }), true);
+assert.strictEqual(sc.looksLikeBotWall('<html><body>Toko Ayu</body></html>', {}), false);
+assert.strictEqual(sc.looksLikeBotWall('x'.repeat(30000) + 'slowAES', {}), false);
+
 // --- isRegistered (domain + subdomain, abaikan www)
 assert.strictEqual(sc.isRegistered('www.tokoayu.com', ['tokoayu.com']), true);
 assert.strictEqual(sc.isRegistered('tokoayu.com', ['https://www.tokoayu.com']), true);
