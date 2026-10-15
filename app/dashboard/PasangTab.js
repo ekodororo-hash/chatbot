@@ -270,22 +270,6 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
           </div>
         </header>
 
-        {noDomain ? (
-          <div className="pwarn" role="alert">
-            <span className="pwarn-i" aria-hidden="true">!</span>
-            <div className="pwarn-b">
-              <strong>Widget belum akan tampil karena belum ada domain terdaftar.</strong>
-              <p className="hint">Kodenya tidak rusak. Browser hanya menampilkan chat di situs yang terdaftar, dan daftarnya masih kosong. Tambahkan alamat situs tempat kode ini ditempel.</p>
-              <form className="pwarn-f" onSubmit={quickAdd}>
-                <label className="sr" htmlFor="pq">Domain yang ditambahkan</label>
-                <input id="pq" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="tokoayu.com" value={quick} onChange={(e) => { setQuick(e.target.value); setQuickErr(''); }} />
-                <button className="btn" type="submit" disabled={quickBusy || busy}><Busy on={quickBusy} label="Menambah...">Tambah domain</Busy></button>
-              </form>
-              <div className="err" role="alert">{quickErr}</div>
-            </div>
-          </div>
-        ) : null}
-
         <div className="codebox">
           <div className="codebox-bar">
             <span>Kode widget</span>
@@ -323,6 +307,22 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
             <p className="hint">Satu domain per baris. Browser hanya menampilkan chat di situs yang terdaftar, jadi orang lain tidak bisa menempelkan botmu di situs mereka. Subdomain ikut diizinkan.</p>
           </div>
         </header>
+        {noDomain ? (
+          <div className="pwarn" role="alert">
+            <span className="pwarn-i" aria-hidden="true">!</span>
+            <div className="pwarn-b">
+              <strong>Widget belum akan tampil karena belum ada domain terdaftar.</strong>
+              <p className="hint">Kodenya tidak rusak. Browser hanya menampilkan chat di situs yang terdaftar, dan daftarnya masih kosong. Tambahkan alamat situs tempat kode ini ditempel.</p>
+              <form className="pwarn-f" onSubmit={quickAdd}>
+                <label className="sr" htmlFor="pq">Domain yang ditambahkan</label>
+                <input id="pq" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="tokoayu.com" value={quick} onChange={(e) => { setQuick(e.target.value); setQuickErr(''); }} />
+                <button className="btn" type="submit" disabled={quickBusy || busy}><Busy on={quickBusy} label="Menambah...">Tambah domain</Busy></button>
+              </form>
+              <div className="err" role="alert">{quickErr}</div>
+            </div>
+          </div>
+        ) : null}
+
         <label className="sr" htmlFor="pd">Daftar domain</label>
         <textarea id="pd" className="mono" rows={4} placeholder={'tokoayu.com\nwww.tokoayu.com'} value={dom} onChange={(e) => setDom(e.target.value)} />
         <p className="hint pstep-note">Kosong berarti widget tidak bisa dipasang di situs mana pun. Maksimal 20 domain.</p>
