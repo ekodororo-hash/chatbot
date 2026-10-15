@@ -64,8 +64,12 @@
     var side = c.pos === 'left' ? 'left' : 'right';
     var px = { kecil: 48, sedang: 58, besar: 70 }[c.size];
     var iconPx = { kecil: 22, sedang: 26, besar: 32 }[c.size];
-    var boxW = { kecil: 330, sedang: 370, besar: 420 }[c.size];
-    var boxH = { kecil: 500, sedang: 580, besar: 680 }[c.size];
+    // Ukuran jendela chat disamakan kelasnya dengan portal (380x560 di layar kecil/menengah, 440x680 di layar besar
+    // lewat media query di bawah), supaya tidak kekecilan seperti sebelumnya (dulu cuma 330-420 x 500-680).
+    var boxW = { kecil: 340, sedang: 380, besar: 420 }[c.size];
+    var boxH = { kecil: 500, sedang: 560, besar: 620 }[c.size];
+    var boxWLg = { kecil: 380, sedang: 440, besar: 480 }[c.size];
+    var boxHLg = { kecil: 600, sedang: 680, besar: 760 }[c.size];
     var radius = c.shape === 'kotak' ? '16px' : (c.label ? '999px' : '50%');
     var boxBottom = c.oy + px + 12;
 
@@ -92,6 +96,8 @@
       'background:#fff;color:#12262b;border-radius:14px;padding:10px 32px 10px 14px;font:14px/1.4 system-ui,sans-serif;cursor:pointer;' +
       'z-index:2147483000;box-shadow:0 8px 28px rgba(0,0,0,.25)}' +
       '#isengin-chat-tipx{position:absolute;top:4px;right:4px;width:24px;height:24px;border:0;border-radius:50%;background:none;color:#587278;font-size:13px;cursor:pointer}' +
+      '@media (min-width:1024px){#isengin-chat-box{width:' + boxWLg + 'px;' +
+      'height:min(' + boxHLg + 'px,calc(100vh - ' + (boxBottom + 20) + 'px))}}' +
       '@media (max-width:480px){#isengin-chat-box{right:0;left:0;top:0;bottom:0;width:auto;max-width:none;height:auto;border-radius:0}' +
       '#isengin-chat-btn.open,#isengin-chat-tip{display:none!important}}';
     document.head.appendChild(css);
