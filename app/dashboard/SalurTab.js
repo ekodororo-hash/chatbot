@@ -121,7 +121,6 @@ export default function SalurTab({ sb, shop, fail, toast }) {
           </>
         ) : (
           <>
-            <p className="hint">{'Buka Telegram, chat dengan @BotFather, kirim /newbot, ikuti langkahnya, lalu tempel token yang diberikan di sini.'}</p>
             <input id="tgt" autoComplete="off" spellCheck={false} placeholder="Token bot, contoh 123456789:AAH..." value={tgToken} onChange={(e) => setTgToken(e.target.value)} />
             <div className="err" role="alert">{err.tg}</div>
             <div className="row"><button className="btn" type="button" disabled={busy === 'tg' || !tgToken.trim()} onClick={tgConnect}><Busy on={busy === 'tg'} label="Menghubungkan...">Hubungkan</Busy></button></div>
@@ -132,7 +131,6 @@ export default function SalurTab({ sb, shop, fail, toast }) {
       <div className="card">
         <h2>WhatsApp</h2>
         <PanduanWhatsApp />
-        <p className="hint">{'Memakai WhatsApp Business Platform (Cloud API) dari Meta. Buat app di developers.facebook.com, tambahkan produk WhatsApp, lalu salin tiga data di bawah.'}</p>
         <label htmlFor="wpi">Phone number ID</label>
         <input id="wpi" inputMode="numeric" autoComplete="off" placeholder="Contoh 109876543210987" value={phoneId} onChange={(e) => setPhoneId(e.target.value)} />
         <label htmlFor="wat">Access token (permanen)</label>

@@ -107,7 +107,6 @@ export default function TimTab({ sb, shop, user, fail, toast }) {
             <li>Untuk mengundang: tulis email admin di bawah lalu klik Undang. Orang itu mendaftar atau masuk di halaman login dengan email yang sama, dan toko ini langsung muncul di dashboard-nya.</li>
             <li>Satu akun bisa jadi pemilik di satu toko dan admin di toko lain. Pindah toko lewat pilihan di sidebar.</li>
           </ol>
-          <p className="hint">Undangan dicocokkan lewat email. Aktifkan <b>Confirm email</b> di Supabase (Authentication, Sign In / Providers, Email) supaya orang lain tidak bisa mendaftar dengan email yang bukan miliknya lalu menerima undangan.</p>
         </Panduan>
         <Field id="te" label="Email admin">
           <input id="te" type="email" autoComplete="off" placeholder="admin@contoh.com" value={email} onChange={(e) => setEmail(e.target.value)} />
