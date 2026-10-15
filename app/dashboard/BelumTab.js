@@ -49,7 +49,7 @@ export default function BelumTab({ sb, shop, onMakeFaq, refreshBadges, fail, toa
     if (error) { fail(error); return; }
     setRows((list) => list.filter((r) => !ids.includes(r.id)));
     refreshBadges();
-    toast('Ditandai beres.');
+    toast('Ditandai selesai.');
   }
 
   return (
@@ -74,7 +74,7 @@ export default function BelumTab({ sb, shop, onMakeFaq, refreshBadges, fail, toa
                 <button className="btn sm" type="button" onClick={() => onMakeFaq(g.question.slice(0, 200))}>Jadikan FAQ</button>
                 <Link className="btn ghost sm" href={'/dashboard?c=' + latest.id}>Buka chat</Link>
                 <button className="btn ghost sm" type="button" disabled={busy === g.key} onClick={() => resolve(g)}>
-                  <Busy on={busy === g.key} label="Menyimpan...">Sudah beres</Busy>
+                  <Busy on={busy === g.key} label="Menyimpan...">Tandai selesai</Busy>
                 </button>
               </div>
             </div>

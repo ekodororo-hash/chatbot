@@ -74,7 +74,7 @@ export default function CobaPage() {
         {result && (
           <div role="status">
             <div className={'diag-sum ' + (result.ok ? 'ok' : 'bad')}>
-              {result.ok ? 'Semua beres. Kalau chat masih diam, klik "Mulai percakapan baru" lalu coba lagi.' : 'Perbaiki yang bertanda merah, lalu klik "Mulai percakapan baru" dan coba lagi.'}
+              {result.ok ? 'Semua pemeriksaan lolos. Jika chat masih tidak merespons, klik "Mulai percakapan baru" lalu coba lagi.' : 'Perbaiki item yang bertanda "Perlu diperbaiki", lalu klik "Mulai percakapan baru" dan coba lagi.'}
             </div>
             <div className="diag-list">
               {result.checks.map((c) => (
@@ -87,7 +87,7 @@ export default function CobaPage() {
                     <small>{c.detail}</small>
                     {c.tech ? <small className="tech">{'Teknis (hanya pengembang): ' + c.tech}</small> : null}
                   </div>
-                  <span className={'tag ' + (c.ok ? '' : 'w')}>{c.ok ? 'Beres' : 'Perlu diperbaiki'}</span>
+                  <span className={'tag ' + (c.ok ? '' : 'w')}>{c.ok ? 'Aman' : 'Perlu diperbaiki'}</span>
                 </div>
               ))}
             </div>
