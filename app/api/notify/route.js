@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import auth from '@/lib/auth';
 import notify from '@/lib/notify';
+import weeklyReport from '@/lib/weeklyReport';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -17,7 +18,9 @@ async function status(sb, shop) {
       on: !!st.tg_on, code: st.tg_code,
       botConnected: !!(ch.data && ch.data.telegram_token), botUsername: (ch.data && ch.data.telegram_username) || '',
       chats: (st.tg_chat_ids || []).length, maxChats: notify.MAX_CHATS
-    }
+    },
+    // available=false: migrasi pesanan_terstruktur.sql belum dijalankan (kolom weekly_on belum ada).
+    weekly: { available: Object.prototype.hasOwnProperty.call(st, 'weekly_on'), on: st.weekly_on !== false }
   };
 }
 
@@ -43,6 +46,7 @@ export async function POST(request) {
     if (b.action === 'set') {
       const patch = {};
       if (typeof b.tgOn === 'boolean') patch.tg_on = b.tgOn;
+      if (typeof b.weeklyOn === 'boolean') patch.weekly_on = b.weeklyOn;
       if (!Object.keys(patch).length) return json({ error: 'Tidak ada yang diubah' }, 400);
       await put(patch);
       return json(await status(sb, shop));
@@ -57,6 +61,12 @@ export async function POST(request) {
     if (b.action === 'test') {
       const result = await notify.sendTest(shop);
       return json(Object.assign(await status(sb, shop), { test: result }));
+    }
+
+    // Kirim laporan 7 hari terakhir sekarang juga (tidak mengubah jadwal laporan otomatis).
+    if (b.action === 'weekly_test') {
+      const result = await weeklyReport.sendForShop(sb, shop, new Date(), true);
+      return json(Object.assign(await status(sb, shop), { test: { telegram: result.telegram || { sent: 0, error: 'Tidak ada tujuan.' } } }));
     }
 
     return json({ error: 'Aksi tidak dikenal' }, 400);

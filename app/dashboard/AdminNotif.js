@@ -22,6 +22,8 @@ const PanduanNotif = () => (
       <li>Untuk berhenti, kirim <b>/admin stop</b> dari chat itu. Kalau kode bocor, klik <b>Ganti kode</b>. Semua chat lama dicabut dan perlu mendaftar lagi.</li>
     </ol>
     <p className="hint">Kode Telegram bersifat rahasia. Jangan dibagikan ke pelanggan.</p>
+    <h3>Laporan mingguan</h3>
+    <p className="hint" style={{ marginTop: 0 }}>Seminggu sekali, chat Telegram yang terdaftar menerima ringkasan 7 hari terakhir: jumlah percakapan, pesanan dan omzet, produk terlaris, dan pertanyaan yang belum terjawab asisten. Laporan hanya dikirim kalau minggu itu ada percakapan atau pesanan.</p>
   </Panduan>
 );
 
@@ -51,6 +53,11 @@ export default function AdminNotif({ sb, shop, fail, toast }) {
   async function test() {
     setTestRes(null);
     const r = await run('test', { action: 'test' });
+    if (r && r.test) setTestRes(r.test);
+  }
+  async function weeklyTest() {
+    setTestRes(null);
+    const r = await run('wk', { action: 'weekly_test' });
     if (r && r.test) setTestRes(r.test);
   }
   async function resetCode() {
@@ -91,8 +98,20 @@ export default function AdminNotif({ sb, shop, fail, toast }) {
         </>
       )}
 
+      {st.weekly && st.weekly.available ? (
+        <label className="sw" htmlFor="nw">
+          <input id="nw" type="checkbox" checked={st.weekly.on} disabled={busy === 'nw'} onChange={(e) => run('nw', { action: 'set', weeklyOn: e.target.checked })} />
+          Laporan mingguan lewat Telegram
+        </label>
+      ) : (
+        <p className="hint">Laporan mingguan belum aktif. Jalankan migrasi <b>pesanan_terstruktur.sql</b> di Supabase.</p>
+      )}
+
       <div className="row" style={{ marginTop: 12 }}>
-        <button className="btn" type="button" disabled={busy === 'test'} onClick={test}><Busy on={busy === 'test'} label="Mengirim...">Kirim tes</Busy></button>
+        <button className="btn" type="button" disabled={busy === 'test' || busy === 'wk'} onClick={test}><Busy on={busy === 'test'} label="Mengirim...">Kirim tes</Busy></button>
+        {st.weekly && st.weekly.available ? (
+          <button className="btn ghost" type="button" disabled={busy === 'test' || busy === 'wk'} onClick={weeklyTest}><Busy on={busy === 'wk'} label="Mengirim...">Kirim laporan sekarang</Busy></button>
+        ) : null}
       </div>
       {testRes ? (
         <div className="hint" role="status" style={{ marginTop: 8 }}>

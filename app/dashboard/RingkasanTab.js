@@ -4,7 +4,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Sk } from '../components/Skeleton';
-import { authFetch, startOfTodayWIB } from './helpers';
+import orderLib from '@/lib/orders';
+import { authFetch, rp, startOfTodayWIB } from './helpers';
 import { useRealtime } from './useRealtime';
 
 const DAY = 86400000;
@@ -59,6 +60,9 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
         sb.from('conversations').select('created_at,channel').eq('shop_id', shop.id).gte('created_at', iso(week)).limit(5000)
       ]);
       if (week7.error) throw week7.error;
+      // Penjualan bulan ini dari tabel orders. Null kalau tabelnya belum ada (migrasi belum dijalankan): kartunya disembunyikan.
+      const ord = await sb.from('orders').select('status,items,subtotal').eq('shop_id', shop.id).gte('created_at', iso(month)).limit(5000);
+      const sales = ord.error ? null : orderLib.summarize(ord.data || [], 5);
       const perDay = {};
       const byChannel = {};
       (week7.data || []).forEach((r) => {
@@ -78,7 +82,7 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
       setD({
         convToday, botToday, botMonth, human, unanswered,
         ordersNew: ordersNew || 0, ordersProses: ordersProses || 0, ordersOn: ordersNew !== null,
-        week: (week7.data || []).length, days, byChannel
+        week: (week7.data || []).length, days, byChannel, sales
       });
     } catch (e) { fail(e); }
   }, [sb, shop.id, fail]);
@@ -125,6 +129,36 @@ export default function RingkasanTab({ sb, shop, role, fail }) {
         <Stat label="Butuh admin" value={num(d.human)} note="menunggu balasan" />
         <Stat label="Pesanan baru" value={d.ordersOn ? num(d.ordersNew) : '-'} note={d.ordersOn ? num(d.ordersProses) + ' sedang diproses' : 'jalankan migrasi pesanan'} />
       </div>
+
+      {d.sales ? (
+        <div className="card">
+          <div className="chead">
+            <div>
+              <h2>Penjualan bulan ini</h2>
+              <p className="hint">Dari pesanan yang dicatat asisten. Omzet dihitung dari pesanan berstatus selesai, belum termasuk ongkir.</p>
+            </div>
+            <Link className="btn ghost sm" href="/dashboard/pesanan">Lihat pesanan</Link>
+          </div>
+          <div className="stats">
+            <Stat label="Omzet (selesai)" value={rp(d.sales.revenue)} note={num(d.sales.done) + ' pesanan selesai'} />
+            <Stat label="Sedang berjalan" value={rp(d.sales.pending)} note={num(d.sales.open) + ' pesanan'} />
+            <Stat label="Pesanan bulan ini" value={num(d.sales.count)} note={d.sales.canceled ? num(d.sales.canceled) + ' dibatalkan' : 'tidak ada yang dibatalkan'} />
+          </div>
+          {d.sales.top.length ? (
+            <>
+              <h3 style={{ margin: '4px 0 6px', fontSize: 15 }}>Produk terlaris</h3>
+              <div className="rows">
+                {d.sales.top.map((x) => (
+                  <div key={x.name} className="li">
+                    <div className="t stack"><b>{x.name}</b></div>
+                    <span className="tag">{num(x.qty) + ' terjual'}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : <p className="hint">Belum ada pesanan dengan rincian bulan ini.</p>}
+        </div>
+      ) : null}
 
       {role === 'owner' && quotaLoading ? (
         <div className="card"><Sk w={200} h={18} /><Sk h={44} r={12} style={{ marginTop: 14 }} /></div>

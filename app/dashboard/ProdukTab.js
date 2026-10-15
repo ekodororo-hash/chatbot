@@ -1,5 +1,6 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import productImport from '@/lib/productImport';
 import { Busy, readCount, rp, saveCount, toInt } from './helpers';
 import { Sk, SkItems } from '../components/Skeleton';
 import { useConfirm } from '../components/useConfirm';
@@ -88,6 +89,12 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
   const [d, setD] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  // Impor dari CSV / tempel dari Excel atau Google Sheets.
+  const [impOpen, setImpOpen] = useState(false);
+  const [impText, setImpText] = useState('');
+  const [impMode, setImpMode] = useState('update');
+  const [impBusy, setImpBusy] = useState(false);
+  const fileRef = useRef(null);
   const [ask, confirmNode] = useConfirm();
   // Jumlah terakhir yang dilihat, supaya skeleton sepanjang isi aslinya.
   const [guess] = useState(() => readCount('produk:' + shop.id));
@@ -117,6 +124,71 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
     load();
   }
 
+  const parsed = useMemo(() => (impText.trim() ? productImport.parseProducts(impText) : null), [impText]);
+  const good = useMemo(() => (parsed ? parsed.rows.filter((r) => !r.error) : []), [parsed]);
+  const bad = useMemo(() => (parsed ? parsed.rows.filter((r) => r.error) : []), [parsed]);
+
+  function closeImport() {
+    setImpOpen(false); setImpText(''); setImpMode('update');
+  }
+
+  async function pickFile(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.size > 1500000) { toast('File terlalu besar (maksimal 1,5 MB). Pecah jadi beberapa file.'); return; }
+    try { setImpText(await f.text()); } catch (err) { toast('File tidak bisa dibaca.'); }
+  }
+
+  function downloadTemplate() {
+    const url = URL.createObjectURL(new Blob([productImport.templateCsv()], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'template-produk.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Semua produk toko (id dan nama), per 1.000 baris karena itu batas satu permintaan Supabase.
+  async function allExisting() {
+    const out = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from('products').select('id,name').eq('shop_id', shop.id).order('created_at').range(from, from + 999);
+      if (error) throw error;
+      out.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  }
+
+  async function runImport() {
+    if (!good.length) return;
+    setImpBusy(true);
+    let added = 0, updated = 0, skipped = 0;
+    try {
+      const plan = productImport.planImport(good, await allExisting(), impMode);
+      skipped = plan.skipped;
+      for (let i = 0; i < plan.insert.length; i += 100) {
+        const batch = plan.insert.slice(i, i + 100).map((r) => ({ shop_id: shop.id, ...r }));
+        const { error } = await sb.from('products').insert(batch);
+        if (error) throw error;
+        added += batch.length;
+      }
+      for (let i = 0; i < plan.update.length; i += 10) {
+        const chunk = plan.update.slice(i, i + 10);
+        const res = await Promise.all(chunk.map((u) => sb.from('products').update(u.patch).eq('id', u.id).eq('shop_id', shop.id)));
+        const failed = res.find((r) => r.error);
+        if (failed) throw failed.error;
+        updated += chunk.length;
+      }
+      toast(added + ' produk ditambah' + (updated ? ', ' + updated + ' diperbarui' : '') + (skipped ? ', ' + skipped + ' dilewati' : '') + '.');
+      closeImport();
+      load();
+    } catch (e) {
+      fail(e);
+      if (added || updated) { toast('Impor terhenti. Yang sudah masuk: ' + added + ' ditambah, ' + updated + ' diperbarui.'); load(); }
+    } finally { setImpBusy(false); }
+  }
+
   function cancel() {
     setN(''); setP(''); setK(''); setD('');
     setOpen(false);
@@ -125,11 +197,55 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
   return (
     <>
       {confirmNode}
-      {!open ? (
-        <div className="addbar">
+      {!open && !impOpen ? (
+        <div className="addbar row">
           <button className="btn" type="button" onClick={() => setOpen(true)}>+ Tambah produk</button>
+          <button className="btn ghost" type="button" onClick={() => setImpOpen(true)}>Impor dari CSV / Excel</button>
         </div>
-      ) : (
+      ) : null}
+
+      {impOpen ? (
+        <div className="card">
+          <h2>Impor produk</h2>
+          <p className="hint">Dari Excel atau Google Sheets: salin kolom <b>Nama, Harga, Stok, Deskripsi</b> (baris pertama boleh judul kolom), lalu tempel di bawah. Atau pilih file CSV (simpan sebagai CSV UTF-8). Maksimal {productImport.MAX_ROWS.toLocaleString('id-ID')} produk sekali impor.</p>
+          <div className="row">
+            <button className="btn sm" type="button" disabled={impBusy} onClick={() => fileRef.current && fileRef.current.click()}>Pilih file CSV</button>
+            <button className="btn ghost sm" type="button" disabled={impBusy} onClick={downloadTemplate}>Unduh template</button>
+            <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" onChange={pickFile} hidden />
+          </div>
+          <textarea aria-label="Data produk" rows={6} style={{ marginTop: 10 }} value={impText} disabled={impBusy}
+            placeholder={'Nama\tHarga\tStok\tDeskripsi\nPashmina Ceruti\t45000\t24\tBahan adem'} onChange={(e) => setImpText(e.target.value)} />
+          {parsed && parsed.fatal ? <p className="err" role="alert">{parsed.fatal}</p> : null}
+          {parsed && !parsed.fatal ? (
+            <div role="status">
+              <p className="hint note">
+                <b>{good.length}</b>{' baris siap diimpor'}{bad.length ? ', ' + bad.length + ' baris bermasalah dan akan dilewati' : ''}{'.'}
+                {parsed.tooMany ? ' Hanya ' + productImport.MAX_ROWS.toLocaleString('id-ID') + ' baris pertama yang dibaca.' : ''}
+              </p>
+              {bad.slice(0, 8).map((r) => <p key={r.line} className="hint" style={{ margin: '2px 0' }}>{'Baris ' + r.line + ': ' + r.error}</p>)}
+              {bad.length > 8 ? <p className="hint" style={{ margin: '2px 0' }}>{'...dan ' + (bad.length - 8) + ' baris lain.'}</p> : null}
+              {good.slice(0, 5).map((r) => (
+                <div key={r.line} className="li">
+                  <div className="t stack"><b>{r.name}</b><small>{rp(r.price) + ' · Stok ' + r.stock}</small></div>
+                </div>
+              ))}
+              {good.length > 5 ? <p className="hint" style={{ margin: '4px 0' }}>{'...dan ' + (good.length - 5) + ' produk lain.'}</p> : null}
+              <select aria-label="Jika nama produk sudah ada" value={impMode} disabled={impBusy} style={{ marginTop: 10 }} onChange={(e) => setImpMode(e.target.value)}>
+                <option value="update">Nama sudah ada: perbarui harga, stok, dan deskripsi</option>
+                <option value="skip">Nama sudah ada: lewati saja</option>
+              </select>
+            </div>
+          ) : null}
+          <div className="row">
+            <button className="btn" type="button" disabled={impBusy || !good.length} onClick={runImport}>
+              <Busy on={impBusy} label="Mengimpor...">{good.length ? 'Impor ' + good.length + ' produk' : 'Impor'}</Busy>
+            </button>
+            <button className="btn ghost" type="button" disabled={impBusy} onClick={closeImport}>Batal</button>
+          </div>
+        </div>
+      ) : null}
+
+      {open ? (
         <div className="card">
           <h2>Tambah produk</h2>
           <div className="item">
@@ -147,7 +263,7 @@ export default function ProdukTab({ sb, shop, fail, toast }) {
             <button className="btn ghost" type="button" disabled={busy} onClick={cancel}>Batal</button>
           </div>
         </div>
-      )}
+      ) : null}
 
       {!items && (
         <div className="card">
