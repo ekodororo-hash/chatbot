@@ -1,4 +1,4 @@
-// Bagian yang bisa dilipat (<details>), dipakai di halaman Asisten AI dan Pasang supaya form tidak terasa panjang.
+// Bagian yang bisa dilipat (<details>), dipakai di halaman Asisten AI / Widget dan Pasang supaya form tidak terasa panjang.
 // Ringkasan isi (hint) tampil di bawah judul saat tertutup. Ukuran ikon panah ditulis langsung di SVG
 // supaya tetap kecil walau CSS belum termuat.
 export default function Acc({ title, hint, open, children }) {

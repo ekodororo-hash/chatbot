@@ -12,7 +12,7 @@ function reply(body, status, cache) {
 }
 
 export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: { ...CORS, 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Max-Age': '86400' } });
+  return new Response(null, { status: 204, headers: { ...CORS, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '86400' } });
 }
 
 export async function GET(request, context) {
@@ -30,4 +30,23 @@ export async function GET(request, context) {
     console.error(e);
     return reply({ error: 'Terjadi gangguan' }, 500, 'no-store');
   }
+}
+
+// Pencatatan statistik widget: kind "view" (tombol tampil) atau "open" (chat dibuka). Dikirim widget.js sebagai
+// text/plain supaya tidak memicu preflight. Gagal mencatat tidak boleh mengganggu situs klien, jadi selalu 204.
+export async function POST(request, context) {
+  const { slug: raw } = await context.params;
+  const slug = String(raw || '');
+  const empty = () => new Response(null, { status: 204, headers: { ...CORS, 'Cache-Control': 'no-store' } });
+  if (!/^[a-z0-9-]{3,30}$/.test(slug)) return empty();
+  try {
+    const b = JSON.parse(await request.text());
+    const kind = b && b.kind;
+    if (kind !== 'view' && kind !== 'open') return empty();
+    const sb = supabase.getAdmin();
+    const r = await sb.from('shops').select('id').eq('slug', slug).maybeSingle();
+    if (r.error || !r.data) return empty();
+    await sb.rpc('widget_stat_add', { sid: r.data.id, kind });
+  } catch (e) { /* tabel belum ada atau body rusak: abaikan */ }
+  return empty();
 }

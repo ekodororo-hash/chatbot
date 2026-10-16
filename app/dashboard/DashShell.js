@@ -23,7 +23,7 @@ const TABS = [
   ['/dashboard/produk', 'Produk', 'produk'],
   ['/dashboard/faq', 'FAQ', 'faq'],
   ['/dashboard/toko', 'Toko', 'toko'],
-  ['/dashboard/bot', 'Asisten AI', 'bot'],
+  ['/dashboard/bot', 'Asisten AI / Widget', 'bot'],
   ['/dashboard/coba', 'Coba asisten', 'coba'],
   ['/dashboard/pasang', 'Pasang', 'pasang'],
   ['/dashboard/notifikasi', 'Notifikasi', 'notifikasi'],

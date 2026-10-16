@@ -85,7 +85,7 @@ export default function KontakTab({ sb, shop, fail, toast }) {
         {missing ? (
           <p className="hint note">Fitur ini belum aktif di database. Jalankan <b>supabase/migrations/rating_dan_kontak.sql</b> di Supabase SQL Editor, lalu muat ulang halaman ini.</p>
         ) : !on ? (
-          <p className="hint note">Tawaran kontak sedang <b>mati</b>, jadi chat tidak meminta nomor atau email. Nyalakan di <Link href="/dashboard/bot">Asisten AI</Link> (bagian Perilaku bot).</p>
+          <p className="hint note">Tawaran kontak sedang <b>mati</b>, jadi chat tidak meminta nomor atau email. Nyalakan di <Link href="/dashboard/bot">Asisten AI / Widget</Link> (bagian Perilaku bot).</p>
         ) : null}
         {!rows && <SkConvRows rows={3} />}
         {rows && !rows.length && !missing && <p className="hint">Belum ada kontak. Kartu tawaran muncul sekali per percakapan, setelah pengunjung bertanya beberapa kali tanpa memesan.</p>}

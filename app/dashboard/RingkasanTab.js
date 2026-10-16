@@ -73,6 +73,16 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
           .eq('rating', -1).eq('rating_done', false).order('rated_at', { ascending: false }).limit(5);
         if (!b.error) bad = b.data || [];
       }
+      // Statistik widget 30 hari (null kalau migrasi widget_statistik.sql belum dijalankan: kartunya disembunyikan).
+      let ws = null;
+      const wr = await sb.from('widget_stats').select('day,views,opens,orders').eq('shop_id', shop.id)
+        .gte('day', dayKey(Date.now() - 29 * DAY)).limit(40);
+      if (!wr.error) {
+        const sum = (from) => (wr.data || []).filter((x) => x.day >= from).reduce((a, x) => ({
+          views: a.views + (x.views || 0), opens: a.opens + (x.opens || 0), orders: a.orders + (x.orders || 0)
+        }), { views: 0, opens: 0, orders: 0 });
+        ws = { d7: sum(dayKey(Date.now() - 6 * DAY)), d30: sum('0000') };
+      }
       const leads = await head(sb.from('leads').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id));
       const perDay = {};
       const byChannel = {};
@@ -93,7 +103,7 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
       setD({
         convToday, botToday, botMonth, human, unanswered,
         ordersNew: ordersNew || 0, ordersProses: ordersProses || 0, ordersOn: ordersNew !== null,
-        week: (week7.data || []).length, days, byChannel, csat, bad, leads
+        week: (week7.data || []).length, days, byChannel, csat, bad, leads, ws
       });
     } catch (e) { fail(e); }
   }, [sb, shop.id, fail]);
@@ -169,6 +179,28 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
           ) : pct >= 80 ? (
             <p className="hint note">Kuota hampir habis. Setelah habis, pesan pelanggan langsung masuk ke admin tanpa dijawab asisten.</p>
           ) : null}
+        </div>
+      ) : null}
+
+      {d.ws ? (
+        <div className="card">
+          <div className="chead">
+            <div>
+              <h2>Statistik widget</h2>
+              <p className="hint">Dari tombol chat di website: berapa kali tampil, dibuka, dan jadi pesanan.</p>
+            </div>
+          </div>
+          {[['7 hari terakhir', d.ws.d7], ['30 hari terakhir', d.ws.d30]].map(([title, w]) => (
+            <div key={title}>
+              <h3 style={{ margin: '4px 0 6px', fontSize: 15 }}>{title}</h3>
+              <div className="stats">
+                <Stat label="Tombol dilihat" value={num(w.views)} note="kali halaman dimuat" />
+                <Stat label="Chat dibuka" value={num(w.opens)} note={w.views ? Math.round(w.opens / w.views * 100) + '% dari yang melihat' : 'belum ada data'} />
+                <Stat label="Jadi pesanan" value={num(w.orders)} note={w.opens ? Math.round(w.orders / w.opens * 100) + '% dari chat dibuka' : 'belum ada data'} />
+              </div>
+            </div>
+          ))}
+          {!d.ws.d30.views ? <p className="hint">Belum ada data. Angka mulai terkumpul setelah ada pengunjung yang memuat halaman dengan widget terpasang.</p> : null}
         </div>
       ) : null}
 

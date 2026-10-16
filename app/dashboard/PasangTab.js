@@ -392,7 +392,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
           <span className="pstep-no" aria-hidden="true">1</span>
           <div>
             <h2 id="ps1">Pasang di website</h2>
-            <p className="hint">{'Tempel kode ini sebelum penutup </body> di website klien. Pilih platformnya di bawah untuk langkah yang lebih rinci. Warna, posisi, ikon, dan teks tombol diatur di halaman Asisten AI dan berubah otomatis, tidak perlu menempel ulang.'}</p>
+            <p className="hint">{'Tempel kode ini sebelum penutup </body> di website klien. Pilih platformnya di bawah untuk langkah yang lebih rinci. Warna, posisi, ikon, dan teks tombol diatur di halaman Asisten AI / Widget dan berubah otomatis, tidak perlu menempel ulang.'}</p>
           </div>
         </header>
 

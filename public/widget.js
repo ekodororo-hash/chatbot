@@ -180,6 +180,20 @@
     start(null);
   }
 
+  // Statistik ringan: tombol tampil (view) dan chat dibuka (open), masing-masing sekali per muat halaman.
+  // text/plain supaya tidak ada preflight; kegagalan diabaikan.
+  var sent = {};
+  function track(kind) {
+    if (sent[kind] || !window.fetch) return;
+    sent[kind] = true;
+    try {
+      fetch(origin + '/api/widget/' + encodeURIComponent(bot), {
+        method: 'POST', body: JSON.stringify({ kind: kind }), keepalive: true, mode: 'cors', credentials: 'omit',
+        headers: { 'Content-Type': 'text/plain' }
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   function build(c) {
     var color = c.color;
     var r = parseInt(color.slice(1, 3), 16), g = parseInt(color.slice(3, 5), 16), b = parseInt(color.slice(5, 7), 16);
@@ -365,6 +379,7 @@
       if (frame && frame.contentWindow) { try { frame.contentWindow.postMessage({ type: type, lang: siteLang() || 'id' }, '*'); } catch (e) {} }
     }
     function open() {
+      track('open');
       hideTip(true);
       clearBadge();
       syncLang();
@@ -431,5 +446,7 @@
     window.addEventListener('pageshow', watchVis);
     setInterval(applyVis, 1000);
     applyVis();
+    // Dihitung "dilihat" hanya kalau tombol benar-benar tampil (tidak disembunyikan aturan halaman).
+    if (!document.documentElement.classList.contains('isengin-off')) track('view');
   }
 })();
