@@ -16,8 +16,6 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         {children}
-        {/* Chat widget untuk situs ini sendiri. Isi WIDGET_BOT di env dengan slug toko yang dipakai (mis. emahairshop). Kosong = tidak tampil. */}
-        {/^[a-z0-9-]{3,30}$/.test(process.env.WIDGET_BOT || '') ? <script src="/widget.js" data-bot={process.env.WIDGET_BOT} defer /> : null}
       </body>
     </html>
   );
