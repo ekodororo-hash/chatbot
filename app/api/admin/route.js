@@ -1,5 +1,6 @@
 import admin from '@/lib/admin';
 import plans from '@/lib/plans';
+import billingLib from '@/lib/billing';
 import usage from '@/lib/usage';
 import shops from '@/lib/shops';
 import settings from '@/lib/settings';
@@ -43,6 +44,7 @@ export async function GET(request) {
     await applyPlanConfig();
     const now = new Date();
     const monthStart = plans.startOfMonthWIB(now).toISOString();
+    try { await billingLib.expireStale(sb, null, now); } catch (e) { console.error('Gagal menutup tagihan lama:', e && e.message); }
 
     const [shops, billing, owners, pays, paidRows] = await Promise.all([
       must(sb.from('shops').select('id,name,slug,bot_on,daily_limit,created_at').order('created_at', { ascending: false }).limit(MAX_SHOPS)),
