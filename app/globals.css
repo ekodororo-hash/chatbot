@@ -585,5 +585,5 @@ html{scroll-behavior:smooth}
 .sprev .seg{margin:12px 0 0}
 .sprev-box{position:relative;margin-top:10px;height:520px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
 .sprev-box iframe{display:block;border:0;background:#fff}
-.sprev-box.hp{width:min(390px,100%);margin-left:auto;margin-right:auto;border-width:6px;border-radius:26px}
+.sprev-box.hp{width:min(405px,100%);margin-left:auto;margin-right:auto;border-width:6px;border-radius:26px}
 @media (max-width:640px){.sprev-box{height:440px}}

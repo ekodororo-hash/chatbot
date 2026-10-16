@@ -16,6 +16,16 @@ function SitePreview({ base, noFrame }) {
   const [device, setDevice] = useState('desktop');
   const [dim, setDim] = useState({ w: 0, h: 520 });
   const boxRef = useRef(null);
+  // Lebar scrollbar bawaan browser ini. Iframe dibuat selebar itu lebih lebar dan kelebihannya dipotong kotak,
+  // supaya lebar halaman yang dilihat situs pas (HP 393 px) tanpa scrollbar desktop yang menyempitkannya.
+  const [sbw, setSbw] = useState(0);
+  useEffect(() => {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll';
+    document.body.appendChild(d);
+    setSbw(d.offsetWidth - d.clientWidth);
+    document.body.removeChild(d);
+  }, []);
   // Ukuran kotak dipantau supaya tampilan desktop (lebar 1280 px) bisa diperkecil pas dengan lebar kotak.
   useEffect(() => {
     const el = boxRef.current;
@@ -71,7 +81,7 @@ function SitePreview({ base, noFrame }) {
             <iframe
               title="Pratinjau situs" src={src || origin.href} loading="lazy" referrerPolicy="no-referrer"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              style={scaled ? { width: DT_W, height: dim.h / scale, transform: 'scale(' + scale + ')', transformOrigin: '0 0' } : { width: '100%', height: '100%' }}
+              style={scaled ? { width: DT_W + sbw, height: dim.h / scale, transform: 'scale(' + scale + ')', transformOrigin: '0 0' } : { width: 'calc(100% + ' + sbw + 'px)', height: '100%' }}
             />
           </div>
           <p className="hint chk-n">Kotak kosong atau tampil error? Berarti situsnya menolak dibuka di sini. <a href={src || origin.href} target="_blank" rel="noopener noreferrer">Buka di tab baru</a></p>
