@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Busy, dayTime, hhmm, readCount, saveCount } from './helpers';
 import { SkConvRows, SkMsgs } from '../components/Skeleton';
@@ -29,6 +29,25 @@ function visitorInfo(c, ip) {
 let ipAllowed = null;
 const statusLabel = (c) => (c.status === 'selesai' && c.closed_by_customer ? 'Ditutup pelanggan' : STATUS[c.status][0]);
 const CHANNEL = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
+
+// Label pemisah hari di dalam percakapan: "Hari ini", "Kemarin", atau "16 Okt".
+function dayLabel(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return 'Hari ini';
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Kemarin';
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+}
+
+// Tautan di dalam pesan (mis. wa.me dari bot) jadi bisa diklik. Dibuat sebagai elemen React, bukan HTML mentah, jadi aman dari XSS.
+function linkify(text) {
+  return String(text).split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+    if (i % 2 === 0) return part;
+    const m = part.match(/^(.*?)([.,;:!?)\]]*)$/);
+    return <span key={i}><a href={m[1]} target="_blank" rel="noopener noreferrer">{m[1]}</a>{m[2]}</span>;
+  });
+}
 
 function ConvList({ sb, shop, onOpen, onHumanCount, fail, toast }) {
   const [convs, setConvs] = useState(null);
@@ -213,30 +232,21 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     setSending(false);
   }
 
+  const info = visitorInfo(c, ip);
+  const canFaq = c.unanswered && c.last_question;
+
   return (
     <>
       <button className="btn ghost sm" type="button" onClick={onBack}>← Semua percakapan</button>
-      <div className="card" style={{ marginTop: 12 }}>
-        <h2>{c.customer_name}{CHANNEL[c.channel] ? <span className="tag" style={{ marginLeft: 8, verticalAlign: 'middle' }}>{CHANNEL[c.channel]}</span> : null}</h2>
-        {visitorInfo(c, ip) ? <p className="hint" style={{ margin: '4px 0 0' }} title="Lokasi perkiraan dari alamat IP">{visitorInfo(c, ip)}</p> : null}
-        {!loaded && <SkMsgs />}
-        <div className="msgs" aria-live="polite" ref={listRef} hidden={!loaded}>
-          {msgs.map((m) => (
-            <div key={m.id} className={'m ' + m.role}>
-              {m.role === 'admin' ? <em>Kamu (admin)</em> : (m.role === 'bot' ? <em>Bot</em> : null)}
-              {m.content}
-              <small>{hhmm(m.created_at)}</small>
-            </div>
-          ))}
-        </div>
-        <form className="row" onSubmit={send}>
-          <div style={{ flex: 1, minWidth: 160 }}>
-            <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
+      <div className="card cv" style={{ marginTop: 12 }}>
+        <div className="cv-head">
+          <div>
+            <h2>{c.customer_name}{CHANNEL[c.channel] ? <span className="tag">{CHANNEL[c.channel]}</span> : null}</h2>
+            {info ? <p className="hint" title="Lokasi perkiraan dari alamat IP">{info}</p> : null}
           </div>
-          <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
-        </form>
-        <div className="row">
           <span className={'tag ' + STATUS[c.status][1]}>{statusLabel(c)}</span>
+        </div>
+        <div className="cv-acts">
           {c.status !== 'selesai' && (
             <button className="btn ghost sm" type="button" disabled={!!pending} onClick={() => setStatus('selesai')}>
               <Busy on={pending === 'selesai'} label="Menyimpan...">Tandai selesai</Busy>
@@ -247,10 +257,34 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
               <Busy on={pending === 'bot'} label="Menyimpan...">Kembalikan ke bot</Busy>
             </button>
           )}
-          {c.unanswered && c.last_question && (
+          {canFaq && (
             <button className="btn ghost sm" type="button" onClick={() => onMakeFaq(c.last_question)}>Jadikan FAQ</button>
           )}
         </div>
+        {!loaded && <SkMsgs />}
+        <div className="msgs" aria-live="polite" ref={listRef} hidden={!loaded}>
+          {loaded && !msgs.length && <p className="cv-empty">Belum ada pesan di percakapan ini.</p>}
+          {msgs.map((m, i) => {
+            const prev = msgs[i - 1];
+            const newDay = !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
+            const first = newDay || prev.role !== m.role;
+            return (
+              <Fragment key={m.id}>
+                {newDay ? <div className="cv-day"><span>{dayLabel(m.created_at)}</span></div> : null}
+                <div className={'m ' + m.role + (first ? ' first' : '')}>
+                  {first && m.role === 'admin' ? <em>Kamu (admin)</em> : (first && m.role === 'bot' ? <em>Bot</em> : null)}
+                  {linkify(m.content)}
+                  <small>{hhmm(m.created_at)}</small>
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
+        <form className="cv-compose" onSubmit={send}>
+          <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
+          <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
+        </form>
+        {c.status === 'bot' ? <p className="hint cv-note">Membalas dari sini akan mengambil alih percakapan dari bot.</p> : null}
       </div>
     </>
   );
