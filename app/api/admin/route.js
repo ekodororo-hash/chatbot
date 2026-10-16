@@ -314,9 +314,10 @@ export async function POST(request) {
       if (!icon || (!widgetIcons.iconPaths(icon) && Array.from(icon).length > 8)) return json({ error: 'Ikon tombol: pilih ikon dari daftar, atau 1 sampai 8 karakter.' }, 400);
       if (!/^#[0-9a-fA-F]{6}$/.test(String(v.accent || ''))) return json({ error: 'Warna tidak valid.' }, 400);
       if (!c.POS.includes(v.widget_pos) || !c.SIZE.includes(v.widget_size) || !c.SHAPE.includes(v.widget_shape) || !c.BUBBLE.includes(v.widget_bubble)) return json({ error: 'Posisi, ukuran, atau bentuk tidak valid.' }, 400);
-      const ox = Number(v.widget_ox), oy = Number(v.widget_oy), eta = Number(v.reply_eta);
+      const ox = Number(v.widget_ox), oy = Number(v.widget_oy), eta = Number(v.reply_eta), delay = Number(v.widget_delay);
       if (!(Number.isInteger(ox) && ox >= 0 && ox <= 200 && Number.isInteger(oy) && oy >= 0 && oy <= 200)) return json({ error: 'Jarak tombol dari tepi: 0 sampai 200 px.' }, 400);
       if (!(Number.isInteger(eta) && eta >= 0 && eta <= 1440)) return json({ error: 'Estimasi balasan admin: 0 sampai 1440 menit.' }, 400);
+      if (!(Number.isInteger(delay) && delay >= 0 && delay <= 30)) return json({ error: 'Tunda tampil tombol: 0 sampai 30 detik.' }, 400);
       const logo = typeof v.widget_logo === 'string' ? v.widget_logo : '';
       if (logo && (logo.length > c.LOGO_MAX || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(logo))) return json({ error: 'Logo tidak valid atau terlalu besar.' }, 400);
       const days = Array.isArray(v.hours_days) ? v.hours_days : String(v.hours_days || '').split(',');
@@ -330,6 +331,7 @@ export async function POST(request) {
         accent: v.accent, widget_pos: v.widget_pos, widget_icon: icon, widget_label: c.str(v.widget_label, 30),
         widget_teaser: c.str(v.widget_teaser, 100), widget_size: v.widget_size, widget_shape: v.widget_shape,
         widget_bubble: v.widget_bubble, widget_logo: logo, widget_ox: ox, widget_oy: oy,
+        widget_delay: delay, widget_animate: v.widget_animate !== false,
         hours_on: on, hours_open: T.test(String(v.hours_open)) ? v.hours_open : '09:00', hours_close: T.test(String(v.hours_close)) ? v.hours_close : '17:00',
         hours_days: dayList.join(','), hours_tz: v.hours_tz, reply_eta: eta
       };
@@ -344,7 +346,7 @@ export async function POST(request) {
 // Hanya kolom tampilan widget (plus nama/sapaan/pilihan cepat untuk pratinjau chat). Kolom rahasia toko tidak ikut.
 function widgetFields(s) {
   const keys = ['id', 'name', 'slug', 'bot_name', 'greeting', 'tone', 'quick_on', 'quick_replies', 'accent', 'widget_pos', 'widget_icon', 'widget_label',
-    'widget_teaser', 'widget_size', 'widget_shape', 'widget_bubble', 'widget_logo', 'widget_ox', 'widget_oy',
+    'widget_teaser', 'widget_size', 'widget_shape', 'widget_bubble', 'widget_logo', 'widget_ox', 'widget_oy', 'widget_delay', 'widget_animate',
     'hours_on', 'hours_open', 'hours_close', 'hours_days', 'hours_tz', 'reply_eta'];
   const out = {};
   keys.forEach((k) => { if (Object.prototype.hasOwnProperty.call(s, k)) out[k] = s[k]; });
