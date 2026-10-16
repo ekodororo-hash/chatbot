@@ -7,6 +7,7 @@ import usage from '@/lib/usage';
 import Acc from '../../components/Acc';
 import { SVG_ICONS, iconPaths } from '@/lib/widgetIcons';
 import widgetAnim from '@/lib/widgetAnim';
+import waNumber from '@/lib/waNumber';
 
 // Ikon di tombol: SVG bawaan ("svg:nama") atau emoji/huruf biasa. Warna SVG mengikuti warna teks.
 function IconView({ icon, size }) {
@@ -87,6 +88,7 @@ function fromShop(shop) {
     general_on: shop.general_on === true, general_topic: shop.general_topic || '',
     reply_language: shop.reply_language === 'auto' ? 'auto' : 'id',
     lead_on: shop.lead_on === true,
+    wa_button: shop.wa_button === true, wa_number: shop.wa_number || '',
     quick_on: shop.quick_on !== false, quick_replies: quickSlots(shop.quick_replies),
     widget_pos: shop.widget_pos || 'right', widget_icon: shop.widget_icon || DEFAULT_ICON,
     widget_label: shop.widget_label || '', widget_teaser: shop.widget_teaser || '',
@@ -115,7 +117,8 @@ function ChatWindowPreview({ f, slug }) {
     bubble: f.widget_bubble,
     hours: { on: f.hours_on, open: f.hours_open, close: f.hours_close, days: f.hours_days.map(Number), tz: f.hours_tz },
     eta: toInt(f.reply_eta) || 0,
-    quick: { on: f.quick_on, items: quickClean(f.quick_replies) }
+    quick: { on: f.quick_on, items: quickClean(f.quick_replies) },
+    wa: f.wa_button ? waNumber.clean(f.wa_number) : ''
   });
   const send = useCallback(() => {
     const w = ref.current && ref.current.contentWindow;
@@ -171,6 +174,7 @@ export default function BotPage() {
   const { sb, shop, onShopChange, fail, toast } = useDash();
   const leadReady = Object.prototype.hasOwnProperty.call(shop, 'lead_on');
   const animReady = Object.prototype.hasOwnProperty.call(shop, 'widget_anim');   // kolom ada setelah migrasi widget_animasi.sql
+  const waReady = Object.prototype.hasOwnProperty.call(shop, 'wa_number');   // kolom ada setelah migrasi widget_whatsapp.sql
   const quickReady = Object.prototype.hasOwnProperty.call(shop, 'quick_replies');   // kolom ada setelah migrasi pilihan_cepat.sql
   const [used, setUsed] = useState(null);
   const [f, setF] = useState(() => fromShop(shop));
@@ -221,6 +225,7 @@ export default function BotPage() {
     if (f.hours_on && !f.hours_days.length) return toast('Pilih minimal satu hari operasional.');
     if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_open + '') ) return toast('Isi jam buka.');
     if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_close + '')) return toast('Isi jam tutup.');
+    if (waReady && f.wa_button && !waNumber.clean(f.wa_number)) return toast('Isi nomor WhatsApp yang valid, contoh 081234567890.');
     setBusy(true);
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
@@ -235,6 +240,7 @@ export default function BotPage() {
     };
     if (quickReady) { patch.quick_on = f.quick_on; patch.quick_replies = quickClean(f.quick_replies); }
     if (animReady) patch.widget_anim = f.widget_anim;
+    if (waReady) { patch.wa_button = f.wa_button; patch.wa_number = f.wa_button ? waNumber.clean(f.wa_number) : (waNumber.clean(f.wa_number) || ''); }
     if (leadReady) patch.lead_on = f.lead_on;   // kolom ini baru ada setelah migrasi rating_dan_kontak.sql
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -360,6 +366,29 @@ export default function BotPage() {
           </div>
         </div>
 
+        </Acc>
+
+        <Acc title="Tombol WhatsApp" hint={waReady && f.wa_button ? 'Aktif · ' + (waNumber.clean(f.wa_number) || 'nomor belum valid') : 'Mati'}>
+        <label htmlFor="bwa" className="swrow">
+          <span className="swrow-t">
+            <b>Tampilkan tombol "Lanjut di WhatsApp" di chat</b>
+            <small>
+              {waReady
+                ? 'Pelanggan bisa pindah ke WhatsApp toko dengan satu ketukan. Ringkasan percakapan terakhir ikut terisi sebagai pesan awal, jadi tidak perlu mengulang dari nol. Jumlah kliknya ada di Ringkasan.'
+                : 'Belum aktif di database. Jalankan supabase/migrations/widget_whatsapp.sql di Supabase dulu.'}
+            </small>
+          </span>
+          <input id="bwa" type="checkbox" disabled={!waReady} checked={f.wa_button} onChange={(e) => setF((p) => ({ ...p, wa_button: e.target.checked }))} />
+        </label>
+        {waReady && f.wa_button ? (
+          <div className="fgrid" style={{ marginTop: 12 }}>
+            <div>
+              <label htmlFor="bwn">Nomor WhatsApp toko</label>
+              <input id="bwn" type="tel" inputMode="tel" maxLength={20} placeholder="081234567890" value={f.wa_number} onChange={(e) => setF((p) => ({ ...p, wa_number: e.target.value }))} />
+              <p className="hint field-hint">Boleh diawali 0, 62, atau +62. Nomor ini terlihat oleh pelanggan.</p>
+            </div>
+          </div>
+        ) : null}
         </Acc>
 
         <Acc title="Pilihan cepat" hint={quickReady && f.quick_on ? quickClean(f.quick_replies).length + ' tombol di chat' : 'Mati'}>

@@ -32,7 +32,7 @@ export async function GET(request, context) {
   }
 }
 
-// Pencatatan statistik widget: kind "view" (tombol tampil) atau "open" (chat dibuka). Dikirim widget.js sebagai
+// Pencatatan statistik widget: kind "view" (tombol tampil), "open" (chat dibuka), atau "wa" (klik Lanjut di WhatsApp). Dikirim widget.js sebagai
 // text/plain supaya tidak memicu preflight. Gagal mencatat tidak boleh mengganggu situs klien, jadi selalu 204.
 export async function POST(request, context) {
   const { slug: raw } = await context.params;
@@ -42,7 +42,7 @@ export async function POST(request, context) {
   try {
     const b = JSON.parse(await request.text());
     const kind = b && b.kind;
-    if (kind !== 'view' && kind !== 'open') return empty();
+    if (kind !== 'view' && kind !== 'open' && kind !== 'wa') return empty();
     const sb = supabase.getAdmin();
     const r = await sb.from('shops').select('id').eq('slug', slug).maybeSingle();
     if (r.error || !r.data) return empty();

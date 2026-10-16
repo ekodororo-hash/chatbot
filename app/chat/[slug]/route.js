@@ -1,6 +1,7 @@
 import supabase from '@/lib/supabase';
 import domains from '@/lib/domains';
 import TEMPLATE from '@/lib/chatTemplate';
+import waNumber from '@/lib/waNumber';
 import widgetConfig from '@/lib/widgetConfig';
 import gayaPortal from '@/lib/gayaPortal';
 
@@ -52,6 +53,8 @@ export async function GET(request, context) {
     bubble: wc.bubble,
     hours: wc.hours,
     eta: wc.eta,
+    // Tombol "Lanjut di WhatsApp": hanya kalau diaktifkan dan nomornya valid (kolom ada setelah migrasi widget_whatsapp.sql).
+    wa: shop.wa_button === true ? waNumber.clean(shop.wa_number) : '',
     quick: widgetConfig.quick(shop),
     // Kolom lead_on ada hanya setelah migrasi rating_dan_kontak.sql dijalankan: sebelum itu, penilaian dan tawaran kontak tidak ditampilkan.
     rating: Object.prototype.hasOwnProperty.call(shop, 'lead_on'),

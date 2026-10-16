@@ -1,0 +1,13 @@
+'use strict';
+const assert = require('assert');
+const { clean } = require('../lib/waNumber');
+assert.strictEqual(clean('0812-3456-7890'), '6281234567890');
+assert.strictEqual(clean('+62 812 3456 7890'), '6281234567890');
+assert.strictEqual(clean('6281234567890'), '6281234567890');
+assert.strictEqual(clean('0062812345678'), '62812345678');
+assert.strictEqual(clean(''), '');
+assert.strictEqual(clean('abc'), '');
+assert.strictEqual(clean('0812'), '');
+assert.strictEqual(clean('1234567890123456'), '');
+assert.strictEqual(clean(null), '');
+console.log('wa.test.js: semua lolos');

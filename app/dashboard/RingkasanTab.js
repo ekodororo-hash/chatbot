@@ -75,12 +75,13 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
       }
       // Statistik widget 30 hari (null kalau migrasi widget_statistik.sql belum dijalankan: kartunya disembunyikan).
       let ws = null;
-      const wr = await sb.from('widget_stats').select('day,views,opens,orders').eq('shop_id', shop.id)
-        .gte('day', dayKey(Date.now() - 29 * DAY)).limit(40);
+      const wq = (cols) => sb.from('widget_stats').select(cols).eq('shop_id', shop.id).gte('day', dayKey(Date.now() - 29 * DAY)).limit(40);
+      let wr = await wq('day,views,opens,wa_clicks');
+      if (wr.error) wr = await wq('day,views,opens');   // kolom wa_clicks ada setelah migrasi widget_whatsapp.sql
       if (!wr.error) {
         const sum = (from) => (wr.data || []).filter((x) => x.day >= from).reduce((a, x) => ({
-          views: a.views + (x.views || 0), opens: a.opens + (x.opens || 0), orders: a.orders + (x.orders || 0)
-        }), { views: 0, opens: 0, orders: 0 });
+          views: a.views + (x.views || 0), opens: a.opens + (x.opens || 0), wa: a.wa + (x.wa_clicks || 0)
+        }), { views: 0, opens: 0, wa: 0 });
         ws = { d7: sum(dayKey(Date.now() - 6 * DAY)), d30: sum('0000') };
       }
       const leads = await head(sb.from('leads').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id));
@@ -187,7 +188,7 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
           <div className="chead">
             <div>
               <h2>Statistik widget</h2>
-              <p className="hint">Dari tombol chat di website: berapa kali tampil, dibuka, dan jadi pesanan.</p>
+              <p className="hint">Dari tombol chat di website: berapa kali tampil, dibuka, dan berlanjut ke WhatsApp.</p>
             </div>
           </div>
           {[['7 hari terakhir', d.ws.d7], ['30 hari terakhir', d.ws.d30]].map(([title, w]) => (
@@ -196,7 +197,7 @@ export default function RingkasanTab({ sb, shop, role, onMakeFaq, fail, toast })
               <div className="stats">
                 <Stat label="Tombol dilihat" value={num(w.views)} note="kali halaman dimuat" />
                 <Stat label="Chat dibuka" value={num(w.opens)} note={w.views ? Math.round(w.opens / w.views * 100) + '% dari yang melihat' : 'belum ada data'} />
-                <Stat label="Jadi pesanan" value={num(w.orders)} note={w.opens ? Math.round(w.orders / w.opens * 100) + '% dari chat dibuka' : 'belum ada data'} />
+                <Stat label="Klik WhatsApp" value={num(w.wa)} note={w.opens ? Math.round(w.wa / w.opens * 100) + '% dari chat dibuka' : 'belum ada data'} />
               </div>
             </div>
           ))}
