@@ -605,3 +605,14 @@ html{scroll-behavior:smooth}
 .sprev-box iframe{display:block;border:0;background:#fff}
 .sprev-box.hp{width:min(405px,100%);margin-left:auto;margin-right:auto;border-width:6px;border-radius:26px}
 @media (max-width:640px){.sprev-box{height:440px}}
+
+/* Halaman Syarat dan Ketentuan, Kebijakan Privasi */
+.legal{max-width:760px;margin:0 auto;padding:8px 20px 48px}
+.legal h1{font-size:clamp(28px,5vw,40px);margin:12px 0 6px}
+.legal h2{font-size:20px;line-height:1.25;letter-spacing:-.01em;margin:32px 0 8px;font-weight:600}
+.legal h3{font-size:16px;margin:18px 0 6px;font-weight:600}
+.legal p,.legal li{line-height:1.7}
+.legal ul{padding-left:22px;margin:8px 0}
+.legal li{margin:4px 0}
+.legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.foot a{color:inherit;text-underline-offset:2px}

@@ -103,6 +103,7 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
               <button type="button" onClick={() => setShowPw((v) => !v)} aria-pressed={showPw}>{showPw ? 'Sembunyikan' : 'Tampilkan'}</button>
             </div>
             {reg && <p className="field-hint">Minimal 8 karakter.</p>}
+            {reg && <p className="field-hint">Dengan mendaftar, kamu menyetujui <Link href="/syarat" target="_blank">Syarat dan Ketentuan</Link> serta <Link href="/privasi" target="_blank">Kebijakan Privasi</Link>.</p>}
             <div className={'err' + (ok ? ' ok' : '')} role="alert">{msg}</div>
             <button className="btn lg" type="submit" disabled={busy || !!error} style={{ width: '100%', marginTop: 12 }}>
               {busy ? <span className="spin" aria-hidden="true" /> : null}

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Reveal from '../Reveal';
+import { LegalFooter } from '../components/Legal';
 import plans from '@/lib/plans';
 import settings from '@/lib/settings';
 
@@ -124,7 +125,7 @@ export default async function Beranda() {
 
       </main>
 
-      <footer className="foot">Asisten Toko, asisten AI untuk UMKM.</footer>
+      <LegalFooter />
     </>
   );
 }
