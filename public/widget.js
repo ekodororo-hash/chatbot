@@ -65,6 +65,7 @@
 
   function pick(v, list, def) { return list.indexOf(v) >= 0 ? v : def; }
   function num(v, min, max, def) { return typeof v === 'number' && v % 1 === 0 && v >= min && v <= max ? v : def; }
+  function bool(v, def) { return typeof v === 'boolean' ? v : def; }
   function text(v, max, def) {
     if (typeof v !== 'string') return def;
     var t = v.replace(/[\u0000-\u001f\u007f]/g, '').trim();
@@ -91,7 +92,9 @@
       size: pick(c.size, ['kecil', 'sedang', 'besar'], 'sedang'),
       shape: pick(c.shape, ['bulat', 'kotak', 'lancip'], 'bulat'),
       ox: num(c.ox, 0, 200, 20),
-      oy: num(c.oy, 0, 200, 20)
+      oy: num(c.oy, 0, 200, 20),
+      delay: num(c.delay, 0, 30, 0),
+      animate: bool(c.animate, true)
     };
   }
 
@@ -100,7 +103,10 @@
     if (started) return;
     started = true;
     if (document.getElementById('isengin-chat-btn')) return;
-    build(norm(cfg));
+    var c = norm(cfg);
+    // Tunda tombol muncul: pengunjung sempat lihat halaman dulu sebelum tombol chat tampil.
+    if (c.delay > 0) setTimeout(function () { build(c); }, c.delay * 1000);
+    else build(c);
   }
 
   if (window.fetch) {
@@ -137,6 +143,9 @@
       'background:' + color + ';color:' + onColor + ';font-size:' + iconPx + 'px;line-height:1;cursor:pointer;z-index:2147483000;' +
       'box-shadow:0 6px 20px rgba(0,0,0,.25);font-family:system-ui,sans-serif}' +
       '#isengin-chat-btn span.l{font-size:15px;font-weight:600;white-space:nowrap}' +
+      // Di layar sempit, tombol dengan label/ukuran besar dibatasi lebarnya dan teks dipotong, supaya tidak keluar layar.
+      '@media (max-width:480px){#isengin-chat-btn{max-width:calc(100vw - ' + (c.ox * 2 + 16) + 'px)}' +
+      '#isengin-chat-btn span.l{overflow:hidden;text-overflow:ellipsis;min-width:0}}' +
       '#isengin-chat-btn:focus-visible,#isengin-chat-x:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px ' + color + '}' +
       '#isengin-chat-box{position:fixed;' + side + ':' + c.ox + 'px;bottom:' + boxBottom + 'px;width:' + boxW + 'px;max-width:calc(100vw - 24px);' +
       'height:min(' + boxH + 'px,calc(100vh - ' + (boxBottom + 20) + 'px));border-radius:16px;overflow:hidden;background:#fff;z-index:2147483001;' +
@@ -163,12 +172,21 @@
       '@media (min-width:1024px){#isengin-chat-box{width:' + boxWLg + 'px;' +
       'height:min(' + boxHLg + 'px,calc(100vh - ' + (boxBottom + 20) + 'px))}}' +
       '@media (max-width:480px){#isengin-chat-box{right:0;left:0;top:0;bottom:0;width:auto;max-width:none;height:auto;border-radius:0}' +
-      '#isengin-chat-btn.open,#isengin-chat-tip{display:none!important}}';
+      '#isengin-chat-btn.open,#isengin-chat-tip{display:none!important}}' +
+      // Animasi muncul: sekali saja, membesar lalu balik normal. Dimatikan kalau pengunjung minta kurangi gerakan.
+      (c.animate ? '#isengin-chat-btn.isengin-in{animation:isengin-in .5s cubic-bezier(.34,1.56,.64,1)}' +
+      '@keyframes isengin-in{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}' +
+      '@media (prefers-reduced-motion:reduce){#isengin-chat-btn.isengin-in{animation:none}}' : '');
     document.head.appendChild(css);
 
     var btn = document.createElement('button');
     btn.id = 'isengin-chat-btn';
     btn.type = 'button';
+    if (c.animate) {
+      btn.className = 'isengin-in';
+      // Class dibuang setelah animasi selesai, biar tidak terpicu lagi (mis. saat browser rerender/zoom).
+      btn.addEventListener('animationend', function () { btn.classList.remove('isengin-in'); }, { once: true });
+    }
     var ic = document.createElement('span');
     if (c.svg) {
       var NS = 'http://www.w3.org/2000/svg';

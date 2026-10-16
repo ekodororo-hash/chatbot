@@ -22,7 +22,8 @@ const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
 const ICONS = [DEFAULT_ICON, '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16', '\uD83D\uDC4B', '\u2753', '\uD83D\uDCDE'];
 const WIDGET_DEFAULTS = {
   accent: '#0b7a75', widget_pos: 'right', widget_icon: DEFAULT_ICON, widget_label: '',
-  widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_bubble: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20'
+  widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_bubble: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20',
+  widget_delay: '0', widget_animate: true
 };
 const DAYS = [['1', 'Sen'], ['2', 'Sel'], ['3', 'Rab'], ['4', 'Kam'], ['5', 'Jum'], ['6', 'Sab'], ['0', 'Min']];
 const LOGO_MAX = 55000;
@@ -89,6 +90,7 @@ function fromShop(shop) {
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat',
     widget_logo: shop.widget_logo || '', widget_bubble: shop.widget_bubble || 'bulat',
     widget_ox: String(shop.widget_ox == null ? 20 : shop.widget_ox), widget_oy: String(shop.widget_oy == null ? 20 : shop.widget_oy),
+    widget_delay: String(shop.widget_delay == null ? 0 : shop.widget_delay), widget_animate: shop.widget_animate !== false,
     hours_on: shop.hours_on === true, hours_open: shop.hours_open || '09:00', hours_close: shop.hours_close || '17:00',
     hours_days: daysOf(shop.hours_days), hours_tz: shop.hours_tz || 'Asia/Jakarta',
     reply_eta: String(shop.reply_eta || 0)
@@ -201,9 +203,10 @@ export default function BotPage() {
     if (!(limit >= 1 && limit <= 5000)) return toast('Batas harian: 1 sampai 5000.');
     if (f.general_on && !f.general_topic.trim()) return toast('Isi bidang toko untuk jawaban umum.');
     if (!icon || (!iconPaths(icon) && Array.from(icon).length > 8)) return toast('Ikon tombol: pilih ikon dari daftar, atau 1 sampai 8 karakter (boleh emoji).');
-    const ox = toInt(f.widget_ox), oy = toInt(f.widget_oy), eta = toInt(f.reply_eta);
+    const ox = toInt(f.widget_ox), oy = toInt(f.widget_oy), eta = toInt(f.reply_eta), delay = toInt(f.widget_delay);
     if (!(ox >= 0 && ox <= 200 && oy >= 0 && oy <= 200)) return toast('Jarak tombol dari tepi: 0 sampai 200 px.');
     if (!(eta >= 0 && eta <= 1440)) return toast('Estimasi balasan admin: 0 sampai 1440 menit.');
+    if (!(delay >= 0 && delay <= 30)) return toast('Tunda tampil tombol: 0 sampai 30 detik.');
     if (f.hours_on && !f.hours_days.length) return toast('Pilih minimal satu hari operasional.');
     if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_open + '') ) return toast('Isi jam buka.');
     if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_close + '')) return toast('Isi jam tutup.');
@@ -215,6 +218,7 @@ export default function BotPage() {
       widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
       widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape,
       widget_logo: f.widget_logo, widget_bubble: f.widget_bubble, widget_ox: ox, widget_oy: oy,
+      widget_delay: delay, widget_animate: !!f.widget_animate,
       hours_on: f.hours_on, hours_open: f.hours_open || '09:00', hours_close: f.hours_close || '17:00',
       hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
@@ -423,6 +427,23 @@ export default function BotPage() {
               </div>
             </div>
             <p className="hint field-hint">Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp, banner cookie, atau widget lain.</p>
+
+            <div className="fgrid" style={{ marginTop: 12 }}>
+              <div>
+                <label htmlFor="w11">Tunda tampil (detik)</label>
+                <input id="w11" type="number" inputMode="numeric" min="0" max="30" value={f.widget_delay} onChange={set('widget_delay')} />
+                <p className="hint field-hint">0 = langsung muncul begitu halaman terbuka. Isi 3–5 detik supaya tombol baru muncul setelah pengunjung sempat melihat halaman dulu.</p>
+              </div>
+              <div>
+                <label htmlFor="w12" className="swrow" style={{ padding: 0, border: 0 }}>
+                  <span className="swrow-t">
+                    <b>Animasi saat muncul</b>
+                    <small>Tombol sedikit membesar lalu kembali normal sekali saat pertama tampil, untuk menarik perhatian.</small>
+                  </span>
+                  <input id="w12" type="checkbox" checked={f.widget_animate} onChange={(e) => setF((p) => ({ ...p, widget_animate: e.target.checked }))} />
+                </label>
+              </div>
+            </div>
 
             <h3 className="subh">Isi tombol</h3>
             <div className="fgrid">
