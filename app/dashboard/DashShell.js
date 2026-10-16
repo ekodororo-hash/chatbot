@@ -90,6 +90,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   const [fatal, setFatal] = useState(error || '');
   const [prefillQ, setPrefillQ] = useState('');
   const [humanCount, setHumanCount] = useState(0);
+  const [openCount, setOpenCount] = useState(0);   // percakapan belum selesai yang masih dijawab AI (status bot)
   const [badges, setBadges] = useState({ unanswered: 0, orders: 0 });
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -134,9 +135,11 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   }, [shopId]);
   const refreshHumanCount = useCallback(async () => {
     if (!sb || !shopId) return;
-    const { count } = await sb.from('conversations').select('id', { count: 'exact', head: true })
-      .eq('shop_id', shopId).eq('status', 'human');
-    setHumanCount(count || 0);
+    const q = (status) => sb.from('conversations').select('id', { count: 'exact', head: true })
+      .eq('shop_id', shopId).eq('status', status);
+    const [h, o] = await Promise.all([q('human'), q('bot')]);
+    setHumanCount(h.count || 0);
+    setOpenCount(o.count || 0);
   }, [sb, shopId]);
   // Lencana "Pesanan" (status baru) dan "Belum terjawab". Kolom order_status berasal dari migrasi dashboard_pesanan_kuota.sql;
   // kalau belum dijalankan, hitungan pesanan dibiarkan 0 tanpa mengganggu halaman lain.
@@ -169,12 +172,12 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
       setActiveId((cur) => (cur === id ? (rest[0] ? rest[0].id : null) : cur));
       return rest;
     });
-    setHumanCount(0); setBadges({ unanswered: 0, orders: 0 });
+    setHumanCount(0); setOpenCount(0); setBadges({ unanswered: 0, orders: 0 });
     router.push('/dashboard');
   }, [router]);
 
   const switchShop = useCallback((id) => {
-    setActiveId(id); setHumanCount(0); setBadges({ unanswered: 0, orders: 0 }); setAdding(false);
+    setActiveId(id); setHumanCount(0); setOpenCount(0); setBadges({ unanswered: 0, orders: 0 }); setAdding(false);
   }, []);
 
   // Pindah halaman: tutup sidebar di layar kecil.
@@ -240,10 +243,10 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
           </button>
           <Link className="brand" href="/">Asisten<span>Toko</span></Link>
           <span className="grow"></span>
-          {humanCount ? (
-            <Link className="mbar-notif" href="/dashboard" title="Percakapan butuh admin" aria-label={humanCount + ' percakapan butuh admin'}>
+          {humanCount || openCount ? (
+            <Link className={'mbar-notif' + (humanCount ? '' : ' calm')} href="/dashboard" title={humanCount ? 'Percakapan butuh admin' : 'Percakapan belum selesai'} aria-label={humanCount ? humanCount + ' percakapan butuh admin' : openCount + ' percakapan belum selesai'}>
               <Icon k="chat" />
-              <b>{humanCount}</b>
+              <b>{humanCount || openCount}</b>
             </Link>
           ) : null}
         </header>
@@ -269,7 +272,12 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
                 <Link key={href} href={href} onClick={() => setAdding(false)} className="nav-i" aria-current={current && current[0] === href ? 'page' : undefined}>
                   <Icon k={icon} />
                   {label}
-                  {href === '/dashboard' && humanCount ? <i>{humanCount}</i> : null}
+                  {href === '/dashboard' && (humanCount || openCount) ? (
+                    <span className="nav-badges">
+                      {openCount ? <i className="open" title="Belum selesai, masih dijawab asisten" aria-label={openCount + ' percakapan belum selesai'}>{openCount}</i> : null}
+                      {humanCount ? <i title="Butuh admin" aria-label={humanCount + ' percakapan butuh admin'}>{humanCount}</i> : null}
+                    </span>
+                  ) : null}
                   {href === '/dashboard/pesanan' && badges.orders ? <i>{badges.orders}</i> : null}
                   {href === '/dashboard/belum-terjawab' && badges.unanswered ? <i>{badges.unanswered}</i> : null}
                 </Link>
