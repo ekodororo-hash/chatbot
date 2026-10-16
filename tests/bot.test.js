@@ -40,6 +40,7 @@ class Q {
       return { data: null, error: null, count: null };
     }
     if (this.op === 'insert') {
+      if (noGeoCols && this.t === 'conversations' && 'visitor_country' in this.payload) return { data: null, error: { code: '42703', message: 'column visitor_country does not exist' }, count: null };
       const r = Object.assign({ created_at: new Date().toISOString() }, this.payload);
       if (this.t === 'messages') r.id = this.db._mid++;
       if (this.t === 'conversations') Object.assign(r, { id: crypto.randomUUID(), visitor_token: crypto.randomUUID(), status: 'bot', unanswered: false, flag: null });
@@ -56,8 +57,9 @@ class Q {
     return { data: m, error: null, count };
   }
 }
-const db = { shops: [], products: [], faqs: [], conversations: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], shop_billing: [], payments: [], leads: [], _mid: 1 };
+const db = { shops: [], products: [], faqs: [], conversations: [], conversation_visitors: [], messages: [], shop_notify: [], shop_channels: [], shop_members: [], shop_billing: [], payments: [], leads: [], _mid: 1 };
 let rpcFail = false;
+let noGeoCols = false;
 const fake = {
   from: t => new Q(db, t),
   // Tiruan sederhana fungsi SQL search_products / search_faqs (skor: nama 3, deskripsi 1).
@@ -114,6 +116,53 @@ async function rejects(p, status) {
 
 const tests = [];
 const t = (name, fn) => tests.push([name, fn]);
+
+t('lokasi pengunjung web: kota/negara di percakapan, IP di tabel terpisah, dicatat sekali saat dibuat', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo kak');
+  const visitor = { ip: '103.45.12.34', country: 'Indonesia', city: 'Yogyakarta' };
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'Halo', visitor });
+  const c = db.conversations.find((x) => x.id === r1.conversationId);
+  assert.strictEqual(c.visitor_country, 'Indonesia');
+  assert.strictEqual(c.visitor_city, 'Yogyakarta');
+  assert.ok(!('visitor_ip' in c), 'IP tidak boleh ada di tabel yang dibaca dashboard');
+  const ips = db.conversation_visitors.filter((x) => x.conversation_id === c.id);
+  assert.strictEqual(ips.length, 1);
+  assert.strictEqual(ips[0].ip, '103.45.12.34');
+  await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'Harga?', visitor: { ip: '1.1.1.1', country: 'Jepang', city: 'Tokyo' } });
+  assert.strictEqual(c.visitor_city, 'Yogyakarta', 'tidak ditimpa pesan berikutnya');
+  assert.strictEqual(db.conversation_visitors.filter((x) => x.conversation_id === c.id).length, 1, 'IP tidak dicatat ulang');
+  assert.strictEqual(db.conversation_visitors.find((x) => x.conversation_id === c.id).ip, '103.45.12.34');
+});
+
+t('lokasi pengunjung web: kolom belum ada (migrasi belum jalan) = chat tetap berjalan', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo kak'); noGeoCols = true;
+  try {
+    const r = await bot.handleMessage({ slug: s.slug, text: 'Halo', visitor: { ip: '103.45.12.34', country: 'Indonesia', city: 'Yogyakarta' } });
+    assert.ok(r.conversationId && r.token, 'percakapan tetap dibuat');
+    const c = db.conversations.find((x) => x.id === r.conversationId);
+    assert.ok(!('visitor_country' in c), 'tanpa kolom lokasi');
+    assert.ok(r.messages.some((m) => m.role === 'bot'), 'bot tetap membalas');
+  } finally { noGeoCols = false; }
+});
+
+t('lokasi pengunjung web: tabel IP belum ada = chat tetap berjalan', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo kak');
+  const saved = db.conversation_visitors; delete db.conversation_visitors;
+  const err = console.error; console.error = () => {};
+  try {
+    const r = await bot.handleMessage({ slug: s.slug, text: 'Halo', visitor: { ip: '103.45.12.34', country: 'Indonesia', city: 'Yogyakarta' } });
+    assert.ok(r.conversationId && r.messages.some((m) => m.role === 'bot'));
+  } finally { db.conversation_visitors = saved; console.error = err; }
+});
+
+t('lokasi pengunjung web: tanpa data lokasi (lokal/Telegram) = percakapan dibuat seperti biasa', async () => {
+  const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo kak');
+  const before = db.conversation_visitors.length;
+  const r = await bot.handleMessage({ slug: s.slug, text: 'Halo', visitor: { ip: null, country: null, city: null } });
+  const c = db.conversations.find((x) => x.id === r.conversationId);
+  assert.ok(c && !('visitor_country' in c));
+  assert.strictEqual(db.conversation_visitors.length, before);
+});
 
 t('jawaban umum: mati secara bawaan, menyala hanya bila ada topik, topik dibersihkan', async () => {
   const I = bot._internal;

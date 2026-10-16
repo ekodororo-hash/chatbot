@@ -8,13 +8,25 @@ import { useRealtime } from './useRealtime';
 
 const STATUS = { bot: ['Dijawab AI', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at,channel';
-// Kolom closed_by_customer berasal dari migrasi ditutup_pelanggan.sql. Belum dijalankan (kode 42703) = ulangi tanpa kolom itu,
-// supaya daftar percakapan tidak ikut gagal.
+// Kolom closed_by_customer berasal dari migrasi ditutup_pelanggan.sql, kolom visitor_country/visitor_city dari lokasi_pengunjung.sql.
+// Belum dijalankan (kode 42703) = ulangi tanpa kolom itu, supaya daftar percakapan tidak ikut gagal.
+const GEO_COLS = ',visitor_country,visitor_city';
 async function selConv(make) {
-  let r = await make(CONV_COLS + ',closed_by_customer');
-  if (r.error && r.error.code === '42703') r = await make(CONV_COLS);
+  let r;
+  for (const extra of [',closed_by_customer' + GEO_COLS, ',closed_by_customer', '']) {
+    r = await make(CONV_COLS + extra);
+    if (!(r.error && r.error.code === '42703')) break;
+  }
   return r;
 }
+// "Surabaya, Indonesia" untuk semua anggota toko; " · IP 103.45.12.34" hanya muncul untuk admin layanan (lihat ConvView).
+// Kosong untuk Telegram/WhatsApp atau percakapan lama.
+function visitorInfo(c, ip) {
+  const place = [c.visitor_city, c.visitor_country].filter(Boolean).join(', ');
+  return [place, ip ? 'IP ' + ip : ''].filter(Boolean).join(' · ');
+}
+// null = belum dicek, false = akun ini bukan admin layanan (tidak perlu minta lagi tiap membuka percakapan).
+let ipAllowed = null;
 const statusLabel = (c) => (c.status === 'selesai' && c.closed_by_customer ? 'Ditutup pelanggan' : STATUS[c.status][0]);
 const CHANNEL = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
 
@@ -107,8 +119,29 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   const [loaded, setLoaded] = useState(false);
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState('');
+  const [ip, setIp] = useState('');
   const lastId = useRef(0);
   const listRef = useRef(null);
+
+  // IP pengunjung tidak ikut dimuat bersama percakapan: diminta terpisah ke server, dan hanya dijawab untuk email admin layanan.
+  useEffect(() => {
+    if (ipAllowed === false || conv.channel !== 'web') return undefined;
+    let off = false;
+    (async () => {
+      try {
+        const { data } = await sb.auth.getSession();
+        const tok = data && data.session && data.session.access_token;
+        if (!tok) return;
+        const res = await fetch('/api/admin/visitor?conversationId=' + encodeURIComponent(conv.id), { headers: { Authorization: 'Bearer ' + tok } });
+        if (res.status === 403) { ipAllowed = false; return; }
+        if (!res.ok) return;
+        ipAllowed = true;
+        const j = await res.json();
+        if (!off && j && j.ip) setIp(j.ip);
+      } catch (e) { /* IP hanya pelengkap: gagal = tidak tampil */ }
+    })();
+    return () => { off = true; };
+  }, [sb, conv.id, conv.channel]);
 
   const pull = useCallback(async () => {
     const { data, error } = await sb.from('messages').select('id,role,content,created_at')
@@ -185,6 +218,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
       <button className="btn ghost sm" type="button" onClick={onBack}>← Semua percakapan</button>
       <div className="card" style={{ marginTop: 12 }}>
         <h2>{c.customer_name}{CHANNEL[c.channel] ? <span className="tag" style={{ marginLeft: 8, verticalAlign: 'middle' }}>{CHANNEL[c.channel]}</span> : null}</h2>
+        {visitorInfo(c, ip) ? <p className="hint" style={{ margin: '4px 0 0' }} title="Lokasi perkiraan dari alamat IP">{visitorInfo(c, ip)}</p> : null}
         {!loaded && <SkMsgs />}
         <div className="msgs" aria-live="polite" ref={listRef} hidden={!loaded}>
           {msgs.map((m) => (

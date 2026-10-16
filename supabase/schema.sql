@@ -522,3 +522,19 @@ alter table public.shops add column if not exists quick_on boolean not null defa
 alter table public.shops add column if not exists quick_replies text[] not null default array['Tanya produk','Cek status pesanan','Bicara dengan admin'];
 alter table public.shops drop constraint if exists shops_quick_replies_chk;
 alter table public.shops add constraint shops_quick_replies_chk check (cardinality(quick_replies) <= 5);
+
+-- ============================================================
+-- BAGIAN TAMBAHAN: lokasi perkiraan (kota, negara) dan IP pengunjung web.
+-- Kota/negara terlihat oleh anggota toko; IP hanya bisa dibaca server dan ditampilkan ke admin layanan (ADMIN_EMAILS).
+-- Sama dengan supabase/migrations/lokasi_pengunjung.sql.
+-- ============================================================
+alter table public.conversations add column if not exists visitor_country text;
+alter table public.conversations add column if not exists visitor_city text;
+
+create table if not exists public.conversation_visitors (
+  conversation_id uuid primary key references public.conversations(id) on delete cascade,
+  ip text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.conversation_visitors enable row level security;
+revoke all on public.conversation_visitors from anon, authenticated;

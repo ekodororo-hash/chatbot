@@ -1,4 +1,5 @@
 import bot from '@/lib/bot';
+import { visitorFromHeaders } from '@/lib/visitor';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -27,7 +28,8 @@ export async function POST(request) {
   b = b || {};
   try {
     return json(await bot.handleMessage({
-      slug: b.slug, conversationId: b.conversationId, token: b.token, text: b.text, after: b.after, lang: typeof b.lang === 'string' ? b.lang.slice(0, 5) : ''
+      slug: b.slug, conversationId: b.conversationId, token: b.token, text: b.text, after: b.after, lang: typeof b.lang === 'string' ? b.lang.slice(0, 5) : '',
+      visitor: visitorFromHeaders(request.headers)
     }));
   } catch (e) { return fail(e); }
 }
