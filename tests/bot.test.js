@@ -117,6 +117,54 @@ async function rejects(p, status) {
 const tests = [];
 const t = (name, fn) => tests.push([name, fn]);
 
+t('nama pelanggan (otak umum): kolom nama dari model dipakai, dibersihkan, dan tidak menimpa dengan nilai tidak sah', async () => {
+  assert.strictEqual(I.parseModelOutput('{"reply":"Halo","handoff":false,"order":false,"nama":"Sari"}').name, 'Sari');
+  assert.strictEqual(I.parseModelOutput('{"reply":"Halo","nama":null}').name, undefined);
+  assert.strictEqual(I.parseModelOutput('{"reply":"Halo","nama":"Pengunjung"}').name, undefined, 'kata umum ditolak');
+  assert.strictEqual(I.parseModelOutput('{"reply":"Halo","nama":"<b>x</b>"}').name, undefined, 'bukan huruf ditolak');
+  assert.strictEqual(I.parseModelOutput('{"reply":"Halo","nama":"Budi Santoso Wijaya Kusuma"}').name, undefined, 'terlalu panjang');
+});
+
+t('nama pelanggan (otak umum): jaring pengaman hanya untuk kalimat yang jelas', async () => {
+  const f = I.nameFromText;
+  assert.strictEqual(f('Halo, nama saya budi mau tanya harga'), 'Budi');
+  assert.strictEqual(f('namaku Sari'), 'Sari');
+  assert.strictEqual(f('Nama aku: Dewi.'), 'Dewi');
+  assert.strictEqual(f('my name is John, price please'), 'John');
+  assert.strictEqual(f('panggil saya Andre ya'), 'Andre');
+  assert.strictEqual(f('saya mau pesan pashmina'), '', 'kalimat bebas bukan nama');
+  assert.strictEqual(f('harga mulai berapa?'), '');
+  assert.strictEqual(f('nama saya pengunjung'), '', 'kata umum ditolak');
+  assert.strictEqual(f(''), '');
+});
+
+t('nama pelanggan (otak umum): header percakapan berganti dari "Pengunjung" saat pengunjung menyebut nama', async () => {
+  const s = seedShop(); geminiCalls = [];
+  // 1) model mengisi kolom nama
+  geminiImpl = async () => JSON.stringify({ reply: 'Halo Sari', handoff: false, order: false, pesanan: null, nama: 'Sari' });
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'Halo, aku Sari' });
+  assert.strictEqual(db.conversations.find((x) => x.id === r1.conversationId).customer_name, 'Sari');
+  // 2) model lupa mengisi, tapi kalimatnya jelas: jaring pengaman menangkapnya
+  geminiImpl = reply('Halo kak');
+  const r2 = await bot.handleMessage({ slug: s.slug, text: 'nama saya budi, mau tanya harga' });
+  assert.strictEqual(db.conversations.find((x) => x.id === r2.conversationId).customer_name, 'Budi');
+  // 3) tidak menyebut nama: tetap "Pengunjung"
+  const r3 = await bot.handleMessage({ slug: s.slug, text: 'Harga mulai berapa?' });
+  const n3 = db.conversations.find((x) => x.id === r3.conversationId).customer_name;
+  assert.ok(!n3 || n3 === 'Pengunjung', 'tidak ada nama baru (nilai bawaan database Pengunjung tidak ditiru tabel palsu)');
+  // 4) tidak menimpa nama yang sudah ada kalau pesan berikutnya tidak menyebut nama
+  await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'Ada pashmina?' });
+  assert.strictEqual(db.conversations.find((x) => x.id === r1.conversationId).customer_name, 'Sari');
+});
+
+t('nama pelanggan (otak umum): prompt memuat aturan nama dan kolom nama di format JSON', async () => {
+  const sys = I.buildSystem({ name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf.' }, [], [], false);
+  assert.ok(sys.includes('"nama":null'), 'format JSON memuat nama');
+  assert.ok(sys.includes('5c. Nama pelanggan'));
+  const auto = I.buildSystem({ name: 'Toko Ayu', bot_name: 'Ayu', tone: 'ramah', fallback: 'Maaf.', reply_language: 'auto' }, [], [], false);
+  assert.ok(auto.includes('"nama":null'), 'mode bahasa otomatis juga');
+});
+
 t('lokasi pengunjung web: kota/negara di percakapan, IP di tabel terpisah, dicatat sekali saat dibuat', async () => {
   const s = seedShop(); geminiCalls = []; geminiImpl = reply('Halo kak');
   const visitor = { ip: '103.45.12.34', country: 'Indonesia', city: 'Yogyakarta' };
