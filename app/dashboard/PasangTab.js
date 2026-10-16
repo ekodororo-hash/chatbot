@@ -4,6 +4,58 @@ import domains from '@/lib/domains';
 import qrLib from '@/lib/qr';
 import { Busy, authFetch, useOrigin } from './helpers';
 
+// Pratinjau situs klien di iframe, di bawah hasil cek. Dimuat langsung oleh browser pengguna (bukan lewat server),
+// jadi tampilannya sama dengan saat dibuka biasa, termasuk tombol chat kalau widgetnya sudah terpasang.
+// Sebagian situs melarang ditampilkan di iframe; itu dideteksi dari header di server (noFrame).
+function SitePreview({ base, noFrame }) {
+  const origin = useMemo(() => {
+    try { const u = new URL(base); return /^https?:$/.test(u.protocol) ? u : null; } catch (e) { return null; }
+  }, [base]);
+  const [path, setPath] = useState('');
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    if (!origin) return;
+    setPath(origin.pathname + origin.search);
+    setSrc(origin.href);
+  }, [origin]);
+  if (!origin) return null;
+  const insecure = origin.protocol === 'http:';   // dashboard https, browser memblokir iframe http
+  function go(e) {
+    e.preventDefault();
+    let p = path.trim().replace(/^https?:\/\/[^/]+/i, '');
+    if (!p) p = '/';
+    if (p[0] !== '/') p = '/' + p;
+    setPath(p);
+    setSrc(origin.origin + p);
+  }
+  return (
+    <div className="chkres sprev">
+      <p className="chk-h">Pratinjau situs</p>
+      <p className="hint">Isi halaman lain di bawah untuk menguji aturan tampil, misalnya /checkout: tombol chat seharusnya hilang di sana.</p>
+      <form className="chk-form" onSubmit={go}>
+        <label className="sr" htmlFor="pv">Halaman yang dilihat</label>
+        <input id="pv" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="/checkout" value={path} onChange={(e) => setPath(e.target.value)} />
+        <button className="btn ghost" type="submit">Buka</button>
+      </form>
+      {noFrame || insecure ? (
+        <p className="hint chk-n">
+          {insecure
+            ? 'Situs ini memakai http (tanpa HTTPS), jadi browser memblokir tampilannya di sini.'
+            : 'Situs ini melarang dirinya ditampilkan di dalam halaman lain, jadi pratinjau tidak bisa dibuka di sini.'}
+          {' '}<a href={src || origin.href} target="_blank" rel="noopener noreferrer">Buka di tab baru</a>
+        </p>
+      ) : (
+        <>
+          <div className="sprev-box">
+            <iframe title="Pratinjau situs" src={src || origin.href} loading="lazy" referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
+          </div>
+          <p className="hint chk-n">Kotak kosong atau tampil error? Berarti situsnya menolak dibuka di sini. <a href={src || origin.href} target="_blank" rel="noopener noreferrer">Buka di tab baru</a></p>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Tombol salin yang memberi tanda: tulisannya berubah jadi "Tersalin" beberapa detik.
 function useCopy(toast) {
   const [done, setDone] = useState('');
@@ -409,6 +461,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
             </div>
           ) : null}
         </div>
+        {res && res.url ? <SitePreview base={res.url} noFrame={!!res.noFrame} /> : null}
       </section>
 
       <section className="card pstep" aria-labelledby="ps4">

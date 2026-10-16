@@ -29,7 +29,7 @@ export async function POST(request) {
     const domain = domains.normalizeDomain(finalUrl.hostname);
     const domainOk = siteCheck.isRegistered(finalUrl.hostname, allowed);
 
-    if (!page.fetched) return json({ fetched: false, blocked: !!page.blocked, reason: page.reason, domain, domainOk });
+    if (!page.fetched) return json({ fetched: false, blocked: !!page.blocked, reason: page.reason, domain, domainOk, url: finalUrl.href });
 
     const a = siteCheck.analyzeHtml(page.body, shop.slug);
     return json({
@@ -41,7 +41,9 @@ export async function POST(request) {
       others: a.others.slice(0, 3),
       redirected: page.redirected ? finalUrl.origin : '',
       truncated: !!page.truncated,
-      certWarn: !!page.certWarn
+      certWarn: !!page.certWarn,
+      url: finalUrl.href,
+      noFrame: !!page.noFrame
     });
   } catch (e) {
     const code = e.httpStatus || 500;

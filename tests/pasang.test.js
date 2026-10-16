@@ -89,3 +89,15 @@ assert.strictEqual(sc.isRegistered('tokoayu.com', null), false);
   assert.doesNotThrow(() => qr.encode('x'.repeat(213)));
   console.log('pasang.test.js: semua lolos');
 })().catch((e) => { console.error(e); process.exit(1); });
+
+
+// pratinjau: deteksi larangan iframe dari header
+assert.strictEqual(sc.frameBlocked({ 'x-frame-options': 'DENY' }), true);
+assert.strictEqual(sc.frameBlocked({ 'x-frame-options': 'SAMEORIGIN' }), true);
+assert.strictEqual(sc.frameBlocked({ 'content-security-policy': "default-src 'self'; frame-ancestors 'self'" }), true);
+assert.strictEqual(sc.frameBlocked({ 'content-security-policy': "frame-ancestors 'none'" }), true);
+assert.strictEqual(sc.frameBlocked({ 'content-security-policy': 'frame-ancestors *' }), false);
+assert.strictEqual(sc.frameBlocked({ 'content-security-policy': "default-src 'self'" }), false);
+assert.strictEqual(sc.frameBlocked({}), false);
+assert.strictEqual(sc.frameBlocked(null), false);
+console.log('pratinjau situs ok');
