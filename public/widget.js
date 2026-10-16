@@ -239,7 +239,7 @@
       '@media (prefers-reduced-motion:reduce){#isengin-chat-ld i{animation:none;opacity:.7}}' +
       '#isengin-chat-badge{display:none;position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;' +
       'background:#dc2626;box-shadow:0 0 0 2px #fff}' +
-      '#isengin-chat-x{position:absolute;top:13px;right:10px;width:34px;height:34px;border-radius:50%;border:0;' +
+      '#isengin-chat-x{position:absolute;top:15px;right:10px;width:34px;height:34px;border-radius:50%;border:0;' +
       'background:rgba(0,0,0,.25);color:#fff;font-size:16px;cursor:pointer;z-index:2;font-family:system-ui,sans-serif}' +
       '#isengin-chat-tip{display:none;position:fixed;' + side + ':' + c.ox + 'px;bottom:' + boxBottom + 'px;max-width:min(260px,calc(100vw - 40px));' +
       'background:#fff;color:#12262b;border-radius:14px;padding:10px 32px 10px 14px;font:14px/1.4 system-ui,sans-serif;cursor:pointer;' +
