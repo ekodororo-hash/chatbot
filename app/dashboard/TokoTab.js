@@ -4,7 +4,8 @@ import { Busy, Field, authFetch } from './helpers';
 
 export default function TokoTab({ sb, shop, onShopChange, onShopDeleted, fail, toast }) {
   const [f, setF] = useState({
-    name: shop.name, hours: shop.hours, address: shop.address, shipping: shop.shipping, payment: shop.payment
+    name: shop.name, hours: shop.hours, address: shop.address, shipping: shop.shipping, payment: shop.payment,
+    about: shop.about || '', ai_notes: shop.ai_notes || ''
   });
   const [busy, setBusy] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
@@ -17,7 +18,8 @@ export default function TokoTab({ sb, shop, onShopChange, onShopDeleted, fail, t
     setBusy(true);
     const patch = {
       name: f.name.trim(), hours: f.hours.trim(), address: f.address.trim(),
-      shipping: f.shipping.trim(), payment: f.payment.trim()
+      shipping: f.shipping.trim(), payment: f.payment.trim(),
+      about: f.about.trim(), ai_notes: f.ai_notes.trim()
     };
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -62,6 +64,15 @@ export default function TokoTab({ sb, shop, onShopChange, onShopDeleted, fail, t
           </div>
         </div>
 
+        <h3 className="fsec">Tentang toko</h3>
+        <div className="fgrid one tfield">
+          <div>
+            <label htmlFor="t6">Deskripsi singkat toko</label>
+            <textarea id="t6" maxLength={500} value={f.about} onChange={set('about')} placeholder="Contoh: Pemasok hair extension asli untuk salon dan reseller, kirim ke seluruh Indonesia." />
+            <p className="hint field-hint">Dipakai asisten untuk menjawab pertanyaan seperti "toko ini jual apa?". Harga, stok, dan kebijakan tetap diambil dari produk dan FAQ. ({f.about.length}/500)</p>
+          </div>
+        </div>
+
         <h3 className="fsec">Pengiriman dan pembayaran</h3>
         <div className="fgrid">
           <div>
@@ -72,6 +83,15 @@ export default function TokoTab({ sb, shop, onShopChange, onShopDeleted, fail, t
           <div>
             <label htmlFor="t5">Pembayaran</label>
             <textarea id="t5" maxLength={500} value={f.payment} onChange={set('payment')} />
+          </div>
+        </div>
+
+        <h3 className="fsec">Catatan untuk AI</h3>
+        <div className="fgrid one tfield">
+          <div>
+            <label htmlFor="t7">Preferensi gaya jawaban (opsional)</label>
+            <textarea id="t7" maxLength={300} value={f.ai_notes} onChange={set('ai_notes')} placeholder="Contoh: Sapa pelanggan dengan Kak, bahasa santai. Untuk komplain, arahkan ke admin." />
+            <p className="hint field-hint">Hanya mengatur cara menjawab. Aturan inti sistem tetap berlaku, jadi asisten tidak akan mengarang harga atau fakta toko meski diminta di sini. ({f.ai_notes.length}/300)</p>
           </div>
         </div>
 
