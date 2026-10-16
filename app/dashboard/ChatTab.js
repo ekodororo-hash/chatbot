@@ -6,6 +6,9 @@ import { SkConvRows, SkMsgs } from '../components/Skeleton';
 import { useConfirm } from '../components/useConfirm';
 import { useRealtime } from './useRealtime';
 
+// Daftar emot sama dengan widget.
+const EMOJIS = ['\u{1F642}', '\u{1F601}', '\u{1F602}', '\u{1F60A}', '\u{1F60D}', '\u{1F610}', '\u{1F615}', '\u{1F612}', '\u{1F622}', '\u{1F62D}', '\u{1F389}', '\u2764\uFE0F', '\u{1F44C}', '\u{1F44D}', '\u{1F44E}', '\u{1F64F}'];
+
 const STATUS = { bot: ['Dijawab AI', ''], human: ['Butuh admin', 'w'], selesai: ['Selesai', ''] };
 const CONV_COLS = 'id,customer_name,status,flag,unanswered,last_question,updated_at,channel';
 // Kolom closed_by_customer berasal dari migrasi ditutup_pelanggan.sql, kolom visitor_country/visitor_city dari lokasi_pengunjung.sql.
@@ -141,6 +144,9 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
   const [ip, setIp] = useState('');
   const lastId = useRef(0);
   const listRef = useRef(null);
+  const inputRef = useRef(null);
+  const formRef = useRef(null);
+  const [emOpen, setEmOpen] = useState(false);
 
   // IP pengunjung tidak ikut dimuat bersama percakapan: diminta terpisah ke server, dan hanya dijawab untuk email admin layanan.
   useEffect(() => {
@@ -205,12 +211,38 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     refreshHumanCount();
   }
 
+  // Pemilih emot (sama seperti di widget): emot disisipkan di posisi kursor; menutup setelah memilih, klik di luar, atau Escape.
+  useEffect(() => {
+    if (!emOpen) return undefined;
+    const onDown = (e) => { if (formRef.current && !formRef.current.contains(e.target)) setEmOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setEmOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [emOpen]);
+
+  function pickEmoji(ch) {
+    const el = inputRef.current;
+    const v = text;
+    let a = el && typeof el.selectionStart === 'number' ? el.selectionStart : v.length;
+    let z = el && typeof el.selectionEnd === 'number' ? el.selectionEnd : v.length;
+    setEmOpen(false);
+    if (v.length - (z - a) + ch.length > 1000) return;
+    setText(v.slice(0, a) + ch + v.slice(z));
+    const pos = a + ch.length;
+    requestAnimationFrame(() => { if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { /* abaikan */ } } });
+  }
+
   async function send(e) {
     e.preventDefault();
     const t = text.trim();
     if (!t || sending) return;
     setText('');
+    setEmOpen(false);
     setSending(true);
+    // Gelembung sementara langsung tampil (seperti di widget), diganti pesan asli setelah terkirim.
+    const tmpId = 'tmp-' + Date.now();
+    setMsgs((prev) => [...prev, { id: tmpId, role: 'admin', content: t, created_at: new Date().toISOString(), sending: true }]);
     let error = null;
     if (CHANNEL[c.channel]) {
       // Telegram/WhatsApp: dikirim lewat server ke pelanggan, baru disimpan.
@@ -226,10 +258,12 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
     } else {
       ({ error } = await sb.from('messages').insert({ conversation_id: c.id, shop_id: shop.id, role: 'admin', content: t }));
     }
-    if (error) { setSending(false); fail(error); setText(t); return; }
+    if (error) { setMsgs((prev) => prev.filter((m) => m.id !== tmpId)); setSending(false); fail(error); setText(t); return; }
     if (c.status !== 'human') await setStatus('human', true);
     await pull();
+    setMsgs((prev) => prev.filter((m) => m.id !== tmpId));
     setSending(false);
+    if (inputRef.current && !(window.matchMedia && window.matchMedia('(pointer:coarse)').matches)) inputRef.current.focus();
   }
 
   const info = visitorInfo(c, ip);
@@ -273,7 +307,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
             return (
               <Fragment key={m.id}>
                 {newDay ? <div className="cv-day"><span>{dayLabel(m.created_at)}</span></div> : null}
-                <div className={'m ' + m.role + (first ? ' first' : '')}>
+                <div className={'m ' + m.role + (first ? ' first' : '') + (m.sending ? ' sending' : '')}>
                   {first && m.role === 'admin' ? <em>Kamu (admin)</em> : (first && m.role === 'bot' ? <em>Bot</em> : null)}
                   {linkify(m.content)}
                   <small>{hhmm(m.created_at)}</small>
@@ -286,11 +320,22 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
           <p className="hint cv-note">Pelanggan sudah mengakhiri percakapan ini. Kamu bisa membalas lagi setelah pelanggan mengirim pesan baru.</p>
         ) : (
           <>
-            <form className="cv-compose" onSubmit={send}>
-              <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
-              <button className={'btn cv-send' + (text.trim() ? '' : ' e0')} type="submit" aria-label="Kirim" title="Kirim" disabled={sending}>
-                {sending ? <span className="spin" style={{ margin: 0 }} aria-hidden="true" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>}
+            <form className="cv-compose" onSubmit={send} ref={formRef} autoComplete="off">
+              <input ref={inputRef} maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
+              <button className="cv-em" type="button" aria-label="Emoji" aria-haspopup="true" aria-expanded={emOpen} disabled={sending}
+                onMouseDown={(e) => e.preventDefault()} onClick={() => setEmOpen((o) => !o)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2" /><path d="M9 9.5h.01M15 9.5h.01" /></svg>
               </button>
+              <button className={'btn cv-send' + (text.trim() ? '' : ' e0')} type="submit" aria-label="Kirim" title="Kirim" disabled={sending}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+              </button>
+              {emOpen ? (
+                <div className="cv-ep" role="group" aria-label="Emoji">
+                  {EMOJIS.map((ch) => (
+                    <button key={ch} type="button" aria-label={ch} onMouseDown={(e) => e.preventDefault()} onClick={() => pickEmoji(ch)}>{ch}</button>
+                  ))}
+                </div>
+              ) : null}
             </form>
             {c.status === 'bot' ? <p className="hint cv-note">Membalas dari sini akan mengambil alih percakapan dari bot.</p> : null}
           </>
