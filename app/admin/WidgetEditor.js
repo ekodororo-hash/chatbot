@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Busy, toInt } from '../dashboard/helpers';
 import { SVG_ICONS, iconPaths } from '@/lib/widgetIcons';
 import widgetAnim from '@/lib/widgetAnim';
+import Acc from '../components/Acc';
 
 // Ikon di tombol: SVG bawaan ("svg:nama") atau emoji/huruf biasa. Warna SVG mengikuti warna teks.
 function IconView({ icon, size }) {
@@ -15,6 +16,7 @@ function IconView({ icon, size }) {
   );
 }
 
+const POS_LABEL = { right: 'Kanan bawah', left: 'Kiri bawah' };
 const DEFAULT_ICON = '\uD83D\uDCAC';
 const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
 const ICONS = [DEFAULT_ICON, '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16', '\uD83D\uDC4B', '\u2753', '\uD83D\uDCDE'];
@@ -226,64 +228,112 @@ export default function WidgetEditor({ shop, onSave, toast }) {
       <section className="card wsec" aria-labelledby="bw">
         <div className="chead">
           <div>
-            <h2 id="bw">Tampilan widget</h2>
+            <h2 id="bw">Tampilan chat di website</h2>
             <p className="hint">Berlaku di website klien tanpa perlu menempel ulang kode, paling lambat sekitar 1 menit. Pratinjau di kanan ikut berubah sebelum kamu menyimpan.</p>
           </div>
           <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, ...WIDGET_DEFAULTS }))}>Kembalikan bawaan</button>
         </div>
         <div className="wcols">
           <div className="wform">
-            <h3 className="subh">Tombol chat</h3>
-            <div className="fgrid">
-              <div>
-                <label htmlFor="b6">Warna</label>
-                <div className="colorrow">
-                  <input id="b6" type="color" value={f.accent} onChange={set('accent')} />
-                  <code className="code">{f.accent}</code>
+            <Acc title="Tombol chat" hint={'Ukuran ' + f.widget_size + ' · bentuk ' + f.widget_shape + (f.widget_label.trim() ? ' · "' + f.widget_label.trim() + '"' : '')} open>
+              <div className="fgrid">
+                <div>
+                  <label htmlFor="b6">Warna</label>
+                  <div className="colorrow">
+                    <input id="b6" type="color" value={f.accent} onChange={set('accent')} />
+                    <code className="code">{f.accent}</code>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="w2">Ukuran</label>
+                  <select id="w2" value={f.widget_size} onChange={set('widget_size')}>
+                    <option value="kecil">Kecil</option>
+                    <option value="sedang">Sedang</option>
+                    <option value="besar">Besar</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="w3">Bentuk</label>
+                  <select id="w3" value={f.widget_shape} onChange={set('widget_shape')}>
+                    <option value="bulat">Bulat</option>
+                    <option value="kotak">Kotak membulat</option>
+                    <option value="lancip">Lancip kotak (semua sudut siku)</option>
+                  </select>
+                </div>
+                <div className="iconpick" ref={iconPickRef}>
+                  <label htmlFor="w4">Ikon tombol</label>
+                  <button
+                    id="w4" type="button" className="iconpick-btn" aria-haspopup="listbox" aria-expanded={iconPicker} aria-controls="w4pop"
+                    aria-label="Pilih ikon tombol" onClick={() => setIconPicker((v) => !v)}
+                  >
+                    <IconView icon={f.widget_icon.trim() || DEFAULT_ICON} size={24} />
+                    <span className="iconpick-chev" aria-hidden="true">{'\u25BE'}</span>
+                  </button>
+                  {iconPicker ? (
+                    <div className="iconpick-pop" id="w4pop" role="listbox" aria-label="Pilihan ikon">
+                      {ICONS.map((e) => (
+                        <button
+                          key={e} type="button" role="option" aria-selected={f.widget_icon === e}
+                          className={'iconpick-i' + (f.widget_icon === e ? ' on' : '')}
+                          onClick={() => { setF((p) => ({ ...p, widget_icon: e })); setIconPicker(false); }}
+                        >
+                          {e}
+                        </button>
+                      ))}
+                      {Object.keys(SVG_ICONS).map((k) => {
+                        const v = 'svg:' + k;
+                        return (
+                          <button
+                            key={v} type="button" role="option" aria-selected={f.widget_icon === v} aria-label={SVG_ICONS[k].label} title={SVG_ICONS[k].label}
+                            className={'iconpick-i' + (f.widget_icon === v ? ' on' : '')}
+                            onClick={() => { setF((p) => ({ ...p, widget_icon: v })); setIconPicker(false); }}
+                          >
+                            <IconView icon={v} size={20} />
+                          </button>
+                        );
+                      })}
+                      <input
+                        className="iconpick-own" maxLength={16} autoComplete="off" placeholder="Atau ketik emoji/huruf"
+                        aria-label="Ketik emoji atau huruf sendiri"
+                        value={iconPaths(f.widget_icon.trim()) ? '' : f.widget_icon}
+                        onChange={set('widget_icon')}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              <div>
-                <label htmlFor="w1">Posisi</label>
-                <select id="w1" value={f.widget_pos} onChange={set('widget_pos')}>
-                  <option value="right">Kanan bawah</option>
-                  <option value="left">Kiri bawah</option>
-                </select>
+              <div className="fgrid one" style={{ marginTop: 12 }}>
+                <div>
+                  <label htmlFor="w5">Teks di samping ikon (opsional)</label>
+                  <input id="w5" maxLength={30} placeholder="Tanya kami" value={f.widget_label} onChange={set('widget_label')} />
+                </div>
               </div>
-              <div>
-                <label htmlFor="w2">Ukuran</label>
-                <select id="w2" value={f.widget_size} onChange={set('widget_size')}>
-                  <option value="kecil">Kecil</option>
-                  <option value="sedang">Sedang</option>
-                  <option value="besar">Besar</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="w3">Bentuk</label>
-                <select id="w3" value={f.widget_shape} onChange={set('widget_shape')}>
-                  <option value="bulat">Bulat</option>
-                  <option value="kotak">Kotak membulat</option>
-                  <option value="lancip">Lancip kotak (semua sudut siku)</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="w7">Jarak dari tepi samping (px)</label>
-                <input id="w7" type="number" inputMode="numeric" min="0" max="200" value={f.widget_ox} onChange={set('widget_ox')} />
-              </div>
-              <div>
-                <label htmlFor="w8">Jarak dari tepi bawah (px)</label>
-                <input id="w8" type="number" inputMode="numeric" min="0" max="200" value={f.widget_oy} onChange={set('widget_oy')} />
-              </div>
-            </div>
-            <p className="hint field-hint">Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp, banner cookie, atau widget lain.</p>
+            </Acc>
 
-            <div className="fgrid" style={{ marginTop: 12 }}>
-              <div>
-                <label htmlFor="w11">Tunda tampil (detik)</label>
-                <input id="w11" type="number" inputMode="numeric" min="0" max="30" value={f.widget_delay} onChange={set('widget_delay')} />
-                <p className="hint field-hint">0 = langsung muncul begitu halaman terbuka. Isi 3–5 detik supaya tombol baru muncul setelah pengunjung sempat melihat halaman dulu.</p>
+            <Acc title="Posisi dan waktu muncul" hint={(POS_LABEL[f.widget_pos] || 'Kanan bawah') + ' · tunda ' + (toInt(f.widget_delay) || 0) + ' detik'}>
+              <div className="fgrid">
+                <div>
+                  <label htmlFor="w1">Posisi</label>
+                  <select id="w1" value={f.widget_pos} onChange={set('widget_pos')}>
+                    <option value="right">Kanan bawah</option>
+                    <option value="left">Kiri bawah</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="w11">Tunda tampil (detik)</label>
+                  <input id="w11" type="number" inputMode="numeric" min="0" max="30" value={f.widget_delay} onChange={set('widget_delay')} />
+                </div>
+                <div>
+                  <label htmlFor="w7">Jarak dari tepi samping (px)</label>
+                  <input id="w7" type="number" inputMode="numeric" min="0" max="200" value={f.widget_ox} onChange={set('widget_ox')} />
+                </div>
+                <div>
+                  <label htmlFor="w8">Jarak dari tepi bawah (px)</label>
+                  <input id="w8" type="number" inputMode="numeric" min="0" max="200" value={f.widget_oy} onChange={set('widget_oy')} />
+                </div>
               </div>
-              <div>
-              <div>
+              <p className="hint field-hint">Tunda 0 = langsung muncul; isi 3–5 detik supaya tombol muncul setelah pengunjung sempat melihat halaman. Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp atau banner cookie. Mau tombol disembunyikan di halaman tertentu (misalnya checkout)? Atur di menu Pasang.</p>
+              <div style={{ marginTop: 12 }}>
                 <label htmlFor="w12">Animasi saat muncul</label>
                 <select id="w12" value={f.widget_anim} onChange={set('widget_anim')}>
                   {widgetAnim.ANIMS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
@@ -291,134 +341,83 @@ export default function WidgetEditor({ shop, onSave, toast }) {
                 <p className="hint field-hint">{(widgetAnim.ANIMS.find((a) => a.id === f.widget_anim) || {}).desc} Jalan sekali saat tombol pertama tampil di website. Contohnya terlihat di pratinjau tab Tombol.</p>
                 {!animReady ? <p className="hint field-hint">Pilihan selain Membal dan Tanpa animasi baru tersimpan setelah migrasi <b>widget_animasi.sql</b> dijalankan di Supabase.</p> : null}
               </div>
-              </div>
-            </div>
+            </Acc>
 
-            <h3 className="subh">Isi tombol</h3>
-            <div className="fgrid">
-              <div className="iconpick" ref={iconPickRef}>
-                <label htmlFor="w4">Ikon tombol</label>
-                <button
-                  id="w4" type="button" className="iconpick-btn" aria-haspopup="listbox" aria-expanded={iconPicker} aria-controls="w4pop"
-                  aria-label="Pilih ikon tombol" onClick={() => setIconPicker((v) => !v)}
-                >
-                  <IconView icon={f.widget_icon.trim() || DEFAULT_ICON} size={24} />
-                  <span className="iconpick-chev" aria-hidden="true">{'\u25BE'}</span>
-                </button>
-                {iconPicker ? (
-                  <div className="iconpick-pop" id="w4pop" role="listbox" aria-label="Pilihan ikon">
-                    {ICONS.map((e) => (
-                      <button
-                        key={e} type="button" role="option" aria-selected={f.widget_icon === e}
-                        className={'iconpick-i' + (f.widget_icon === e ? ' on' : '')}
-                        onClick={() => { setF((p) => ({ ...p, widget_icon: e })); setIconPicker(false); }}
-                      >
-                        {e}
-                      </button>
-                    ))}
-                    {Object.keys(SVG_ICONS).map((k) => {
-                      const v = 'svg:' + k;
-                      return (
-                        <button
-                          key={v} type="button" role="option" aria-selected={f.widget_icon === v} aria-label={SVG_ICONS[k].label} title={SVG_ICONS[k].label}
-                          className={'iconpick-i' + (f.widget_icon === v ? ' on' : '')}
-                          onClick={() => { setF((p) => ({ ...p, widget_icon: v })); setIconPicker(false); }}
-                        >
-                          <IconView icon={v} size={20} />
-                        </button>
-                      );
-                    })}
-                    <input
-                      className="iconpick-own" maxLength={16} autoComplete="off" placeholder="Atau ketik emoji/huruf"
-                      aria-label="Ketik emoji atau huruf sendiri"
-                      value={iconPaths(f.widget_icon.trim()) ? '' : f.widget_icon}
-                      onChange={set('widget_icon')}
-                    />
-                  </div>
-                ) : null}
-              </div>
-              <div>
-                <label htmlFor="w5">Teks di samping ikon (opsional)</label>
-                <input id="w5" maxLength={30} placeholder="Tanya kami" value={f.widget_label} onChange={set('widget_label')} />
-              </div>
-            </div>
-            <div className="fgrid one" style={{ marginTop: 12 }}>
-              <div>
-                <label htmlFor="w6">Pesan pop-up (opsional)</label>
-                <input id="w6" maxLength={100} placeholder="Halo, ada yang bisa dibantu?" value={f.widget_teaser} onChange={set('widget_teaser')} />
-                <p className="hint field-hint">Muncul sekali di atas tombol setelah beberapa detik, dan tidak muncul lagi setelah ditutup.</p>
-              </div>
-            </div>
-
-            <h3 className="subh">Bubble pesan</h3>
-            <div className="fgrid one">
-              <div>
-                <label htmlFor="w10">Bentuk bubble</label>
-                <select id="w10" value={f.widget_bubble} onChange={set('widget_bubble')}>
-                  <option value="bulat">Bulat</option>
-                  <option value="kotak">Kotak</option>
-                  <option value="lancip">Lancip (ekor runcing seperti WhatsApp)</option>
-                </select>
-              </div>
-            </div>
-
-            <h3 className="subh">Logo di header chat</h3>
-            <div className="logorow">
-              {f.widget_logo
-                ? <img src={f.widget_logo} alt="Logo saat ini" width={48} height={48} className="logoimg" />
-                : <span className="logoimg ph" aria-hidden="true"><IconView icon={f.widget_icon || DEFAULT_ICON} /></span>}
-              <input id="w9" className="vh" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={pickLogo} />
-              <label htmlFor="w9" className="btn ghost sm">{f.widget_logo ? 'Ganti logo' : 'Unggah logo'}</label>
-              {f.widget_logo ? <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, widget_logo: '' }))}>Hapus</button> : null}
-            </div>
-            <p className="hint field-hint">Hanya tampil sebagai avatar di header jendela chat. Tombol widget tetap memakai ikon di atas. Gambar otomatis dipotong persegi dan dikecilkan.</p>
-
-            <h3 className="subh">Status admin di header chat</h3>
-            <label htmlFor="h0" className="swrow">
-              <span className="swrow-t">
-                <b>Pakai jam operasional</b>
-                <small>Pelanggan melihat "Admin online" atau "Admin offline, buka ...". Asisten tetap membalas otomatis di luar jam.</small>
-              </span>
-              <input id="h0" type="checkbox" checked={f.hours_on} onChange={(e) => setF((p) => ({ ...p, hours_on: e.target.checked }))} />
-            </label>
-            {f.hours_on ? (
-              <>
-                <div className="fgrid" style={{ marginTop: 12 }}>
-                  <div>
-                    <label htmlFor="h1">Buka</label>
-                    <input id="h1" type="time" value={f.hours_open} onChange={set('hours_open')} />
-                  </div>
-                  <div>
-                    <label htmlFor="h2">Tutup</label>
-                    <input id="h2" type="time" value={f.hours_close} onChange={set('hours_close')} />
-                  </div>
-                </div>
-                <div className="daychips" role="group" aria-label="Hari operasional">
-                  {DAYS.map(([d, n]) => (
-                    <label key={d} className={'daychip' + (f.hours_days.includes(d) ? ' on' : '')}>
-                      <input className="vh" type="checkbox" checked={f.hours_days.includes(d)} onChange={() => toggleDay(d)} />{n}
-                    </label>
-                  ))}
-                </div>
-              </>
-            ) : null}
-            <div className="fgrid" style={{ marginTop: 12 }}>
-              {f.hours_on ? (
+            <Acc title="Jendela chat" hint="Pop-up, bubble, logo">
+              <div className="fgrid one">
                 <div>
-                  <label htmlFor="h3">Zona waktu</label>
-                  <select id="h3" value={f.hours_tz} onChange={set('hours_tz')}>
-                    <option value="Asia/Jakarta">WIB</option>
-                    <option value="Asia/Makassar">WITA</option>
-                    <option value="Asia/Jayapura">WIT</option>
+                  <label htmlFor="w6">Pesan pop-up (opsional)</label>
+                  <input id="w6" maxLength={100} placeholder="Halo, ada yang bisa dibantu?" value={f.widget_teaser} onChange={set('widget_teaser')} />
+                  <p className="hint field-hint">Muncul sekali di atas tombol setelah beberapa detik, dan tidak muncul lagi setelah ditutup.</p>
+                </div>
+                <div>
+                  <label htmlFor="w10">Bentuk bubble pesan</label>
+                  <select id="w10" value={f.widget_bubble} onChange={set('widget_bubble')}>
+                    <option value="bulat">Bulat</option>
+                    <option value="kotak">Kotak</option>
+                    <option value="lancip">Lancip (ekor runcing seperti WhatsApp)</option>
                   </select>
                 </div>
-              ) : null}
-              <div>
-                <label htmlFor="h4">Admin balas dalam (menit)</label>
-                <input id="h4" type="number" inputMode="numeric" min="0" max="1440" value={f.reply_eta} onChange={set('reply_eta')} />
-                <p className="hint field-hint">0 = tidak ditampilkan.</p>
               </div>
-            </div>
+              <h3 className="subh">Logo di header chat</h3>
+              <div className="logorow">
+                {f.widget_logo
+                  ? <img src={f.widget_logo} alt="Logo saat ini" width={48} height={48} className="logoimg" />
+                  : <span className="logoimg ph" aria-hidden="true"><IconView icon={f.widget_icon || DEFAULT_ICON} /></span>}
+                <input id="w9" className="vh" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={pickLogo} />
+                <label htmlFor="w9" className="btn ghost sm">{f.widget_logo ? 'Ganti logo' : 'Unggah logo'}</label>
+                {f.widget_logo ? <button className="btn ghost sm" type="button" onClick={() => setF((p) => ({ ...p, widget_logo: '' }))}>Hapus</button> : null}
+              </div>
+              <p className="hint field-hint">Hanya tampil sebagai avatar di header jendela chat. Gambar otomatis dipotong persegi dan dikecilkan.</p>
+            </Acc>
+
+            <Acc title="Jam operasional" hint={f.hours_on ? f.hours_open + '–' + f.hours_close + ' · ' + f.hours_days.length + ' hari' : 'Tidak dipakai'}>
+              <label htmlFor="h0" className="swrow">
+                <span className="swrow-t">
+                  <b>Pakai jam operasional</b>
+                  <small>Pelanggan melihat "Admin online" atau "Admin offline, buka ...". Asisten tetap membalas otomatis di luar jam.</small>
+                </span>
+                <input id="h0" type="checkbox" checked={f.hours_on} onChange={(e) => setF((p) => ({ ...p, hours_on: e.target.checked }))} />
+              </label>
+              {f.hours_on ? (
+                <>
+                  <div className="fgrid" style={{ marginTop: 12 }}>
+                    <div>
+                      <label htmlFor="h1">Buka</label>
+                      <input id="h1" type="time" value={f.hours_open} onChange={set('hours_open')} />
+                    </div>
+                    <div>
+                      <label htmlFor="h2">Tutup</label>
+                      <input id="h2" type="time" value={f.hours_close} onChange={set('hours_close')} />
+                    </div>
+                  </div>
+                  <div className="daychips" role="group" aria-label="Hari operasional">
+                    {DAYS.map(([d, n]) => (
+                      <label key={d} className={'daychip' + (f.hours_days.includes(d) ? ' on' : '')}>
+                        <input className="vh" type="checkbox" checked={f.hours_days.includes(d)} onChange={() => toggleDay(d)} />{n}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+              <div className="fgrid" style={{ marginTop: 12 }}>
+                {f.hours_on ? (
+                  <div>
+                    <label htmlFor="h3">Zona waktu</label>
+                    <select id="h3" value={f.hours_tz} onChange={set('hours_tz')}>
+                      <option value="Asia/Jakarta">WIB</option>
+                      <option value="Asia/Makassar">WITA</option>
+                      <option value="Asia/Jayapura">WIT</option>
+                    </select>
+                  </div>
+                ) : null}
+                <div>
+                  <label htmlFor="h4">Admin balas dalam (menit)</label>
+                  <input id="h4" type="number" inputMode="numeric" min="0" max="1440" value={f.reply_eta} onChange={set('reply_eta')} />
+                  <p className="hint field-hint">0 = tidak ditampilkan.</p>
+                </div>
+              </div>
+            </Acc>
           </div>
 
           <div className="wprev">
