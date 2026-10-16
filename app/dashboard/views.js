@@ -17,6 +17,7 @@ import RingkasanTab from './RingkasanTab';
 import PesananTab from './PesananTab';
 import BelumTab from './BelumTab';
 import KontakTab from './KontakTab';
+import MulaiTab from './MulaiTab';
 
 const common = (d) => ({ sb: d.sb, shop: d.shop, user: d.user, role: d.role, fail: d.fail, toast: d.toast, onShopChange: d.onShopChange, onShopDeleted: d.onShopDeleted, refreshBadges: d.refreshBadges });
 
@@ -67,3 +68,4 @@ export function BelumView() {
   const router = useRouter();
   return <BelumTab {...common(d)} onMakeFaq={(q) => { d.setPrefillQ(q); router.push('/dashboard/faq'); }} />;
 }
+export function MulaiView() { return <MulaiTab {...common(useDash())} />; }

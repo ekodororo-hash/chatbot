@@ -15,6 +15,7 @@ import ExpiryBanner from './ExpiryBanner';
 import { useRealtime } from './useRealtime';
 
 const TABS = [
+  ['/dashboard/mulai', 'Mulai di sini', 'mulai'],
   ['/dashboard/ringkasan', 'Ringkasan', 'ringkasan'],
   ['/dashboard', 'Percakapan', 'chat'],
   ['/dashboard/pesanan', 'Pesanan', 'pesanan'],
@@ -31,10 +32,11 @@ const TABS = [
   ['/dashboard/langganan', 'Langganan', 'langganan']
 ];
 // Halaman yang hanya boleh dibuka pemilik toko. Admin tambahan hanya mengurus percakapan, produk, dan FAQ.
-const OWNER_ONLY = new Set(['/dashboard/toko', '/dashboard/bot', '/dashboard/pasang', '/dashboard/notifikasi', '/dashboard/tim', '/dashboard/langganan']);
+const OWNER_ONLY = new Set(['/dashboard/mulai', '/dashboard/toko', '/dashboard/bot', '/dashboard/pasang', '/dashboard/notifikasi', '/dashboard/tim', '/dashboard/langganan']);
 
 // Ikon garis sederhana untuk menu sidebar.
 const ICON = {
+  mulai: 'M4 22V4m0 0h13l-2.5 4 2.5 4H4',
   ringkasan: 'M3 20h18M6 20v-7m6 7V5m6 15v-10',
   pesanan: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0',
   kontak: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
@@ -218,7 +220,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
       <Onboarding sb={sb} user={user} first={!shops.length} onCancel={shops.length ? () => setAdding(false) : null}
         onCreated={(s) => {
           setShops((list) => [...list, s]); setActiveId(s.id); setAdding(false);
-          router.push('/dashboard/toko'); toast('Toko dibuat. Lengkapi datanya.');
+          router.push('/dashboard/mulai'); toast('Toko dibuat. Ikuti langkah mulainya.');
         }} />
     );
   } else if (blocked) {
