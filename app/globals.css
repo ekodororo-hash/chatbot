@@ -659,3 +659,9 @@ html{scroll-behavior:smooth}
 .mulai-opt small{color:var(--mute);font-size:13px}
 @media (max-width:560px){.mulai-sb{padding-left:0}.mulai-tag{display:none}}
 @media (prefers-reduced-motion:reduce){.mulai-chk,.mulai-chev{transition:none}}
+
+/* Scrollbar sidebar disembunyikan (menu tetap bisa di-scroll). Ruang scrollbar halaman ditahan tetap,
+   supaya konten tidak bergeser ke samping saat halaman memanjang/memendek (mis. buka-tutup langkah). */
+.side nav{scrollbar-width:none;-ms-overflow-style:none}
+.side nav::-webkit-scrollbar{display:none}
+html{scrollbar-gutter:stable}
