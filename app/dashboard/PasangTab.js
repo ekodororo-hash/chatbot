@@ -13,6 +13,20 @@ function SitePreview({ base, noFrame }) {
   }, [base]);
   const [path, setPath] = useState('');
   const [src, setSrc] = useState('');
+  const [device, setDevice] = useState('desktop');
+  const [dim, setDim] = useState({ w: 0, h: 520 });
+  const boxRef = useRef(null);
+  // Ukuran kotak dipantau supaya tampilan desktop (lebar 1280 px) bisa diperkecil pas dengan lebar kotak.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const read = () => setDim({ w: el.clientWidth, h: el.clientHeight });
+    read();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [device, noFrame, origin]);
   useEffect(() => {
     if (!origin) return;
     setPath(origin.pathname + origin.search);
@@ -20,6 +34,9 @@ function SitePreview({ base, noFrame }) {
   }, [origin]);
   if (!origin) return null;
   const insecure = origin.protocol === 'http:';   // dashboard https, browser memblokir iframe http
+  const DT_W = 1280;   // lebar virtual tampilan desktop
+  const scale = device === 'desktop' && dim.w ? Math.min(1, dim.w / DT_W) : 1;
+  const scaled = device === 'desktop' && scale < 1;
   function go(e) {
     e.preventDefault();
     let p = path.trim().replace(/^https?:\/\/[^/]+/i, '');
@@ -46,8 +63,16 @@ function SitePreview({ base, noFrame }) {
         </p>
       ) : (
         <>
-          <div className="sprev-box">
-            <iframe title="Pratinjau situs" src={src || origin.href} loading="lazy" referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
+          <div className="seg" role="group" aria-label="Ukuran tampilan">
+            <button type="button" aria-pressed={device === 'desktop'} onClick={() => setDevice('desktop')}>Desktop</button>
+            <button type="button" aria-pressed={device === 'hp'} onClick={() => setDevice('hp')}>HP</button>
+          </div>
+          <div className={'sprev-box' + (device === 'hp' ? ' hp' : '')} ref={boxRef}>
+            <iframe
+              title="Pratinjau situs" src={src || origin.href} loading="lazy" referrerPolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              style={scaled ? { width: DT_W, height: dim.h / scale, transform: 'scale(' + scale + ')', transformOrigin: '0 0' } : { width: '100%', height: '100%' }}
+            />
           </div>
           <p className="hint chk-n">Kotak kosong atau tampil error? Berarti situsnya menolak dibuka di sini. <a href={src || origin.href} target="_blank" rel="noopener noreferrer">Buka di tab baru</a></p>
         </>
