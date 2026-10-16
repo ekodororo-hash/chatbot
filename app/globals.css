@@ -699,6 +699,7 @@ html{scrollbar-gutter:stable}
 .cv-send{flex:none;width:36px;height:36px;padding:0;display:grid;place-items:center;border-radius:50%;transition:background .15s,color .15s}
 .cv-send svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .cv-send.e0{background:var(--line);color:var(--mute)}
+.cv-send.ld:disabled{opacity:.9}
 .cv-note{margin:8px 0 0}
 @media (max-width:560px){
   .cv .m{max-width:88%}

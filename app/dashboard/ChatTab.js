@@ -326,8 +326,8 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
                 onMouseDown={(e) => e.preventDefault()} onClick={() => setEmOpen((o) => !o)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2" /><path d="M9 9.5h.01M15 9.5h.01" /></svg>
               </button>
-              <button className={'btn cv-send' + (text.trim() ? '' : ' e0')} type="submit" aria-label="Kirim" title="Kirim" disabled={sending}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+              <button className={'btn cv-send' + (sending ? ' ld' : (text.trim() ? '' : ' e0'))} type="submit" aria-label="Kirim" title="Kirim" disabled={sending}>
+                {sending ? <span className="spin" style={{ margin: 0 }} aria-hidden="true" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>}
               </button>
               {emOpen ? (
                 <div className="cv-ep" role="group" aria-label="Emoji">
