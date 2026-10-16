@@ -305,6 +305,13 @@ export async function POST(request) {
       return json({ ok: true });
     }
 
+    // Widget hanya untuk toko situs ini sendiri (env WIDGET_BOT). Toko klien diatur pemiliknya, bukan admin layanan.
+    if (b.action === 'get_widget' || b.action === 'save_widget') {
+      const own = await must(sb.from('shops').select('slug').eq('id', shopId).maybeSingle());
+      const botSlug = /^[a-z0-9-]{3,30}$/.test(process.env.WIDGET_BOT || '') ? process.env.WIDGET_BOT : '';
+      if (!own || !botSlug || own.slug !== botSlug) return json({ error: 'Widget hanya bisa diatur untuk toko situs ini sendiri.' }, 403);
+    }
+
     if (b.action === 'get_widget') {
       const s = await must(sb.from('shops').select('*').eq('id', shopId).maybeSingle());
       return json({ shop: widgetFields(s) });
