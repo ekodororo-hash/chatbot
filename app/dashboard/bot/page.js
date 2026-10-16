@@ -6,6 +6,7 @@ import { SkUsage } from '../../components/Skeleton';
 import usage from '@/lib/usage';
 import Acc from '../../components/Acc';
 import { SVG_ICONS, iconPaths } from '@/lib/widgetIcons';
+import widgetAnim from '@/lib/widgetAnim';
 
 // Ikon di tombol: SVG bawaan ("svg:nama") atau emoji/huruf biasa. Warna SVG mengikuti warna teks.
 function IconView({ icon, size }) {
@@ -25,7 +26,7 @@ const ICONS = [DEFAULT_ICON, '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16
 const WIDGET_DEFAULTS = {
   accent: '#0b7a75', widget_pos: 'right', widget_icon: DEFAULT_ICON, widget_label: '',
   widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_bubble: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20',
-  widget_delay: '0', widget_animate: true
+  widget_delay: '0', widget_anim: 'membal'
 };
 const DAYS = [['1', 'Sen'], ['2', 'Sel'], ['3', 'Rab'], ['4', 'Kam'], ['5', 'Jum'], ['6', 'Sab'], ['0', 'Min']];
 const LOGO_MAX = 55000;
@@ -92,7 +93,7 @@ function fromShop(shop) {
     widget_size: shop.widget_size || 'sedang', widget_shape: shop.widget_shape || 'bulat',
     widget_logo: shop.widget_logo || '', widget_bubble: shop.widget_bubble || 'bulat',
     widget_ox: String(shop.widget_ox == null ? 20 : shop.widget_ox), widget_oy: String(shop.widget_oy == null ? 20 : shop.widget_oy),
-    widget_delay: String(shop.widget_delay == null ? 0 : shop.widget_delay), widget_animate: shop.widget_animate !== false,
+    widget_delay: String(shop.widget_delay == null ? 0 : shop.widget_delay), widget_anim: widgetAnim.resolve(shop.widget_anim, shop.widget_animate),
     hours_on: shop.hours_on === true, hours_open: shop.hours_open || '09:00', hours_close: shop.hours_close || '17:00',
     hours_days: daysOf(shop.hours_days), hours_tz: shop.hours_tz || 'Asia/Jakarta',
     reply_eta: String(shop.reply_eta || 0)
@@ -139,13 +140,19 @@ function WidgetPreview({ f }) {
   const label = f.widget_label.trim();
   const teaser = f.widget_teaser.trim();
   const ox = Math.min(Math.max(toInt(f.widget_ox) || 0, 0), 200), oy = Math.min(Math.max(toInt(f.widget_oy) || 0, 0), 200);
+  const [run, setRun] = useState(0);
   return (
-    <div aria-hidden="true" style={{ position: 'relative', height: Math.max(120, Math.min(oy, 80) + px + 40 + (teaser ? 52 : 0)), border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg)', overflow: 'hidden' }}>
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 0 6px' }}>
+        <button className="btn ghost sm" type="button" onClick={() => setRun((n) => n + 1)}>Putar ulang animasi</button>
+      </div>
+    <div aria-hidden="true" style={{ position: 'relative', overflow: 'hidden', height: Math.max(120, Math.min(oy, 80) + px + 40 + (teaser ? 52 : 0)), border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg)', overflow: 'hidden' }}>
       <small style={{ position: 'absolute', top: 8, left: 12, color: 'var(--mute)' }}>Pratinjau di website</small>
+      <style>{widgetAnim.rules(f.widget_anim, '.wp-anim', 'wp', side === 'left' ? -1 : 1, hex)}</style>
       {teaser ? (
         <div style={{ position: 'absolute', [side]: Math.min(ox, 120), bottom: Math.min(oy, 80) + px + 12, maxWidth: '70%', background: '#fff', color: '#12262b', borderRadius: 14, padding: '8px 12px', fontSize: 13, boxShadow: '0 4px 14px rgba(0,0,0,.18)' }}>{teaser}</div>
       ) : null}
-      <div style={{
+      <div key={run + ':' + f.widget_anim + ':' + side} className="wp-anim" style={{
         position: 'absolute', [side]: Math.min(ox, 120), bottom: Math.min(oy, 80), height: px, minWidth: px, padding: label ? '0 18px' : 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: hex,
         color: lum > 0.62 ? '#111' : '#fff', fontSize: Math.round(px * 0.45),
@@ -155,6 +162,7 @@ function WidgetPreview({ f }) {
         {label ? <span style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span> : null}
       </div>
     </div>
+    </>
   );
 }
 
@@ -162,6 +170,7 @@ function WidgetPreview({ f }) {
 export default function BotPage() {
   const { sb, shop, onShopChange, fail, toast } = useDash();
   const leadReady = Object.prototype.hasOwnProperty.call(shop, 'lead_on');
+  const animReady = Object.prototype.hasOwnProperty.call(shop, 'widget_anim');   // kolom ada setelah migrasi widget_animasi.sql
   const quickReady = Object.prototype.hasOwnProperty.call(shop, 'quick_replies');   // kolom ada setelah migrasi pilihan_cepat.sql
   const [used, setUsed] = useState(null);
   const [f, setF] = useState(() => fromShop(shop));
@@ -220,11 +229,12 @@ export default function BotPage() {
       widget_pos: f.widget_pos, widget_icon: icon, widget_label: f.widget_label.trim(),
       widget_teaser: f.widget_teaser.trim(), widget_size: f.widget_size, widget_shape: f.widget_shape,
       widget_logo: f.widget_logo, widget_bubble: f.widget_bubble, widget_ox: ox, widget_oy: oy,
-      widget_delay: delay, widget_animate: !!f.widget_animate,
+      widget_delay: delay, widget_animate: f.widget_anim !== 'tanpa',
       hours_on: f.hours_on, hours_open: f.hours_open || '09:00', hours_close: f.hours_close || '17:00',
       hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
     if (quickReady) { patch.quick_on = f.quick_on; patch.quick_replies = quickClean(f.quick_replies); }
+    if (animReady) patch.widget_anim = f.widget_anim;
     if (leadReady) patch.lead_on = f.lead_on;   // kolom ini baru ada setelah migrasi rating_dan_kontak.sql
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -492,13 +502,14 @@ export default function BotPage() {
                 </div>
               </div>
               <p className="hint field-hint">Tunda 0 = langsung muncul; isi 3–5 detik supaya tombol muncul setelah pengunjung sempat melihat halaman. Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp atau banner cookie. Mau tombol disembunyikan di halaman tertentu (misalnya checkout)? Atur di menu Pasang.</p>
-              <label htmlFor="w12" className="swrow" style={{ marginTop: 12 }}>
-                <span className="swrow-t">
-                  <b>Animasi saat muncul</b>
-                  <small>Tombol sedikit membesar lalu kembali normal sekali saat pertama tampil.</small>
-                </span>
-                <input id="w12" type="checkbox" checked={f.widget_animate} onChange={(e) => setF((p) => ({ ...p, widget_animate: e.target.checked }))} />
-              </label>
+              <div style={{ marginTop: 12 }}>
+                <label htmlFor="w12">Animasi saat muncul</label>
+                <select id="w12" value={f.widget_anim} onChange={set('widget_anim')}>
+                  {widgetAnim.ANIMS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </select>
+                <p className="hint field-hint">{(widgetAnim.ANIMS.find((a) => a.id === f.widget_anim) || {}).desc} Jalan sekali saat tombol pertama tampil di website. Contohnya terlihat di pratinjau tab Tombol.</p>
+                {!animReady ? <p className="hint field-hint">Pilihan selain Membal dan Tanpa animasi baru tersimpan setelah migrasi <b>widget_animasi.sql</b> dijalankan di Supabase.</p> : null}
+              </div>
             </Acc>
 
             <Acc title="Jendela chat" hint="Pop-up, bubble, logo">

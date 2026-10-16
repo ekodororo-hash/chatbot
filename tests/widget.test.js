@@ -7,8 +7,21 @@ const d = wc.clean({});
 assert.deepStrictEqual(d, {
   color: '#0b7a75', pos: 'right', icon: '\uD83D\uDCAC', svg: null, logo: '', label: '', teaser: '', size: 'sedang', shape: 'bulat', bubble: 'bulat', ox: 20, oy: 20,
   hours: { on: false, open: '09:00', close: '17:00', days: [1, 2, 3, 4, 5, 6], tz: 'Asia/Jakarta' }, eta: 0,
-  delay: 0, animate: true, hideCheckout: true, pathMode: 'hide', paths: []
+  delay: 0, anim: 'membal', animate: true, hideCheckout: true, pathMode: 'hide', paths: []
 });
+
+// animasi muncul: pilihan baru (widget_anim) menang; toko lama jatuh ke widget_animate; nilai rusak jatuh ke bawaan
+assert.strictEqual(wc.clean({ widget_anim: 'goyang', widget_animate: false }).anim, 'goyang');
+assert.strictEqual(wc.clean({ widget_anim: 'goyang' }).animate, true);
+assert.strictEqual(wc.clean({ widget_anim: 'tanpa' }).animate, false);
+assert.strictEqual(wc.clean({ widget_animate: false }).anim, 'tanpa');
+assert.strictEqual(wc.clean({ widget_animate: true }).anim, 'membal');
+assert.strictEqual(wc.clean({ widget_anim: 'ngawur' }).anim, 'membal');
+const wa = require('../lib/widgetAnim');
+assert.strictEqual(wa.rules('tanpa', '.x', 'k', 1, '#000000'), '');
+for (const a of wa.IDS.filter((x) => x !== 'tanpa')) assert.ok(wa.rules(a, '.x', 'k', 1, '#0b7a75').includes('@keyframes k-in'), a);
+assert.ok(wa.rules('geser', '.x', 'k', -1, '#000000').includes('translateX(-120px)'));
+assert.ok(wa.rules('denyut', '.x', 'k', 1, '#0b7a75').includes('@keyframes k-ring'));
 
 const c = wc.clean({ accent: '#ff0000', widget_pos: 'left', widget_icon: ' \uD83D\uDED2 ', widget_label: 'Tanya kami', widget_teaser: 'Halo!', widget_size: 'besar', widget_shape: 'kotak' });
 assert.strictEqual(c.color, '#ff0000');

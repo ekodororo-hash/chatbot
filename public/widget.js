@@ -118,8 +118,27 @@
   }
   /* @paths-end */
 
+  // Pilihan animasi muncul. Salinan dari lib/widgetAnim.js (rules), ubah keduanya sekaligus.
+  var ANIMS = ['tanpa', 'membal', 'pudar', 'naik', 'geser', 'putar', 'goyang', 'denyut'];
+  function animCss(anim, sel, kf, dx, color) {
+    if (anim === 'tanpa' || ANIMS.indexOf(anim) < 0) return '';
+    var e = 'cubic-bezier(.2,.8,.2,1)', pop = 'cubic-bezier(.34,1.56,.64,1)', n = kf + '-in', ring = kf + '-ring';
+    var membal = '@keyframes ' + n + '{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}';
+    var A = {
+      membal: [n + ' .5s ' + pop, membal],
+      pudar: [n + ' .9s ease', '@keyframes ' + n + '{from{opacity:0}to{opacity:1}}'],
+      naik: [n + ' .6s ' + e, '@keyframes ' + n + '{from{transform:translateY(46px);opacity:0}to{transform:none;opacity:1}}'],
+      geser: [n + ' .6s ' + e, '@keyframes ' + n + '{from{transform:translateX(' + (dx * 120) + 'px);opacity:0}to{transform:none;opacity:1}}'],
+      putar: [n + ' .75s ' + e, '@keyframes ' + n + '{from{transform:rotate(-200deg) scale(.2);opacity:0}to{transform:none;opacity:1}}'],
+      goyang: [n + ' 1.1s ease', '@keyframes ' + n + '{0%{transform:translateY(26px);opacity:0}18%{transform:none;opacity:1}32%{transform:rotate(-7deg)}46%{transform:rotate(6deg)}60%{transform:rotate(-4deg)}74%{transform:rotate(3deg)}100%{transform:none}}'],
+      denyut: [n + ' .5s ' + pop + ',' + ring + ' 1.5s ease-out .5s 3', membal + '@keyframes ' + ring + '{0%{box-shadow:0 0 0 0 ' + color + '8c}100%{box-shadow:0 0 0 18px ' + color + '00}}']
+    };
+    return sel + '{animation:' + A[anim][0] + '}' + A[anim][1] + '@media (prefers-reduced-motion:reduce){' + sel + '{animation:none}}';
+  }
+
   function norm(c) {
     c = c || {};
+    var anim = pick(c.anim, ANIMS, c.animate === false ? 'tanpa' : 'membal');
     return {
       color: /^#[0-9a-fA-F]{6}$/.test(c.color) ? c.color : FALLBACK.color,
       pos: pick(c.pos, ['right', 'left'], 'right'),
@@ -132,7 +151,8 @@
       ox: num(c.ox, 0, 200, 20),
       oy: num(c.oy, 0, 200, 20),
       delay: num(c.delay, 0, 30, 0),
-      animate: bool(c.animate, true),
+      anim: anim,
+      animate: anim !== 'tanpa',
       hideCheckout: bool(c.hideCheckout, true),
       pathMode: pick(c.pathMode, ['hide', 'only'], 'hide'),
       paths: pathList(c.paths)
@@ -215,10 +235,8 @@
       'height:min(' + boxHLg + 'px,calc(100vh - ' + (boxBottom + 20) + 'px))}}' +
       '@media (max-width:480px){#isengin-chat-box{right:0;left:0;top:0;bottom:0;width:auto;max-width:none;height:auto;border-radius:0}' +
       '#isengin-chat-btn.open,#isengin-chat-tip{display:none!important}}' +
-      // Animasi muncul: sekali saja, membesar lalu balik normal. Dimatikan kalau pengunjung minta kurangi gerakan.
-      (c.animate ? '#isengin-chat-btn.isengin-in{animation:isengin-in .5s cubic-bezier(.34,1.56,.64,1)}' +
-      '@keyframes isengin-in{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}' +
-      '@media (prefers-reduced-motion:reduce){#isengin-chat-btn.isengin-in{animation:none}}' : '');
+      // Animasi muncul sesuai pilihan toko, sekali saja. Dimatikan kalau pengunjung minta kurangi gerakan.
+      animCss(c.anim, '#isengin-chat-btn.isengin-in', 'isengin', c.pos === 'left' ? -1 : 1, c.color);
     document.head.appendChild(css);
 
     var btn = document.createElement('button');
@@ -227,7 +245,9 @@
     if (c.animate) {
       btn.className = 'isengin-in';
       // Class dibuang setelah animasi selesai, biar tidak terpicu lagi (mis. saat browser rerender/zoom).
-      btn.addEventListener('animationend', function () { btn.classList.remove('isengin-in'); }, { once: true });
+      // Denyut punya dua animasi berurutan: class baru dilepas setelah cincin terakhir selesai.
+      var lastAnim = c.anim === 'denyut' ? 'isengin-ring' : 'isengin-in';
+      btn.addEventListener('animationend', function (ev) { if (ev.animationName === lastAnim) btn.classList.remove('isengin-in'); });
     }
     var ic = document.createElement('span');
     if (c.svg) {

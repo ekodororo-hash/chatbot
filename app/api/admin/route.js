@@ -8,6 +8,7 @@ import otak from '@/lib/otak';
 import adminLib from '@/lib/admin';
 import widgetConfig from '@/lib/widgetConfig';
 import widgetIcons from '@/lib/widgetIcons';
+import widgetAnim from '@/lib/widgetAnim';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -327,14 +328,18 @@ export async function POST(request) {
       const T = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
       if (on && (!T.test(String(v.hours_open)) || !T.test(String(v.hours_close)))) return json({ error: 'Jam buka dan tutup tidak valid.' }, 400);
       if (!c.TZ.includes(v.hours_tz)) return json({ error: 'Zona waktu tidak valid.' }, 400);
+      const anim = widgetAnim.resolve(v.widget_anim, v.widget_animate);
+      const cur = await must(sb.from('shops').select('*').eq('id', shopId).maybeSingle());
       const patch = {
         accent: v.accent, widget_pos: v.widget_pos, widget_icon: icon, widget_label: c.str(v.widget_label, 30),
         widget_teaser: c.str(v.widget_teaser, 100), widget_size: v.widget_size, widget_shape: v.widget_shape,
         widget_bubble: v.widget_bubble, widget_logo: logo, widget_ox: ox, widget_oy: oy,
-        widget_delay: delay, widget_animate: v.widget_animate !== false,
+        widget_delay: delay, widget_animate: anim !== 'tanpa',
         hours_on: on, hours_open: T.test(String(v.hours_open)) ? v.hours_open : '09:00', hours_close: T.test(String(v.hours_close)) ? v.hours_close : '17:00',
         hours_days: dayList.join(','), hours_tz: v.hours_tz, reply_eta: eta
       };
+      // Kolom widget_anim ada setelah migrasi widget_animasi.sql; sebelum itu hanya aktif/nonaktif yang tersimpan.
+      if (cur && Object.prototype.hasOwnProperty.call(cur, 'widget_anim')) patch.widget_anim = anim;
       await must(sb.from('shops').update(patch).eq('id', shopId));
       return json({ ok: true, shop: widgetFields(Object.assign({}, await must(sb.from('shops').select('*').eq('id', shopId).maybeSingle()))) });
     }
@@ -346,7 +351,7 @@ export async function POST(request) {
 // Hanya kolom tampilan widget (plus nama/sapaan/pilihan cepat untuk pratinjau chat). Kolom rahasia toko tidak ikut.
 function widgetFields(s) {
   const keys = ['id', 'name', 'slug', 'bot_name', 'greeting', 'tone', 'quick_on', 'quick_replies', 'accent', 'widget_pos', 'widget_icon', 'widget_label',
-    'widget_teaser', 'widget_size', 'widget_shape', 'widget_bubble', 'widget_logo', 'widget_ox', 'widget_oy', 'widget_delay', 'widget_animate',
+    'widget_teaser', 'widget_size', 'widget_shape', 'widget_bubble', 'widget_logo', 'widget_ox', 'widget_oy', 'widget_delay', 'widget_animate', 'widget_anim',
     'hours_on', 'hours_open', 'hours_close', 'hours_days', 'hours_tz', 'reply_eta'];
   const out = {};
   keys.forEach((k) => { if (Object.prototype.hasOwnProperty.call(s, k)) out[k] = s[k]; });
