@@ -6,7 +6,8 @@ const wc = require('../lib/widgetConfig');
 const d = wc.clean({});
 assert.deepStrictEqual(d, {
   color: '#0b7a75', pos: 'right', icon: '\uD83D\uDCAC', svg: null, logo: '', label: '', teaser: '', size: 'sedang', shape: 'bulat', bubble: 'bulat', ox: 20, oy: 20,
-  hours: { on: false, open: '09:00', close: '17:00', days: [1, 2, 3, 4, 5, 6], tz: 'Asia/Jakarta' }, eta: 0
+  hours: { on: false, open: '09:00', close: '17:00', days: [1, 2, 3, 4, 5, 6], tz: 'Asia/Jakarta' }, eta: 0,
+  delay: 0, animate: true, hideCheckout: true, pathMode: 'hide', paths: []
 });
 
 const c = wc.clean({ accent: '#ff0000', widget_pos: 'left', widget_icon: ' \uD83D\uDED2 ', widget_label: 'Tanya kami', widget_teaser: 'Halo!', widget_size: 'besar', widget_shape: 'kotak' });
@@ -87,3 +88,50 @@ console.log('ikon svg ok');
   assert.deepStrictEqual(wc.quick({ quick_replies: [] }).items, []);
   console.log('pilihan cepat ok');
 }
+
+
+// ===== Aturan tampil per halaman =====
+const wp = require('../lib/widgetPaths');
+const fs = require('fs');
+
+// pembersihan alamat: buang domain, query, hash, garis miring ganda/akhir; huruf kecil; kembar dibuang
+assert.deepStrictEqual(wp.cleanPaths('https://Toko.com/Akun/?a=1#x\n/promo/\n akun/*\n/promo\n\n'), ['/akun', '/promo', '/akun/*']);
+assert.deepStrictEqual(wp.cleanPaths('/a, /b'), ['/a', '/b']);
+assert.deepStrictEqual(wp.cleanPaths('/ok\n/bad path\n/x<y>'), ['/ok']);
+assert.deepStrictEqual(wp.invalidLines('/ok\n/bad path\n'), ['/bad path']);
+assert.strictEqual(wp.cleanPaths(Array.from({ length: 50 }, (_, i) => '/p' + i)).length, wp.MAX_PATHS);
+assert.strictEqual(wp.cleanPaths('/' + 'a'.repeat(120)).length, 0);
+
+// config: mode 'only' tanpa alamat jatuh ke 'hide'; checkout default disembunyikan
+const pc = wc.clean({ widget_paths: '/akun/*\n/promo', widget_paths_mode: 'only', widget_hide_checkout: false });
+assert.deepStrictEqual([pc.hideCheckout, pc.pathMode, pc.paths], [false, 'only', ['/akun/*', '/promo']]);
+assert.strictEqual(wc.clean({ widget_paths_mode: 'only', widget_paths: '' }).pathMode, 'hide');
+assert.strictEqual(wc.clean({ widget_paths_mode: 'ngawur', widget_paths: '/a' }).pathMode, 'hide');
+assert.strictEqual(wc.clean({}).hideCheckout, true);
+
+// pencocokan di widget.js (blok @paths-begin..@paths-end dijalankan apa adanya)
+const src = fs.readFileSync(require('path').join(__dirname, '../public/widget.js'), 'utf8');
+const blk = src.slice(src.indexOf('/* @paths-begin */'), src.indexOf('/* @paths-end */'));
+const vis = new Function(blk + '; return visibleAt;')();
+const cfg = (o) => Object.assign({ hideCheckout: true, pathMode: 'hide', paths: [] }, o);
+// checkout bawaan, termasuk di bawah awalan bahasa dan sub-halaman
+['/checkout', '/checkout/', '/id/checkout/langkah-2', '/CART', '/keranjang', '/shop/pembayaran', '/checkouts/abc'].forEach((p) => assert.strictEqual(vis(cfg(), p), false, p));
+['/', '/produk/cartier-style', '/blog/payment-methods', '/id/produk/1'].forEach((p) => assert.strictEqual(vis(cfg(), p), true, p));
+assert.strictEqual(vis(cfg({ hideCheckout: false }), '/checkout'), true);
+// sembunyikan di halaman tertentu: persis, dan dengan *
+const h = cfg({ paths: ['/akun/*', '/promo'] });
+assert.strictEqual(vis(h, '/akun'), false);
+assert.strictEqual(vis(h, '/akun/pesanan/12'), false);
+assert.strictEqual(vis(h, '/promo/'), false);
+assert.strictEqual(vis(h, '/promo/rahasia'), true);   // tanpa * hanya cocok persis
+assert.strictEqual(vis(h, '/akunku'), true);
+// tampil hanya di halaman tertentu; checkout tetap menang
+const only = cfg({ pathMode: 'only', paths: ['/produk/*', '/'] });
+assert.strictEqual(vis(only, '/produk/rambut'), true);
+assert.strictEqual(vis(only, '/'), true);
+assert.strictEqual(vis(only, '/tentang'), false);
+assert.strictEqual(vis(only, '/produk/checkout'), false);
+// karakter khusus regex di alamat tidak merusak pencocokan
+assert.strictEqual(vis(cfg({ paths: ['/a.b+c'] }), '/a.b+c'), false);
+assert.strictEqual(vis(cfg({ paths: ['/a.b+c'] }), '/axb+c'), true);
+console.log('widget paths ok');

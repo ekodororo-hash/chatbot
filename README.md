@@ -259,3 +259,15 @@ Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemin
 - **Pratinjau jendela chat** di dashboard adalah halaman chat asli (`/chat/slug?preview=1`) yang menerima pengaturan yang belum disimpan lewat `postMessage`. Mode pratinjau tidak mengirim pesan ke server.
 - Mode gelap manual sudah dihapus. Halaman chat tetap mengikuti tema terang/gelap dari sistem pelanggan.
 - **Bentuk bubble pesan** (bulat, kotak, lancip): jalankan juga `supabase/migrations/widget_bubble.sql` sebelum deploy. Diatur di Asisten AI > Tampilan chat, tersimpan di `shops.widget_bubble`.
+
+## Aturan tampil widget per halaman
+
+Diatur pemilik toko di **Asisten AI > Tampilan chat di website > Halaman tampil**. Berlaku di website klien tanpa tempel ulang kode (paling lambat sekitar 1 menit).
+
+**Persiapan database (sekali):** jalankan `supabase/migrations/widget_halaman.sql` di Supabase SQL Editor **sebelum** deploy (aman dijalankan ulang). Menambah `shops.widget_hide_checkout`, `widget_paths_mode`, `widget_paths`. Kalau belum dijalankan, bagian ini tampil nonaktif dan menyimpan pengaturan lain tetap jalan; tetapi widget sudah menyembunyikan diri di halaman checkout secara bawaan.
+
+- **Sembunyikan di checkout dan pembayaran** (bawaan aktif): dikenali per segmen alamat (`checkout`, `checkouts`, `cart`, `keranjang`, `payment`, `payments`, `pembayaran`, `bayar`), jadi `/id/checkout/langkah-2` ikut tersembunyi.
+- **Aturan tambahan**: semua halaman, sembunyikan di halaman tertentu, atau tampil hanya di halaman tertentu. Satu alamat per baris, `*` berarti apa saja di bawahnya (`/akun/*` mencakup `/akun`), tanpa `*` hanya cocok persis. Maksimal 20 alamat. Aturan checkout selalu menang.
+- Situs SPA/Shopify yang berpindah halaman tanpa reload dipantau lewat `pushState`/`replaceState`, `popstate`, dan pengecekan tiap detik; kalau chat sedang terbuka lalu pengunjung masuk ke halaman tersembunyi, chat ditutup.
+- Logika pencocokan ada di `public/widget.js` (blok `@paths-begin`), pembersihan alamat di `lib/widgetPaths.js`, dites di `tests/widget.test.js`.
+

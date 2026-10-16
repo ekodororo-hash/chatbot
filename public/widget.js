@@ -80,6 +80,44 @@
     }
     return v;
   }
+  // Daftar alamat halaman dari server: maks 20, tiap alamat teks berawalan "/" sepanjang maks 100 karakter.
+  function pathList(v) {
+    var out = [];
+    if (!Array.isArray(v)) return out;
+    for (var i = 0; i < v.length && out.length < 20; i++) {
+      if (typeof v[i] === 'string' && v[i].length <= 100 && v[i].charAt(0) === '/') out.push(v[i].toLowerCase());
+    }
+    return out;
+  }
+
+  /* @paths-begin */
+  // Aturan tampil per halaman. Alamat bawaan checkout dikenali per segmen (jadi /id/checkout/langkah-2 ikut kena).
+  var CHECKOUT_SEG = ['checkout', 'checkouts', 'cart', 'keranjang', 'payment', 'payments', 'pembayaran', 'bayar'];
+  function normPath(p) {
+    var t = String(p || '/');
+    try { t = decodeURIComponent(t); } catch (e) {}
+    t = t.toLowerCase().replace(/\/{2,}/g, '/');
+    if (t.length > 1) t = t.replace(/\/+$/, '');
+    return t || '/';
+  }
+  function pathMatch(pattern, path) {
+    var re;
+    try { re = new RegExp('^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'); } catch (e) { return false; }
+    return re.test(path) || re.test(path + '/');   // "/akun/*" juga cocok dengan "/akun"
+  }
+  function visibleAt(c, rawPath) {
+    var path = normPath(rawPath), i;
+    if (c.hideCheckout) {
+      var segs = path.split('/');
+      for (i = 0; i < segs.length; i++) if (CHECKOUT_SEG.indexOf(segs[i]) >= 0) return false;
+    }
+    if (!c.paths.length) return true;
+    var hit = false;
+    for (i = 0; i < c.paths.length && !hit; i++) hit = pathMatch(c.paths[i], path);
+    return c.pathMode === 'only' ? hit : !hit;
+  }
+  /* @paths-end */
+
   function norm(c) {
     c = c || {};
     return {
@@ -94,7 +132,10 @@
       ox: num(c.ox, 0, 200, 20),
       oy: num(c.oy, 0, 200, 20),
       delay: num(c.delay, 0, 30, 0),
-      animate: bool(c.animate, true)
+      animate: bool(c.animate, true),
+      hideCheckout: bool(c.hideCheckout, true),
+      pathMode: pick(c.pathMode, ['hide', 'only'], 'hide'),
+      paths: pathList(c.paths)
     };
   }
 
@@ -146,6 +187,7 @@
       // Di layar sempit, tombol dengan label/ukuran besar dibatasi lebarnya dan teks dipotong, supaya tidak keluar layar.
       '@media (max-width:480px){#isengin-chat-btn{max-width:calc(100vw - ' + (c.ox * 2 + 16) + 'px)}' +
       '#isengin-chat-btn span.l{overflow:hidden;text-overflow:ellipsis;min-width:0}}' +
+      'html.isengin-off #isengin-chat-btn,html.isengin-off #isengin-chat-box,html.isengin-off #isengin-chat-tip{display:none!important}' +
       '#isengin-chat-btn:focus-visible,#isengin-chat-x:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px ' + color + '}' +
       '#isengin-chat-box{position:fixed;' + side + ':' + c.ox + 'px;bottom:' + boxBottom + 'px;width:' + boxW + 'px;max-width:calc(100vw - 24px);' +
       'height:min(' + boxH + 'px,calc(100vh - ' + (boxBottom + 20) + 'px));border-radius:16px;overflow:hidden;background:#fff;z-index:2147483001;' +
@@ -343,5 +385,31 @@
     document.body.appendChild(box);
     if (tip) document.body.appendChild(tip);
     document.body.appendChild(btn);
+
+    // Aturan halaman: tampil/sembunyi mengikuti alamat saat ini. Situs SPA berpindah halaman tanpa reload,
+    // jadi perubahan alamat dipantau lewat pushState/replaceState, popstate, dan pengecekan ringan tiap detik.
+    var lastPath = null;
+    function applyVis() {
+      var p = location.pathname;
+      if (p === lastPath) return;
+      lastPath = p;
+      var root = document.documentElement;
+      if (visibleAt(c, p)) { root.classList.remove('isengin-off'); return; }
+      root.classList.add('isengin-off');
+      if (box.classList.contains('show')) close();
+    }
+    function watchVis() { setTimeout(applyVis, 0); }
+    ['pushState', 'replaceState'].forEach(function (k) {
+      var orig = history[k];
+      if (typeof orig !== 'function' || orig.isenginWrapped) return;
+      var w = function () { var r = orig.apply(this, arguments); watchVis(); return r; };
+      w.isenginWrapped = true;
+      try { history[k] = w; } catch (e) {}
+    });
+    window.addEventListener('popstate', watchVis);
+    window.addEventListener('hashchange', watchVis);
+    window.addEventListener('pageshow', watchVis);
+    setInterval(applyVis, 1000);
+    applyVis();
   }
 })();
