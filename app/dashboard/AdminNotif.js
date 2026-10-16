@@ -23,7 +23,7 @@ const PanduanNotif = () => (
     </ol>
     <p className="hint">Kode Telegram bersifat rahasia. Jangan dibagikan ke pelanggan.</p>
     <h3>Laporan mingguan</h3>
-    <p className="hint" style={{ marginTop: 0 }}>Seminggu sekali, chat Telegram yang terdaftar menerima ringkasan 7 hari terakhir: jumlah percakapan, pesanan dan omzet, produk terlaris, dan pertanyaan yang belum terjawab asisten. Laporan hanya dikirim kalau minggu itu ada percakapan atau pesanan.</p>
+    <p className="hint" style={{ marginTop: 0 }}>Seminggu sekali, chat Telegram yang terdaftar menerima ringkasan 7 hari terakhir: jumlah percakapan, calon pembeli yang meninggalkan kontak, dan pertanyaan yang belum terjawab asisten. Laporan hanya dikirim kalau minggu itu ada percakapan.</p>
   </Panduan>
 );
 

@@ -18,7 +18,7 @@ async function handle(request) {
     return json({ ok: true, ...(await weeklyReport.run(supabase.getAdmin())) });
   } catch (e) {
     console.error('Cron laporan gagal:', e && e.message);
-    return json({ error: 'Gagal menjalankan laporan mingguan. Pastikan migrasi pesanan_terstruktur.sql sudah dijalankan.' }, 500);
+    return json({ error: 'Gagal menjalankan laporan mingguan.' }, 500);
   }
 }
 
