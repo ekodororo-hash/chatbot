@@ -310,7 +310,7 @@ export default function BotPage() {
             <b>Tawarkan pengunjung dikabari soal promo</b>
             <small>
               {leadReady
-                ? 'Setelah pengunjung bertanya beberapa kali tanpa memesan, chat menawarkan "mau dikabari kalau ada promo?" dan menyimpan nomor WhatsApp atau emailnya. Hasilnya ada di menu Kontak.'
+                ? 'Setelah pengunjung sudah beberapa kali bertanya soal harga, stok, promo, atau produk (bukan sekadar tanya ini web apa) tanpa memesan, chat menawarkan "mau dikabari kalau ada promo?" dan menyimpan nomor WhatsApp atau emailnya. Hasilnya ada di menu Kontak.'
                 : 'Belum aktif di database. Jalankan supabase/migrations/rating_dan_kontak.sql di Supabase dulu.'}
             </small>
           </span>

@@ -1313,10 +1313,36 @@ t('kontak: kartu tawaran muncul sekali, setelah pelanggan bertanya beberapa kali
   let r = await chat(s, 'Ada pashmina?');
   assert.ok(!r.offerLead, 'pesan pertama belum cukup');
   r = await chat(s, 'Warna apa saja?', r);
+  assert.ok(!r.offerLead, 'dua pesan saja belum cukup');
+  r = await chat(s, 'Harganya berapa?', r);
+  assert.ok(!r.offerLead, 'tiga pesan belum cukup');
+  r = await chat(s, 'Stoknya ready?', r);
   assert.strictEqual(r.offerLead, true);
   assert.ok(db.conversations.find(c => c.id === r.conversationId).lead_offered_at);
   r = await chat(s, 'Terima kasih', r);
   assert.ok(!r.offerLead, 'tidak ditawarkan lagi di percakapan yang sama');
+});
+
+t('kontak: pertanyaan umum yang tidak nyambung dengan belanja tidak memicu tawaran', async () => {
+  const s = seedShop({ lead_on: true }); geminiImpl = reply('Ini toko online ya kak.');
+  let r = await chat(s, 'Ini web apa?');
+  for (const q of ['Siapa yang buat?', 'Kamu bot ya?', 'Ini aman nggak?', 'Oke makasih']) {
+    r = await chat(s, q, r);
+    assert.ok(!r.offerLead, 'tidak boleh menawarkan promo untuk: ' + q);
+  }
+  // sudah banyak pesan, tapi pesan terakhir bukan soal belanja: tetap tidak
+  r = await chat(s, 'Harganya berapa?', r); assert.ok(!r.offerLead, 'baru satu pesan belanja');
+  r = await chat(s, 'Ada diskon?', r);
+  assert.strictEqual(r.offerLead, true, 'dua pesan belanja dan yang terakhir juga soal belanja');
+});
+
+t('kontak: shouldOfferLead menilai minat belanja dari isi pesan', () => {
+  const o = leadLib.shouldOfferLead;
+  assert.strictEqual(o(['ini web apa', 'siapa kamu', 'oke', 'makasih']), false);
+  assert.strictEqual(o(['harga berapa', 'stok ada?', 'warna apa']), false, 'kurang dari 4 pesan');
+  assert.strictEqual(o(['harga berapa', 'halo', 'siapa kamu', 'terima kasih']), false, 'pesan terakhir bukan soal belanja');
+  assert.strictEqual(o(['harga berapa', 'halo', 'oke', 'ada promo ga?']), true);
+  assert.strictEqual(o(['halo', 'ini apa', 'jualan apa', 'ada promo ga?']), false, 'hanya satu pesan belanja');
 });
 
 t('kontak: tidak ditawarkan bila fitur mati, pelanggan memesan, atau dioper ke admin', async () => {
