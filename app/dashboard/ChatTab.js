@@ -234,6 +234,8 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
 
   const info = visitorInfo(c, ip);
   const canFaq = c.unanswered && c.last_question;
+  // Pelanggan sudah mengakhiri percakapan: admin tidak bisa membalas sampai pelanggan mengirim pesan lagi (status otomatis terbuka lagi lewat realtime).
+  const closedByCustomer = c.status === 'selesai' && !!c.closed_by_customer;
 
   return (
     <>
@@ -280,11 +282,17 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
             );
           })}
         </div>
-        <form className="cv-compose" onSubmit={send}>
-          <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
-          <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
-        </form>
-        {c.status === 'bot' ? <p className="hint cv-note">Membalas dari sini akan mengambil alih percakapan dari bot.</p> : null}
+        {closedByCustomer ? (
+          <p className="hint cv-note">Pelanggan sudah mengakhiri percakapan ini. Kamu bisa membalas lagi setelah pelanggan mengirim pesan baru.</p>
+        ) : (
+          <>
+            <form className="cv-compose" onSubmit={send}>
+              <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
+              <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
+            </form>
+            {c.status === 'bot' ? <p className="hint cv-note">Membalas dari sini akan mengambil alih percakapan dari bot.</p> : null}
+          </>
+        )}
       </div>
     </>
   );
