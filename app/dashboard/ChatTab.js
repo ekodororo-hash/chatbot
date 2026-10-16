@@ -288,7 +288,9 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
           <>
             <form className="cv-compose" onSubmit={send}>
               <input maxLength={1000} placeholder="Balas sebagai admin..." aria-label="Balasan admin" value={text} onChange={(e) => setText(e.target.value)} />
-              <button className="btn" type="submit" disabled={sending}><Busy on={sending} label="Mengirim...">Kirim</Busy></button>
+              <button className={'btn cv-send' + (text.trim() ? '' : ' e0')} type="submit" aria-label="Kirim" title="Kirim" disabled={sending}>
+                {sending ? <span className="spin" style={{ margin: 0 }} aria-hidden="true" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>}
+              </button>
             </form>
             {c.status === 'bot' ? <p className="hint cv-note">Membalas dari sini akan mengambil alih percakapan dari bot.</p> : null}
           </>
