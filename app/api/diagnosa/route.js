@@ -58,6 +58,13 @@ export async function POST(request) {
       np + ' produk, ' + nf + ' FAQ.' + (np + nf > 0 ? '' : ' Isi produk atau FAQ supaya bot punya bahan menjawab.'));
   } catch (e) { add('data', 'Data toko', false, 'Gagal membaca: ' + e.message); }
 
+  const about = String(shop.about || '').trim();
+  add('tentang', 'Tentang toko', about.length >= 20,
+    about.length >= 20
+      ? 'Terisi (' + about.length + ' karakter). Asisten memakainya untuk pertanyaan seperti \"toko ini jual apa?\".'
+      : (about ? 'Terlalu singkat. Tulis minimal satu dua kalimat tentang tokomu di halaman Toko, bagian \"Tentang toko\", lalu klik Simpan.'
+        : 'Belum diisi. Isi deskripsi singkat tokomu di halaman Toko, bagian \"Tentang toko\", lalu klik Simpan, supaya asisten bisa menjawab \"toko ini jual apa?\".'));
+
   const AI_LABEL = 'Layanan AI';
   let planId = 'free';
   try { planId = (await billing.currentPlan(sb, shop.id)).id; } catch (e) { /* tabel paket bermasalah: pakai model paket gratis */ }

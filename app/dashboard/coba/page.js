@@ -64,7 +64,7 @@ export default function CobaPage() {
         <div className="chead">
           <div>
             <h2 id="cd">Asisten tidak menjawab?</h2>
-            <p className="hint">Periksa pengaturan asisten, kuota, data toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
+            <p className="hint">Periksa pengaturan asisten, kuota, data toko, tentang toko, dan layanan AI. Hasilnya menunjukkan bagian yang perlu diperbaiki.</p>
           </div>
           <button className="btn" type="button" disabled={checking} onClick={diagnose}>
             <Busy on={checking} label="Memeriksa...">Cek kesiapan asisten</Busy>
