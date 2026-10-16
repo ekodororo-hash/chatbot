@@ -4,7 +4,7 @@ import { Busy, startOfTodayWIB, toInt } from '../helpers';
 import { useDash } from '../context';
 import { SkUsage } from '../../components/Skeleton';
 import usage from '@/lib/usage';
-import widgetPaths from '@/lib/widgetPaths';
+import Acc from '../../components/Acc';
 import { SVG_ICONS, iconPaths } from '@/lib/widgetIcons';
 
 // Ikon di tombol: SVG bawaan ("svg:nama") atau emoji/huruf biasa. Warna SVG mengikuti warna teks.
@@ -18,19 +18,6 @@ function IconView({ icon, size }) {
   );
 }
 
-// Bagian yang bisa dilipat, supaya form tidak terasa panjang. Ringkasan isi tampil di bawah judul saat tertutup.
-function Acc({ title, hint, open, children }) {
-  return (
-    <details className="acc" open={open || undefined}>
-      <summary>
-        <span className="acc-t"><b>{title}</b>{hint ? <small>{hint}</small> : null}</span>
-        <svg className="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-      </summary>
-      <div className="acc-b">{children}</div>
-    </details>
-  );
-}
-
 const POS_LABEL = { right: 'Kanan bawah', left: 'Kiri bawah' };
 const DEFAULT_ICON = '\uD83D\uDCAC';
 const SIZE_PX = { kecil: 48, sedang: 58, besar: 70 };
@@ -38,8 +25,7 @@ const ICONS = [DEFAULT_ICON, '\uD83D\uDECD\uFE0F', '\uD83D\uDED2', '\uD83E\uDD16
 const WIDGET_DEFAULTS = {
   accent: '#0b7a75', widget_pos: 'right', widget_icon: DEFAULT_ICON, widget_label: '',
   widget_teaser: '', widget_size: 'sedang', widget_shape: 'bulat', widget_bubble: 'bulat', widget_logo: '', widget_ox: '20', widget_oy: '20',
-  widget_delay: '0', widget_animate: true,
-  widget_hide_checkout: true, widget_paths_mode: 'all', widget_paths: ''
+  widget_delay: '0', widget_animate: true
 };
 const DAYS = [['1', 'Sen'], ['2', 'Sel'], ['3', 'Rab'], ['4', 'Kam'], ['5', 'Jum'], ['6', 'Sab'], ['0', 'Min']];
 const LOGO_MAX = 55000;
@@ -107,9 +93,6 @@ function fromShop(shop) {
     widget_logo: shop.widget_logo || '', widget_bubble: shop.widget_bubble || 'bulat',
     widget_ox: String(shop.widget_ox == null ? 20 : shop.widget_ox), widget_oy: String(shop.widget_oy == null ? 20 : shop.widget_oy),
     widget_delay: String(shop.widget_delay == null ? 0 : shop.widget_delay), widget_animate: shop.widget_animate !== false,
-    widget_hide_checkout: shop.widget_hide_checkout !== false,
-    widget_paths: shop.widget_paths || '',
-    widget_paths_mode: widgetPaths.countLines(shop.widget_paths) ? (shop.widget_paths_mode === 'only' ? 'only' : 'hide') : 'all',
     hours_on: shop.hours_on === true, hours_open: shop.hours_open || '09:00', hours_close: shop.hours_close || '17:00',
     hours_days: daysOf(shop.hours_days), hours_tz: shop.hours_tz || 'Asia/Jakarta',
     reply_eta: String(shop.reply_eta || 0)
@@ -179,7 +162,6 @@ function WidgetPreview({ f }) {
 export default function BotPage() {
   const { sb, shop, onShopChange, fail, toast } = useDash();
   const leadReady = Object.prototype.hasOwnProperty.call(shop, 'lead_on');
-  const pathsReady = Object.prototype.hasOwnProperty.call(shop, 'widget_paths_mode');   // kolom ada setelah migrasi widget_halaman.sql
   const quickReady = Object.prototype.hasOwnProperty.call(shop, 'quick_replies');   // kolom ada setelah migrasi pilihan_cepat.sql
   const [used, setUsed] = useState(null);
   const [f, setF] = useState(() => fromShop(shop));
@@ -230,13 +212,6 @@ export default function BotPage() {
     if (f.hours_on && !f.hours_days.length) return toast('Pilih minimal satu hari operasional.');
     if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_open + '') ) return toast('Isi jam buka.');
     if (f.hours_on && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(f.hours_close + '')) return toast('Isi jam tutup.');
-    const pathList = widgetPaths.cleanPaths(f.widget_paths);
-    if (pathsReady && f.widget_paths_mode !== 'all') {
-      const bad = widgetPaths.invalidLines(f.widget_paths);
-      if (bad.length) return toast('Alamat halaman tidak valid: ' + bad[0].slice(0, 40) + '. Pakai huruf, angka, / - _ . dan *.');
-      if (widgetPaths.countLines(f.widget_paths) > widgetPaths.MAX_PATHS) return toast('Alamat halaman maksimal ' + widgetPaths.MAX_PATHS + ' baris.');
-      if (!pathList.length) return toast('Isi minimal satu alamat halaman, atau pilih \"Semua halaman\".');
-    }
     setBusy(true);
     const patch = {
       bot_on: f.bot_on, bot_name: f.bot_name.trim(), tone: f.tone, greeting: f.greeting.trim(),
@@ -250,11 +225,6 @@ export default function BotPage() {
       hours_days: f.hours_days.slice().sort().join(','), hours_tz: f.hours_tz, reply_eta: eta
     };
     if (quickReady) { patch.quick_on = f.quick_on; patch.quick_replies = quickClean(f.quick_replies); }
-    if (pathsReady) {
-      patch.widget_hide_checkout = !!f.widget_hide_checkout;
-      patch.widget_paths_mode = f.widget_paths_mode === 'only' ? 'only' : 'hide';
-      patch.widget_paths = f.widget_paths_mode === 'all' ? '' : pathList.join('\n');
-    }
     if (leadReady) patch.lead_on = f.lead_on;   // kolom ini baru ada setelah migrasi rating_dan_kontak.sql
     const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
     setBusy(false);
@@ -499,39 +469,6 @@ export default function BotPage() {
               </div>
             </Acc>
 
-            <Acc title="Halaman tampil" open hint={
-              (f.widget_paths_mode === 'all' ? 'Semua halaman' : (f.widget_paths_mode === 'hide' ? 'Sembunyi di ' : 'Hanya di ') + Math.max(widgetPaths.countLines(f.widget_paths), 0) + ' halaman')
-              + (f.widget_hide_checkout ? ' · checkout disembunyikan' : '')
-            }>
-              {pathsReady ? null : (
-                <p className="hint field-hint" style={{ marginTop: 0 }}>Belum aktif di database. Jalankan supabase/migrations/widget_halaman.sql di Supabase dulu.</p>
-              )}
-              <label htmlFor="p0" className="swrow">
-                <span className="swrow-t">
-                  <b>Sembunyikan di checkout dan pembayaran</b>
-                  <small>Tombol chat tidak menutupi tombol bayar. Dikenali otomatis dari alamat seperti /checkout, /cart, /keranjang, /pembayaran.</small>
-                </span>
-                <input id="p0" type="checkbox" disabled={!pathsReady} checked={f.widget_hide_checkout} onChange={(e) => setF((p) => ({ ...p, widget_hide_checkout: e.target.checked }))} />
-              </label>
-              <div className="fgrid one" style={{ marginTop: 12 }}>
-                <div>
-                  <label htmlFor="p1">Aturan tambahan</label>
-                  <select id="p1" disabled={!pathsReady} value={f.widget_paths_mode} onChange={set('widget_paths_mode')}>
-                    <option value="all">Tampil di semua halaman</option>
-                    <option value="hide">Sembunyikan di halaman tertentu</option>
-                    <option value="only">Tampil hanya di halaman tertentu</option>
-                  </select>
-                </div>
-                {pathsReady && f.widget_paths_mode !== 'all' ? (
-                  <div>
-                    <label htmlFor="p2">Alamat halaman (satu per baris)</label>
-                    <textarea id="p2" rows={4} spellCheck={false} value={f.widget_paths} onChange={set('widget_paths')} placeholder={'/akun/*\n/promo'} />
-                    <p className="hint field-hint">Tulis alamat setelah nama domain. Tanda * berarti "apa saja di bawahnya": /akun/* mencakup /akun dan semua halaman di dalamnya. Tanpa * hanya cocok persis. Maksimal 20 baris. Aturan checkout di atas tetap berlaku.</p>
-                  </div>
-                ) : null}
-              </div>
-            </Acc>
-
             <Acc title="Posisi dan waktu muncul" hint={(POS_LABEL[f.widget_pos] || 'Kanan bawah') + ' · tunda ' + (toInt(f.widget_delay) || 0) + ' detik'}>
               <div className="fgrid">
                 <div>
@@ -554,7 +491,7 @@ export default function BotPage() {
                   <input id="w8" type="number" inputMode="numeric" min="0" max="200" value={f.widget_oy} onChange={set('widget_oy')} />
                 </div>
               </div>
-              <p className="hint field-hint">Tunda 0 = langsung muncul; isi 3–5 detik supaya tombol muncul setelah pengunjung sempat melihat halaman. Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp atau banner cookie.</p>
+              <p className="hint field-hint">Tunda 0 = langsung muncul; isi 3–5 detik supaya tombol muncul setelah pengunjung sempat melihat halaman. Naikkan jarak kalau di pojok yang sama sudah ada tombol WhatsApp atau banner cookie. Mau tombol disembunyikan di halaman tertentu (misalnya checkout)? Atur di menu Pasang.</p>
               <label htmlFor="w12" className="swrow" style={{ marginTop: 12 }}>
                 <span className="swrow-t">
                   <b>Animasi saat muncul</b>

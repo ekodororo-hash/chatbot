@@ -262,7 +262,7 @@ Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemin
 
 ## Aturan tampil widget per halaman
 
-Diatur pemilik toko di **Asisten AI > Tampilan chat di website > Halaman tampil**. Berlaku di website klien tanpa tempel ulang kode (paling lambat sekitar 1 menit).
+Diatur pemilik toko di **Pasang > Halaman tampil** (langkah 3), lalu diuji lewat pratinjau di langkah 4 (Cek pemasangan). Berlaku di website klien tanpa tempel ulang kode (paling lambat sekitar 1 menit).
 
 **Persiapan database (sekali):** jalankan `supabase/migrations/widget_halaman.sql` di Supabase SQL Editor **sebelum** deploy (aman dijalankan ulang). Menambah `shops.widget_hide_checkout`, `widget_paths_mode`, `widget_paths`. Kalau belum dijalankan, bagian ini tampil nonaktif dan menyimpan pengaturan lain tetap jalan; tetapi widget sudah menyembunyikan diri di halaman checkout secara bawaan.
 

@@ -1,6 +1,8 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import domains from '@/lib/domains';
+import widgetPaths from '@/lib/widgetPaths';
+import Acc from '../components/Acc';
 import qrLib from '@/lib/qr';
 import { Busy, authFetch, useOrigin } from './helpers';
 
@@ -185,6 +187,20 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
   const [res, setRes] = useState(null);
   const [adding, setAdding] = useState(false);
 
+  // Aturan tampil per halaman (kolom ada setelah migrasi widget_halaman.sql).
+  const pathsReady = Object.prototype.hasOwnProperty.call(shop, 'widget_paths_mode');
+  const pSaved = {
+    hide: shop.widget_hide_checkout !== false,
+    mode: widgetPaths.countLines(shop.widget_paths) ? (shop.widget_paths_mode === 'only' ? 'only' : 'hide') : 'all',
+    text: shop.widget_paths || ''
+  };
+  const [hideCo, setHideCo] = useState(pSaved.hide);
+  const [pmode, setPmode] = useState(pSaved.mode);
+  const [ptext, setPtext] = useState(pSaved.text);
+  const [pbusy, setPbusy] = useState(false);
+  const [perr, setPerr] = useState('');
+  const pdirty = hideCo !== pSaved.hide || pmode !== pSaved.mode || ptext !== pSaved.text;
+
   const link = origin + '/chat/' + shop.slug;
   const snippet = '<script src="' + origin + '/widget.js" data-bot="' + shop.slug +
     '" defer></' + 'script>';
@@ -203,6 +219,29 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
     onShopChange({ allowed_domains: out });
     setDom(out.join('\n'));
     return true;
+  }
+
+  async function savePaths() {
+    setPerr('');
+    const list = widgetPaths.cleanPaths(ptext);
+    if (pmode !== 'all') {
+      const bad = widgetPaths.invalidLines(ptext);
+      if (bad.length) { setPerr('Alamat halaman tidak valid: ' + bad[0].slice(0, 40) + '. Pakai huruf, angka, / - _ . dan *.'); return; }
+      if (widgetPaths.countLines(ptext) > widgetPaths.MAX_PATHS) { setPerr('Alamat halaman maksimal ' + widgetPaths.MAX_PATHS + ' baris.'); return; }
+      if (!list.length) { setPerr('Isi minimal satu alamat halaman, atau pilih "Tampil di semua halaman".'); return; }
+    }
+    const patch = {
+      widget_hide_checkout: !!hideCo,
+      widget_paths_mode: pmode === 'only' ? 'only' : 'hide',
+      widget_paths: pmode === 'all' ? '' : list.join('\n')
+    };
+    setPbusy(true);
+    const { error } = await sb.from('shops').update(patch).eq('id', shop.id);
+    setPbusy(false);
+    if (error) return fail(error);
+    onShopChange(patch);
+    setPtext(patch.widget_paths);
+    toast('Aturan tampil disimpan. Berlaku di website paling lambat sekitar 1 menit.');
   }
 
   async function saveDomains() {
@@ -365,7 +404,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
           <pre>{snippet}</pre>
         </div>
 
-        <h3 className="pplat-h">Panduan per platform</h3>
+        <Acc title="Panduan per platform" hint="WordPress, Shopify, Wix, HTML biasa, Next.js">
         <div className="ptabs" role="tablist" aria-label="Platform website" onKeyDown={onTabKey}>
           {PLATFORMS.map((p) => (
             <button key={p.id} id={'ptab-' + p.id} type="button" role="tab" aria-selected={plat === p.id} aria-controls="ppanel"
@@ -384,6 +423,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
             </div>
           ) : null}
         </div>
+        </Acc>
       </section>
 
       <section className="card pstep" aria-labelledby="ps2">
@@ -421,7 +461,44 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
         <header className="pstep-h">
           <span className="pstep-no" aria-hidden="true">3</span>
           <div>
-            <h2 id="ps3">Cek pemasangan</h2>
+            <h2 id="ps3">Halaman tampil</h2>
+            <p className="hint">Atur di halaman mana tombol chat boleh muncul. Berlaku di website paling lambat sekitar 1 menit, lalu bisa diuji di pratinjau pada langkah 4.</p>
+          </div>
+        </header>
+        {pathsReady ? null : <p className="hint pstep-note">Belum aktif di database. Jalankan supabase/migrations/widget_halaman.sql di Supabase dulu.</p>}
+        <label htmlFor="p0" className="swrow">
+          <span className="swrow-t">
+            <b>Sembunyikan di checkout dan pembayaran</b>
+            <small>Tombol chat tidak menutupi tombol bayar. Dikenali otomatis dari alamat seperti /checkout, /cart, /keranjang, /pembayaran.</small>
+          </span>
+          <input id="p0" type="checkbox" disabled={!pathsReady} checked={hideCo} onChange={(e) => setHideCo(e.target.checked)} />
+        </label>
+        <div className="fgrid one" style={{ marginTop: 12 }}>
+          <div>
+            <label htmlFor="p1">Aturan tambahan</label>
+            <select id="p1" disabled={!pathsReady} value={pmode} onChange={(e) => { setPmode(e.target.value); setPerr(''); }}>
+              <option value="all">Tampil di semua halaman</option>
+              <option value="hide">Sembunyikan di halaman tertentu</option>
+              <option value="only">Tampil hanya di halaman tertentu</option>
+            </select>
+          </div>
+          {pathsReady && pmode !== 'all' ? (
+            <div>
+              <label htmlFor="p2">Alamat halaman (satu per baris)</label>
+              <textarea id="p2" className="mono" rows={4} spellCheck={false} value={ptext} onChange={(e) => { setPtext(e.target.value); setPerr(''); }} placeholder={'/akun/*\n/promo'} />
+              <p className="hint field-hint">Tulis alamat setelah nama domain. Tanda * berarti "apa saja di bawahnya": /akun/* mencakup /akun dan semua halaman di dalamnya. Tanpa * hanya cocok persis. Maksimal 20 baris. Aturan checkout di atas tetap berlaku.</p>
+            </div>
+          ) : null}
+        </div>
+        <div className="err" role="alert">{perr}</div>
+        <div className="row"><button className="btn" type="button" disabled={pbusy || !pdirty || !pathsReady} onClick={savePaths}><Busy on={pbusy} label="Menyimpan...">Simpan aturan</Busy></button></div>
+      </section>
+
+      <section className="card pstep" aria-labelledby="ps4">
+        <header className="pstep-h">
+          <span className="pstep-no" aria-hidden="true">4</span>
+          <div>
+            <h2 id="ps4">Cek pemasangan</h2>
             <p className="hint">Masukkan alamat situs tempat kode ditempel. Server akan membuka halamannya lalu memeriksa apakah kode widget sudah ada dan domainnya terdaftar.</p>
           </div>
         </header>
@@ -499,11 +576,11 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
         {res && res.url ? <SitePreview base={res.url} noFrame={!!res.noFrame} /> : null}
       </section>
 
-      <section className="card pstep" aria-labelledby="ps4">
+      <section className="card pstep" aria-labelledby="ps5">
         <header className="pstep-h">
-          <span className="pstep-no" aria-hidden="true">4</span>
+          <span className="pstep-no" aria-hidden="true">5</span>
           <div>
-            <h2 id="ps4">Link chat</h2>
+            <h2 id="ps5">Link chat</h2>
             <p className="hint">Untuk bio Instagram, Tokopedia, atau Shopee. Marketplace tidak bisa dipasangi widget, jadi taruh link ini di bio atau deskripsi toko.</p>
           </div>
         </header>
@@ -516,6 +593,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
         </div>
 
         {qr ? (
+          <Acc title="QR code" hint="Untuk dicetak di etalase atau kemasan">
           <div className="qrbox">
             <div className="qrimg">
               <svg viewBox={'0 0 ' + qsvg.total + ' ' + qsvg.total} role="img" aria-label="QR code untuk link chat" shapeRendering="crispEdges">
@@ -523,7 +601,6 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
               </svg>
             </div>
             <div className="qrinfo">
-              <h3>QR code</h3>
               <p className="hint">Untuk dicetak di etalase, kemasan, atau kartu nama. Pelanggan cukup memindai dengan kamera HP untuk langsung membuka chat. Cetak minimal sekitar 2,5 cm dan coba pindai dulu sebelum mencetak banyak.</p>
               <div className="row">
                 <button className="btn sm" type="button" onClick={downloadPng}>Unduh PNG</button>
@@ -531,6 +608,7 @@ export default function PasangTab({ sb, shop, onShopChange, fail, toast }) {
               </div>
             </div>
           </div>
+          </Acc>
         ) : null}
       </section>
     </>
