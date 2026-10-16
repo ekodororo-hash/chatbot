@@ -634,7 +634,7 @@ html{scroll-behavior:smooth}
 .mulai-st{flex:1;min-width:0}
 .mulai-st b{display:block;font-weight:550}
 .mulai-st small{display:block;color:var(--mute);font-size:13px}
-.mulai-step.done .mulai-st b{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--line)}
+.mulai-chk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .mulai-tag{flex:none;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--line);white-space:nowrap}
 .mulai-tag.a{background:var(--accent);color:var(--onaccent)}
 .mulai-chev{flex:none;width:16px;height:16px;fill:none;stroke:var(--mute);stroke-width:2;transition:transform .15s}

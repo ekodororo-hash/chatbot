@@ -166,7 +166,7 @@ export default function MulaiTab({ sb, shop }) {
               <li key={s.key} className={'mulai-step' + (done ? ' done' : '') + (current ? ' cur' : '') + (isOpen ? ' open' : '')}>
                 <button type="button" className="mulai-sh" aria-expanded={isOpen} aria-controls={'mulai-b-' + s.key}
                   onClick={() => setOpen(isOpen ? null : s.key)}>
-                  <span className="mulai-chk" aria-hidden="true">{done ? '\u2713' : current ? '\u25CF' : ''}</span>
+                  <span className="mulai-chk" aria-hidden="true">{done ? <svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg> : current ? '\u25CF' : ''}</span>
                   <span className="mulai-st">
                     <b>{(i + 1) + '. ' + s.title}</b>
                     <small>{s.sub}</small>
