@@ -378,6 +378,27 @@
     function tellFrame(type) {
       if (frame && frame.contentWindow) { try { frame.contentWindow.postMessage({ type: type, lang: siteLang() || 'id' }, '*'); } catch (e) {} }
     }
+    /* Di HP chat menutupi seluruh layar: kunci scroll halaman situs selama chat terbuka, supaya geseran di dalam chat
+       (terutama saat sudah mentok atas/bawah, atau di header dan kolom pesan) tidak ikut menggulung halaman di belakangnya.
+       Posisi scroll halaman tidak berubah dan dipulihkan persis saat chat ditutup. */
+    var lockSt = null;
+    function isMobile() { try { return window.matchMedia('(max-width:480px)').matches; } catch (e) { return false; } }
+    function lockScroll(on) {
+      var h = document.documentElement, b = document.body;
+      if (on) {
+        if (lockSt || !isMobile()) return;
+        lockSt = { h: h.style.overflow, b: b.style.overflow, o: h.style.overscrollBehavior };
+        h.style.overflow = 'hidden'; b.style.overflow = 'hidden'; h.style.overscrollBehavior = 'none';
+      } else if (lockSt) {
+        h.style.overflow = lockSt.h; b.style.overflow = lockSt.b; h.style.overscrollBehavior = lockSt.o;
+        lockSt = null;
+      }
+    }
+    // Layar berputar/berubah ukuran saat chat terbuka: kunci hanya berlaku selama chat memang menutupi layar.
+    window.addEventListener('resize', function () {
+      if (!box.classList.contains('show')) return;
+      if (isMobile()) lockScroll(true); else lockScroll(false);
+    });
     function open() {
       track('open');
       hideTip(true);
@@ -396,12 +417,14 @@
         box.appendChild(frame);
       }
       box.classList.add('show');
+      lockScroll(true);
       btn.classList.add('open');
       btn.setAttribute('aria-expanded', 'true');
       tellFrame('isengin-open');
     }
     function close() {
       box.classList.remove('show');
+      lockScroll(false);
       btn.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
       btn.focus();
