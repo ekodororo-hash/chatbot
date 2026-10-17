@@ -746,6 +746,9 @@ html{scrollbar-gutter:stable}
 .cv-send.e0{background:var(--line);color:var(--mute)}
 .cv-send.ld:disabled{opacity:.9}
 .cv-note{margin:8px 0 0}
+.cv-lock{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.cv-lock .hint{margin:0}
+.cv-lock .btn{width:100%;justify-content:center}
 @media (max-width:560px){
   .cv .m{max-width:88%}
   .cv .msgs{padding:10px;max-height:60vh}
