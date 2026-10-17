@@ -43,8 +43,8 @@ const DEMO = [
 
 const STEPS = [
   ['Isi data toko', 'Produk, harga, stok, jam buka, ongkir, dan pertanyaan yang sering muncul.', 'M3 9.5 4.5 4h15L21 9.5M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12.5V20h14v-7.5M10 20v-4.5h4V20'],
-  ['Pasang di website', 'Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.', 'M3 5.5h18v13H3zM3 9.5h18M6.5 7.5h.01M9.5 7.5h.01'],
-  ['Ambil alih kapan saja', 'Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.', 'M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7']
+  ['Pasang di website', 'Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.', 'm8 8-4 4 4 4m8-8 4 4-4 4m-2.5-11-3 14'],
+  ['Ambil alih kapan saja', 'Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.', 'M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2ZM18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1']
 ];
 
 const CONTROL = [
