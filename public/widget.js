@@ -213,6 +213,7 @@
 
     var css = document.createElement('style');
     css.textContent =
+      '#isengin-chat-btn,#isengin-chat-box button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none}' +
       '#isengin-chat-btn{position:fixed;' + side + ':' + c.ox + 'px;bottom:' + c.oy + 'px;min-width:' + px + 'px;height:' + px + 'px;' +
       'padding:' + (c.label ? '0 20px' : '0') + ';border-radius:' + radius + ';border:0;display:flex;align-items:center;justify-content:center;gap:8px;' +
       'background:' + color + ';color:' + onColor + ';font-size:' + iconPx + 'px;line-height:1;cursor:pointer;z-index:2147483000;' +
