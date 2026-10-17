@@ -195,7 +195,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [msgs]);
+  }, [msgs, c.status]);
 
   async function setStatus(s, silent) {
     const patch = { status: s };
@@ -315,6 +315,9 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
               </Fragment>
             );
           })}
+          {loaded && c.status === 'selesai' ? (
+            <div className="cv-day"><span>{closedByCustomer ? 'Pelanggan mengakhiri percakapan' : 'Percakapan ditandai selesai'}</span></div>
+          ) : null}
         </div>
         {closedByCustomer ? (
           <p className="hint cv-note">Pelanggan sudah mengakhiri percakapan ini. Kamu bisa membalas lagi setelah pelanggan mengirim pesan baru.</p>
