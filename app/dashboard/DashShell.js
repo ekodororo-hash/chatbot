@@ -261,7 +261,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
         <div className={'scrim' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(false)} aria-hidden="true" />
 
         <aside id="side" className={'side' + (menuOpen ? ' open' : '')} aria-label="Menu dashboard">
-          <span className="brand">{shop ? shop.name : (<>Asisten<span>Toko</span></>)}</span>
+          <span className="brand">Asisten<span>Toko</span></span>
           {showNav && (
             <div className="shopbox">
               {shops.length > 1 ? (
