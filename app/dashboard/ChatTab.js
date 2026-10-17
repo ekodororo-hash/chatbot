@@ -288,7 +288,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
               <Busy on={pending === 'selesai'} label="Menyimpan...">Tandai selesai</Busy>
             </button>
           )}
-          {c.status !== 'bot' && (
+          {c.status === 'human' && (
             <button className="btn ghost sm" type="button" disabled={!!pending} onClick={() => setStatus('bot')}>
               <Busy on={pending === 'bot'} label="Menyimpan...">Kembalikan ke bot</Busy>
             </button>
@@ -318,6 +318,13 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
         </div>
         {closedByCustomer ? (
           <p className="hint cv-note">Pelanggan sudah mengakhiri percakapan ini. Kamu bisa membalas lagi setelah pelanggan mengirim pesan baru.</p>
+        ) : c.status !== 'human' ? (
+          <div className="cv-lock">
+            <p className="hint">{c.status === 'selesai' ? 'Percakapan ini ditandai selesai. Ambil alih kalau kamu mau membalas lagi.' : 'Percakapan ini sedang dijawab bot. Ambil alih kalau kamu mau membalas sendiri; bot berhenti menjawab sampai kamu mengembalikannya.'}</p>
+            <button className="btn" type="button" disabled={!!pending} onClick={() => setStatus('human')}>
+              <Busy on={pending === 'human'} label="Mengambil alih...">Ambil alih percakapan</Busy>
+            </button>
+          </div>
         ) : (
           <>
             <form className="cv-compose" onSubmit={send} ref={formRef} autoComplete="off">
@@ -337,7 +344,6 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
                 </div>
               ) : null}
             </form>
-            {c.status === 'bot' ? <p className="hint cv-note">Membalas dari sini akan mengambil alih percakapan dari bot.</p> : null}
           </>
         )}
       </div>
