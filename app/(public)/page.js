@@ -7,6 +7,7 @@ import settings from '@/lib/settings';
 export const revalidate = 60;
 
 const Check = () => <svg className="ck" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>;
+const Ic = ({ d }) => <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 const rp = (n) => 'Rp' + Number(n).toLocaleString('id-ID');
 const chat = (n) => Number(n).toLocaleString('id-ID') + ' balasan AI / bulan';
 
@@ -41,9 +42,9 @@ const DEMO = [
 ];
 
 const STEPS = [
-  ['Isi data toko', 'Produk, harga, stok, jam buka, ongkir, dan pertanyaan yang sering muncul.'],
-  ['Pasang di website', 'Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.'],
-  ['Ambil alih kapan saja', 'Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.']
+  ['Isi data toko', 'Produk, harga, stok, jam buka, ongkir, dan pertanyaan yang sering muncul.', 'M3 9.5 4.5 4h15L21 9.5M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12.5V20h14v-7.5M10 20v-4.5h4V20'],
+  ['Pasang di website', 'Tempel satu baris kode, atau bagikan link chat ke bio Instagram dan toko online.', 'M3 5.5h18v13H3zM3 9.5h18M6.5 7.5h.01M9.5 7.5h.01'],
+  ['Ambil alih kapan saja', 'Lihat semua percakapan, balas sendiri, lalu kembalikan ke asisten.', 'M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7']
 ];
 
 const CONTROL = [
@@ -106,8 +107,8 @@ export default async function Beranda() {
           <div className="lp-w">
             <h2 id="cara">Tiga langkah sampai AI menjawab</h2>
             <ol className="lp-steps">
-              {STEPS.map(([t, d], i) => (
-                <li key={t}><span className="n">{i + 1}</span><h3>{t}</h3><p>{d}</p></li>
+              {STEPS.map(([t, d, ic], i) => (
+                <li key={t}><span className="ic"><Ic d={ic} /></span><span className="lbl">{'Langkah ' + (i + 1)}</span><h3>{t}</h3><p>{d}</p></li>
               ))}
             </ol>
           </div>

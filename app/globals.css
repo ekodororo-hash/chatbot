@@ -195,10 +195,11 @@ iframe.preview{width:100%;height:520px;border:1px solid var(--line);border-radiu
 .lp-band h2,.lp-sec h2{font-size:clamp(28px,4.4vw,38px);letter-spacing:-.025em;line-height:1.1;margin:0 0 32px;font-weight:700}
 .lp-steps{list-style:none;margin:0;padding:0;display:grid;gap:20px}
 @media (min-width:760px){.lp-steps{grid-template-columns:repeat(3,1fr);gap:24px}}
-.lp-steps li{background:var(--bg);border-radius:20px;padding:28px}
-.lp-steps .n{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--onaccent);display:grid;place-items:center;font-weight:700;margin-bottom:16px}
-.lp-steps h3{font-size:20px;margin:0 0 6px}
-.lp-steps p{margin:0;color:var(--mute)}
+.lp-steps li{background:var(--bg);border-radius:24px;padding:32px;display:flex;flex-direction:column;gap:6px}
+.lp-steps .ic{width:60px;height:60px;border-radius:18px;background:var(--accent);color:var(--onaccent);display:grid;place-items:center;margin-bottom:18px}
+.lp-steps .lbl{font-size:14px;font-weight:700;color:var(--accent)}
+.lp-steps h3{font-size:22px;margin:0;letter-spacing:-.01em}
+.lp-steps p{margin:0;color:var(--mute);line-height:1.55}
 .lp-ctrl{display:grid;gap:36px;margin:0}
 @media (min-width:760px){.lp-ctrl{grid-template-columns:repeat(2,1fr);gap:44px 40px}}
 @media (min-width:1000px){.lp-ctrl{grid-template-columns:repeat(3,1fr)}}
@@ -228,6 +229,9 @@ iframe.preview{width:100%;height:520px;border:1px solid var(--line);border-radiu
 .foot nav a{padding:8px 0}
 
 /* ===== Login ===== */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--panel);border:1px solid var(--line);margin-bottom:20px}
+.seg button{border:0;background:none;color:var(--mute);font:inherit;font-weight:500;padding:9px;border-radius:9px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--onaccent)}
 .auth{min-height:100vh;display:grid}
 @media (min-width:900px){.auth{grid-template-columns:1fr 1fr}}
 .auth-art{display:none;background:var(--accent);color:var(--onaccent);padding:44px 56px;flex-direction:column;justify-content:space-between;gap:32px}
