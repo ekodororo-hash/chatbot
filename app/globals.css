@@ -246,6 +246,8 @@ iframe.preview{width:100%;height:520px;border:1px solid var(--line);border-radiu
 .auth-form{display:flex;flex-direction:column;padding:18px 20px 32px}
 .auth-form .brand{display:inline-block}
 .auth-box{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:400px;width:100%;margin:0 auto;padding:24px 0}
+.auth-back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;min-height:44px;margin:0 0 12px -4px;padding:0 10px 0 6px;border-radius:10px;font-size:14px;font-weight:600;color:var(--mute);text-decoration:none}
+.auth-back:hover{color:var(--ink);background:color-mix(in srgb,var(--line) 50%,transparent)}
 .auth-box h1{font-size:36px;margin:0 0 6px;letter-spacing:-.03em;font-weight:800}
 .auth-box .sub{margin:0 0 24px;color:var(--mute)}
 .auth label{font-size:14px;font-weight:600;color:var(--ink);margin:16px 0 6px}

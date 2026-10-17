@@ -86,6 +86,10 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
       <div className="auth-form">
         <Link className="brand" href="/">Asisten<span>Toko</span></Link>
         <div className="auth-box">
+          <Link className="auth-back" href="/">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
+            Kembali
+          </Link>
           <h1>{reg ? 'Buat akun' : 'Masuk ke dashboard'}</h1>
           <p className="sub">{reg ? 'Daftar, lalu isi data tokomu.' : 'Lihat percakapan dan atur asisten AI tokomu.'}</p>
 
