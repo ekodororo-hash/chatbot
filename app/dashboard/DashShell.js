@@ -14,6 +14,12 @@ import Onboarding from './Onboarding';
 import ExpiryBanner from './ExpiryBanner';
 import { useRealtime } from './useRealtime';
 
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw-dashboard.js', { scope: '/dashboard' }).catch(() => {});
+  });
+}
+
 const TABS = [
   ['/dashboard/mulai', 'Mulai di sini', 'mulai'],
   ['/dashboard/ringkasan', 'Ringkasan', 'ringkasan'],
