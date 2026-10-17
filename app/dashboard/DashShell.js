@@ -249,7 +249,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
           <button type="button" aria-label="Buka menu" aria-expanded={menuOpen} aria-controls="side" onClick={() => setMenuOpen(true)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
-          <Link className="brand" href="/">Asisten<span>Toko</span></Link>
+          <span className="brand">{shop ? shop.name : (<>Asisten<span>Toko</span></>)}</span>
           <span className="grow"></span>
           {humanCount || openCount ? (
             <Link className={'mbar-notif' + (humanCount ? '' : ' calm')} href="/dashboard" title={humanCount ? 'Percakapan butuh admin' : 'Percakapan belum selesai'} aria-label={humanCount ? humanCount + ' percakapan butuh admin' : openCount + ' percakapan belum selesai'}>
@@ -261,7 +261,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
         <div className={'scrim' + (menuOpen ? ' on' : '')} onClick={() => setMenuOpen(false)} aria-hidden="true" />
 
         <aside id="side" className={'side' + (menuOpen ? ' open' : '')} aria-label="Menu dashboard">
-          <Link className="brand" href="/">Asisten<span>Toko</span></Link>
+          <span className="brand">{shop ? shop.name : (<>Asisten<span>Toko</span></>)}</span>
           {showNav && (
             <div className="shopbox">
               {shops.length > 1 ? (
