@@ -320,7 +320,7 @@ function ConvView({ sb, shop, conv, onBack, onMakeFaq, fail, toast, refreshHuman
           <p className="hint cv-note">Pelanggan sudah mengakhiri percakapan ini. Kamu bisa membalas lagi setelah pelanggan mengirim pesan baru.</p>
         ) : c.status !== 'human' ? (
           <div className="cv-lock">
-            <p className="hint">{c.status === 'selesai' ? 'Percakapan ini ditandai selesai. Ambil alih kalau kamu mau membalas lagi.' : 'Percakapan ini sedang dijawab bot. Ambil alih kalau kamu mau membalas sendiri; bot berhenti menjawab sampai kamu mengembalikannya.'}</p>
+            <p className="hint">{c.status === 'selesai' ? 'Percakapan ini sudah ditandai selesai. Ambil alih untuk membalas lagi.' : 'Percakapan ini sedang dijawab bot. Ambil alih untuk membalas sendiri. Selama kamu mengambil alih, bot tidak akan menjawab.'}</p>
             <button className="btn" type="button" disabled={!!pending} onClick={() => setStatus('human')}>
               <Busy on={pending === 'human'} label="Mengambil alih...">Ambil alih percakapan</Busy>
             </button>
