@@ -19,28 +19,53 @@ export function Contact() {
 export function LegalFooter() {
   return (
     <footer className="foot">
-      Asisten Toko, asisten AI untuk UMKM. <Link href="/syarat">Syarat dan Ketentuan</Link> · <Link href="/privasi">Kebijakan Privasi</Link>
+      <Link className="brand" href="/">Asisten<span>Toko</span></Link>
+      <p>Asisten AI untuk UMKM</p>
+      <nav aria-label="Dokumen hukum">
+        <Link href="/syarat">Syarat dan Ketentuan</Link>
+        <Link href="/privasi">Kebijakan Privasi</Link>
+      </nav>
     </footer>
   );
 }
 
-export default function LegalPage({ title, children }) {
+// active: 'syarat' atau 'privasi'. toc: daftar [id, judul] untuk menu samping (id sama dengan id pada h2).
+// ringkas: poin "Versi singkat" di atas halaman, hanya untuk membantu membaca.
+export default function LegalPage({ title, active, toc = [], ringkas = [], children }) {
   return (
-    <>
-      <header className="top">
+    <div className="pub">
+      <header className="lp-w lp-nav">
         <Link className="brand" href="/">Asisten<span>Toko</span></Link>
         <span className="grow"></span>
         <Link className="btn ghost sm" href="/login">Masuk</Link>
         <Link className="btn sm" href="/login#daftar">Daftar</Link>
       </header>
-      <main className="legal">
-        <article>
+      <main className="legal-wrap">
+        <aside className="legal-side">
+          <nav className="legal-tabs" aria-label="Pilih dokumen">
+            <Link href="/syarat" aria-current={active === 'syarat' ? 'page' : undefined}>Syarat</Link>
+            <Link href="/privasi" aria-current={active === 'privasi' ? 'page' : undefined}>Privasi</Link>
+          </nav>
+          {toc.length ? (
+            <nav className="legal-toc" aria-label="Isi halaman">
+              {toc.map(([id, t]) => <a key={id} href={'#' + id}>{t}</a>)}
+            </nav>
+          ) : null}
+        </aside>
+        <article className="legal">
           <h1>{title}</h1>
           <p className="hint">Terakhir diperbarui: {LEGAL.updated}</p>
+          {ringkas.length ? (
+            <div className="legal-sum">
+              <b>Versi singkat</b>
+              <ul>{ringkas.map((t) => <li key={t}>{t}</li>)}</ul>
+              <small>Ringkasan ini membantu membaca. Yang berlaku adalah isi lengkap di bawah.</small>
+            </div>
+          ) : null}
           {children}
         </article>
       </main>
       <LegalFooter />
-    </>
+    </div>
   );
 }

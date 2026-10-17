@@ -69,7 +69,7 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
   }
 
   return (
-    <div className="auth">
+    <div className="auth pub">
       <aside className="auth-art" aria-hidden="true">
         <Link className="brand" href="/" tabIndex={-1}>Asisten<span>Toko</span></Link>
         <div>
@@ -87,7 +87,7 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
         <Link className="brand" href="/">Asisten<span>Toko</span></Link>
         <div className="auth-box">
           <h1>{reg ? 'Buat akun' : 'Masuk ke dashboard'}</h1>
-          <p className="sub">{reg ? 'Daftar, lalu isi data tokomu.' : 'Masuk untuk melihat percakapan dan mengatur asisten AI.'}</p>
+          <p className="sub">{reg ? 'Daftar, lalu isi data tokomu.' : 'Lihat percakapan dan atur asisten AI tokomu.'}</p>
 
           <div className="seg" role="group" aria-label="Pilih masuk atau daftar">
             <button type="button" aria-pressed={!reg} onClick={() => mode(false)}>Masuk</button>
@@ -99,10 +99,9 @@ export default function LoginForm({ supabaseUrl, supabaseAnonKey, error }) {
             <input id="e" type="email" autoComplete="email" inputMode="email" placeholder="nama@tokomu.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             <label htmlFor="p">Password</label>
             <div className="pw">
-              <input id="p" type={showPw ? 'text' : 'password'} autoComplete={reg ? 'new-password' : 'current-password'} minLength={8} required value={pass} onChange={(e) => setPass(e.target.value)} />
+              <input id="p" type={showPw ? 'text' : 'password'} placeholder="Minimal 8 karakter" autoComplete={reg ? 'new-password' : 'current-password'} minLength={8} required value={pass} onChange={(e) => setPass(e.target.value)} />
               <button type="button" onClick={() => setShowPw((v) => !v)} aria-pressed={showPw}>{showPw ? 'Sembunyikan' : 'Tampilkan'}</button>
             </div>
-            {reg && <p className="field-hint">Minimal 8 karakter.</p>}
             {reg && <p className="field-hint">Dengan mendaftar, kamu menyetujui <Link href="/syarat" target="_blank">Syarat dan Ketentuan</Link> serta <Link href="/privasi" target="_blank">Kebijakan Privasi</Link>.</p>}
             <div className={'err' + (ok ? ' ok' : '')} role="alert">{msg}</div>
             <button className="btn lg" type="submit" disabled={busy || !!error} style={{ width: '100%', marginTop: 12 }}>
