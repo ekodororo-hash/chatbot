@@ -153,6 +153,7 @@
       delay: num(c.delay, 0, 30, 0),
       anim: anim,
       animate: anim !== 'tanpa',
+      gaya: pick(c.gaya, ['neo'], ''),
       hideCheckout: bool(c.hideCheckout, true),
       pathMode: pick(c.pathMode, ['hide', 'only'], 'hide'),
       paths: pathList(c.paths)
@@ -194,8 +195,44 @@
     } catch (e) {}
   }
 
+  /* Gaya Neo (toko isengin.site, env ISENGIN_BOT): sama dengan tema Neo di isengin-link. Salinan palet ada di lib/gayaNeo.js, ubah keduanya sekaligus. */
+  var NEO = { navy: '#1f2255', yel: '#ffd23f', red: '#ff5a43', cream: '#fffbe8', mut: '#4a4d7a', head: 'Bungee,"Arial Black",Impact,sans-serif', body: '"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' };
+  function neoCss(c, side, px) {
+    var N = NEO, B = '3px solid ' + N.navy;
+    return '' +
+      '#isengin-chat-btn{box-sizing:border-box;background:' + N.yel + ';color:' + N.navy + ';border:' + B + ';box-shadow:4px 4px 0 ' + N.navy + ';font-family:' + N.body + ';transition:transform .1s,box-shadow .1s,background .1s}' +
+      '#isengin-chat-btn:hover{background:' + N.cream + '}' +
+      '#isengin-chat-btn:active{transform:translate(3px,3px);box-shadow:0 0 0 ' + N.navy + '}' +
+      '#isengin-chat-btn.open{background:' + N.red + ';color:#fff}' +
+      '#isengin-chat-btn span.l{font-family:' + N.head + ';font-size:14px;font-weight:400;letter-spacing:.02em;text-transform:uppercase}' +
+      '#isengin-chat-btn:focus-visible,#isengin-chat-x:focus-visible,#isengin-chat-tipx:focus-visible{outline:3px dashed ' + N.navy + ';outline-offset:3px;box-shadow:4px 4px 0 ' + N.navy + '}' +
+      '#isengin-chat-box{box-sizing:border-box;background:' + N.cream + ';border:' + B + ';border-radius:22px;box-shadow:6px 6px 0 ' + N.navy + '}' +
+      '#isengin-chat-x{box-sizing:border-box;top:17px;right:12px;width:34px;height:34px;background:' + N.red + ';color:#fff;border:' + B + ';box-shadow:2px 2px 0 ' + N.navy + ';font-size:13px;font-weight:800;line-height:1;padding:0;transition:transform .1s,box-shadow .1s}' +
+      '#isengin-chat-x:active{transform:translate(2px,2px);box-shadow:none}' +
+      '#isengin-chat-ld{background:' + N.yel + ';gap:14px}' +
+      '#isengin-chat-ld i{width:20px;height:20px;background:' + N.red + ';border:' + B + ';box-shadow:3px 3px 0 ' + N.navy + ';opacity:1;animation-name:isengin-neo-dot}' +
+      '#isengin-chat-ld i:nth-child(2){background:' + N.cream + '}' +
+      '@keyframes isengin-neo-dot{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}' +
+      '#isengin-chat-badge{top:-6px;right:-6px;width:16px;height:16px;background:' + N.red + ';border:2px solid ' + N.navy + ';box-shadow:none}' +
+      '#isengin-chat-tip{background:' + N.cream + ';color:' + N.navy + ';border:' + B + ';border-radius:16px;box-shadow:4px 4px 0 ' + N.navy + ';font:600 14px/1.4 ' + N.body + ';padding:10px 34px 10px 14px}' +
+      '#isengin-chat-tipx{top:5px;right:5px;color:' + N.navy + ';font-size:14px;font-weight:800}' +
+      '@media (prefers-color-scheme:dark){#isengin-chat-ld{background:' + N.yel + '}}' +
+      '@media (max-width:480px){#isengin-chat-box{border:0;border-radius:0;box-shadow:none}#isengin-chat-x{top:17px;right:12px}}' +
+      '@media (prefers-reduced-motion:reduce){#isengin-chat-btn,#isengin-chat-x{transition:none}#isengin-chat-ld i{animation:none}}';
+  }
+  // Font Bungee dan Plus Jakarta Sans untuk gaya Neo. Dimuat sekali per halaman; kalau gagal (diblokir), huruf cadangan sistem dipakai.
+  function neoFonts() {
+    if (document.getElementById('isengin-neo-font')) return;
+    var l = document.createElement('link');
+    l.id = 'isengin-neo-font'; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Bungee&family=Plus+Jakarta+Sans:wght@500;600;800&display=swap';
+    document.head.appendChild(l);
+  }
+
   function build(c) {
-    var color = c.color;
+    var neo = c.gaya === 'neo';
+    // Gaya Neo memakai warna sendiri (navy); warna aksen toko tidak dipakai. Dipakai juga untuk cincin animasi denyut dan fokus.
+    var color = neo ? NEO.navy : c.color;
     var r = parseInt(color.slice(1, 3), 16), g = parseInt(color.slice(3, 5), 16), b = parseInt(color.slice(5, 7), 16);
     var onColor = (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#111111' : '#ffffff';
     var side = c.pos === 'left' ? 'left' : 'right';
@@ -251,8 +288,10 @@
       '@media (max-width:480px){#isengin-chat-box{right:0;left:0;top:0;bottom:0;width:auto;max-width:none;height:auto;border-radius:0}' +
       '#isengin-chat-btn.open,#isengin-chat-tip{display:none!important}}' +
       // Animasi muncul sesuai pilihan toko, sekali saja. Dimatikan kalau pengunjung minta kurangi gerakan.
-      animCss(c.anim, '#isengin-chat-btn.isengin-in', 'isengin', c.pos === 'left' ? -1 : 1, c.color);
+      animCss(c.anim, '#isengin-chat-btn.isengin-in', 'isengin', c.pos === 'left' ? -1 : 1, color) +
+      (neo ? neoCss(c, side, px) : '');
     document.head.appendChild(css);
+    if (neo) neoFonts();
 
     var btn = document.createElement('button');
     btn.id = 'isengin-chat-btn';

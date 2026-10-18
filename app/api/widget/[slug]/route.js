@@ -1,5 +1,6 @@
 import supabase from '@/lib/supabase';
 import widgetConfig from '@/lib/widgetConfig';
+import gayaNeo from '@/lib/gayaNeo';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,9 @@ export async function GET(request, context) {
     if (!r.data) return reply({ error: 'Bot tidak ditemukan' }, 404, 'public, max-age=60');
     // Logo (data URL, bisa puluhan KB) hanya dipakai halaman chat, jadi tidak ikut dikirim ke widget.
     const { logo, hours, eta, bubble, ...cfg } = widgetConfig.clean(r.data);
-    return reply(cfg, 200, 'public, max-age=60, s-maxage=60');
+    // Toko isengin.site (env ISENGIN_BOT): widget.js menampilkan tombol dan jendela chat bergaya Neo.
+    const gaya = gayaNeo.forShop(r.data);
+    return reply(gaya ? { ...cfg, gaya } : cfg, 200, 'public, max-age=60, s-maxage=60');
   } catch (e) {
     console.error(e);
     return reply({ error: 'Terjadi gangguan' }, 500, 'no-store');

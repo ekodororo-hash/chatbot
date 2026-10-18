@@ -4,6 +4,7 @@ import TEMPLATE from '@/lib/chatTemplate';
 import waNumber from '@/lib/waNumber';
 import widgetConfig from '@/lib/widgetConfig';
 import gayaPortal from '@/lib/gayaPortal';
+import gayaNeo from '@/lib/gayaNeo';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,14 @@ export async function GET(request, context) {
   };
   // Toko layanan sendiri: balasan tampil seperti portal (tombol WhatsApp, ikon tautan). Toko lain tidak berubah.
   cfg.portal = await gayaPortal.aktif(supabase.getAdmin(), shop);
-  const html = TEMPLATE.replace('__CONFIG__', () => safeJson(cfg));
+  // Toko isengin.site (env ISENGIN_BOT): tampilan Neo, sama dengan tema Neo di isengin-link. Toko lain tidak berubah.
+  const neo = gayaNeo.forShop(shop) === 'neo';
+  if (neo) cfg.gaya = 'neo';
+  let html = TEMPLATE.replace('__CONFIG__', () => safeJson(cfg));
+  if (neo) html = gayaNeo.terapkan(html);
+  const csp =
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; " +
+    "base-uri 'none'; form-action 'none'; " + domains.frameAncestors(shop.allowed_domains);
 
   return new Response(html, {
     status: 200,
@@ -70,9 +78,7 @@ export async function GET(request, context) {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy':
-        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; " +
-        "base-uri 'none'; form-action 'none'; " + domains.frameAncestors(shop.allowed_domains)
+      'Content-Security-Policy': neo ? gayaNeo.csp(csp) : csp
     }
   });
 }
