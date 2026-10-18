@@ -254,9 +254,12 @@ t('toko isengin milik admin layanan (ADMIN_EMAILS) tetap otak isengin, bukan EMA
 t('handleMessage toko isengin: [[HUMAN]] menyerahkan ke admin; pertanyaan tentang admin tidak', async () => {
   geminiCalls = []; alerts = [];
   geminiImpl = say('Baik, saya teruskan ke admin ya. [[HUMAN]]');
-  const r = await chat(isgShop(), 'Pro saya belum aktif padahal sudah bayar');
+  const r0 = await chat(isgShop(), 'Pro saya belum aktif padahal sudah bayar');
+  assert.strictEqual(conv(r0).status, 'bot', 'belum ada konfirmasi pelanggan: ditawarkan dulu, tidak langsung diteruskan');
+  assert.strictEqual(alerts.filter(a => a.reason === 'handoff').length, 0);
+  const r = await chat(isgShop(), 'ya', r0);
   assert.strictEqual(conv(r).status, 'human');
-  assert.deepStrictEqual(alerts.map(a => a.reason), ['handoff']);
+  assert.deepStrictEqual(alerts.map(a => a.reason).filter(x => x === 'handoff'), ['handoff']);
   geminiCalls = []; alerts = [];
   geminiImpl = say('Admin menyetujui pengajuan centang secara manual.');
   const r2 = await chat(isgShop(), 'Apakah admin yang menyetujui centang?');
