@@ -275,16 +275,47 @@ t('alur dasar: percakapan baru, bot menjawab, system prompt memuat data toko', a
 });
 t('handoff: status human, bot berhenti menjawab, admin terlihat via polling', async () => {
   const s = seedShop(); geminiCalls = []; geminiImpl = reply('Saya sambungkan ke admin ya.', true);
-  const r1 = await bot.handleMessage({ slug: s.slug, text: 'barang rusak' });
+  const q = await bot.handleMessage({ slug: s.slug, text: 'tolong hubungkan ke admin' });
+  assert.strictEqual(q.status, 'bot', 'permintaan langsung pun dikonfirmasi dulu');
+  const r1 = await bot.handleMessage({ slug: s.slug, conversationId: q.conversationId, token: q.token, text: 'ya' });
   assert.strictEqual(r1.status, 'human');
   const conv = db.conversations.find(c => c.id === r1.conversationId);
-  assert.strictEqual(conv.unanswered, true); assert.strictEqual(conv.last_question, 'barang rusak');
+  assert.strictEqual(conv.unanswered, true); assert.strictEqual(conv.last_question, 'ya');
   geminiCalls = [];
   const r2 = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'halo?', after: r1.messages[r1.messages.length - 1].id });
   assert.strictEqual(geminiCalls.length, 0); assert.deepStrictEqual(r2.messages.map(m => m.role), ['customer']);
   db.messages.push({ id: db._mid++, conversation_id: conv.id, shop_id: s.id, role: 'admin', content: 'Halo kak', created_at: new Date().toISOString() });
   const p = await bot.getMessages({ conversationId: conv.id, token: conv.visitor_token, after: r2.messages[0].id });
   assert.deepStrictEqual(p.messages.map(m => m.role), ['admin']); assert.strictEqual(p.status, 'human');
+});
+t('handoff butuh konfirmasi: model menandai handoff tapi pelanggan tidak minta -> ditawarkan dulu, tidak diteruskan', async () => {
+  const s = seedShop(); geminiImpl = reply('Saya teruskan ke admin ya.', true);
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'webnya mencurigakan' });
+  assert.strictEqual(r1.status, 'bot');
+  const bots = r1.messages.filter(m => m.role === 'bot');
+  assert.ok(/Mau saya sambungkan ke admin/.test(bots[0].content) && !/teruskan/.test(bots[0].content));
+  // pelanggan menolak: tetap bot, tidak ditawari lagi
+  geminiImpl = reply('Saya teruskan ke admin ya.', true);
+  const r2 = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'ngga skip' });
+  assert.strictEqual(r2.status, 'bot');
+  assert.ok(!/Mau saya sambungkan/.test(r2.messages.filter(m => m.role === 'bot').pop().content));
+});
+t('handoff butuh konfirmasi: setelah ditawari lalu pelanggan menjawab "ya" baru diteruskan', async () => {
+  const s = seedShop(); geminiImpl = reply('Saya teruskan ke admin ya.', true);
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'barang rusak' });
+  assert.strictEqual(r1.status, 'bot');
+  const r2 = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'ya' });
+  assert.strictEqual(r2.status, 'human');
+});
+t('handoff butuh konfirmasi: permintaan langsung "hubungi admin" juga ditanya dulu, dan "ya" di pesan pertama tidak meneruskan', async () => {
+  const s = seedShop(); geminiImpl = reply('Baik.', false);
+  const r0 = await bot.handleMessage({ slug: s.slug, text: 'ya' });
+  assert.strictEqual(r0.status, 'bot');
+  const r1 = await bot.handleMessage({ slug: s.slug, text: 'saya mau bicara dengan admin' });
+  assert.strictEqual(r1.status, 'bot');
+  assert.ok(/Mau saya sambungkan ke admin/.test(r1.messages.filter(m => m.role === 'bot').pop().content));
+  const r2 = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'ya mau' });
+  assert.strictEqual(r2.status, 'human');
 });
 t('pesanan menandai flag; selesai dibuka lagi oleh pesan baru', async () => {
   const s = seedShop(); geminiImpl = reply('Kirim alamat ya', false, true);
@@ -325,19 +356,19 @@ t('bot dimatikan: langsung ke admin', async () => {
   const r = await bot.handleMessage({ slug: s.slug, text: 'halo' });
   assert.strictEqual(r.status, 'human'); assert.strictEqual(geminiCalls.length, 0);
 });
-t('Gemini error atau keluaran rusak: dicoba ulang, gangguan pertama tetap dipegang bot, berturut-turut baru ke admin', async () => {
+t('Gemini error atau keluaran rusak: dicoba ulang, gangguan pertama tetap dipegang bot, berturut-turut tetap tidak otomatis ke admin', async () => {
   const s = seedShop(); geminiCalls = []; geminiImpl = async () => { throw new Error('boom'); };
   const oldErr = console.error; console.error = () => {};
   const r1 = await bot.handleMessage({ slug: s.slug, text: 'halo' });
   assert.strictEqual(geminiCalls.length, 2, 'dicoba ulang sekali');
   assert.notStrictEqual(r1.status, 'human'); assert.ok(/gangguan/.test(r1.messages[1].content));
   const r1b = await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'halo lagi' });
-  assert.strictEqual(r1b.status, 'human');
+  assert.notStrictEqual(r1b.status, 'human');
   const s2 = seedShop(); geminiImpl = async () => '{"reply":"ini terpotong';
   const r2 = await bot.handleMessage({ slug: s2.slug, text: 'halo' });
   const r2b = await bot.handleMessage({ slug: s2.slug, conversationId: r2.conversationId, token: r2.token, text: 'halo' });
   console.error = oldErr;
-  assert.strictEqual(r2b.status, 'human');
+  assert.notStrictEqual(r2b.status, 'human');
   // gagal sekali lalu berhasil pada percobaan ulang: pelanggan tidak merasakan gangguan
   const s3 = seedShop(); let k = 0; geminiImpl = async () => (k++ === 0 ? (() => { throw new Error('429'); })() : JSON.stringify({ reply: 'Ada kak', handoff: false, order: false }));
   console.error = () => {};
@@ -530,11 +561,13 @@ t('notifikasi: handoff dikabari ke Telegram admin, dibatasi sekali per 15 menit 
   const calls = []; const realFetch = global.fetch;
   global.fetch = async (url, opt) => { calls.push({ url, body: JSON.parse(opt.body) }); return { ok: true, json: async () => ({ ok: true }) }; };
   try {
-    const r1 = await bot.handleMessage({ slug: s.slug, text: 'mau komplain' });
+    const q0 = await bot.handleMessage({ slug: s.slug, text: 'mau bicara dengan admin' });
+    assert.strictEqual(calls.length, 0, 'belum konfirmasi: admin belum dikabari');
+    const r1 = await bot.handleMessage({ slug: s.slug, conversationId: q0.conversationId, token: q0.token, text: 'iya boleh' });
     assert.strictEqual(calls.length, 1);
     assert.ok(calls[0].url.includes('/bot123:TOKEN/sendMessage'));
     assert.strictEqual(calls[0].body.chat_id, '777');
-    assert.ok(calls[0].body.text.includes('Butuh admin') && calls[0].body.text.includes('mau komplain'));
+    assert.ok(calls[0].body.text.includes('Butuh admin') && calls[0].body.text.includes('iya boleh'));
     // pesan lanjutan di percakapan yang sudah dipegang admin: belum 15 menit, tidak dikabari lagi
     await bot.handleMessage({ slug: s.slug, conversationId: r1.conversationId, token: r1.token, text: 'halo?' });
     assert.strictEqual(calls.length, 1);
@@ -568,7 +601,8 @@ t('notifikasi: kegagalan kirim tidak mengganggu balasan ke pelanggan', async () 
   const realFetch = global.fetch; const oldErr = console.error; console.error = () => {};
   global.fetch = async () => { throw new Error('jaringan putus'); };
   try {
-    const r = await bot.handleMessage({ slug: s.slug, text: 'komplain' });
+    const q1 = await bot.handleMessage({ slug: s.slug, text: 'hubungi admin' });
+    const r = await bot.handleMessage({ slug: s.slug, conversationId: q1.conversationId, token: q1.token, text: 'ya' });
     assert.strictEqual(r.status, 'human');
     assert.ok(r.messages.some(m => m.role === 'bot'));
   } finally { global.fetch = realFetch; console.error = oldErr; }
