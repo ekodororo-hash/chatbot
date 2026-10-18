@@ -1,6 +1,8 @@
 import supabase from '@/lib/supabase';
 import widgetConfig from '@/lib/widgetConfig';
 import gayaNeo from '@/lib/gayaNeo';
+import visitor from '@/lib/visitor';
+import statId from '@/lib/statId';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +37,8 @@ export async function GET(request, context) {
   }
 }
 
-// Pencatatan statistik widget: kind "view" (tombol tampil), "open" (chat dibuka), atau "wa" (klik Lanjut di WhatsApp). Dikirim widget.js sebagai
+// Pencatatan statistik widget: kind "view" (tombol tampil), "open" (chat dibuka), atau "wa" (klik Lanjut di WhatsApp).
+// Tiap jenis dihitung 1 kali per hari untuk 1 IP + 1 browser (lihat lib/statId.js). Dikirim widget.js sebagai
 // text/plain supaya tidak memicu preflight. Gagal mencatat tidak boleh mengganggu situs klien, jadi selalu 204.
 export async function POST(request, context) {
   const { slug: raw } = await context.params;
@@ -49,7 +52,11 @@ export async function POST(request, context) {
     const sb = supabase.getAdmin();
     const r = await sb.from('shops').select('id').eq('slug', slug).maybeSingle();
     if (r.error || !r.data) return empty();
-    await sb.rpc('widget_stat_add', { sid: r.data.id, kind });
+    const { ip } = visitor.visitorFromHeaders(request.headers);
+    const vid = statId.statVisitorId(ip, request.headers.get('user-agent'));
+    const res = await sb.rpc('widget_stat_add', { sid: r.data.id, kind, vid });
+    // Migrasi widget_statistik_unik.sql belum dijalankan (fungsi 3 argumen belum ada): pakai versi lama supaya statistik tetap jalan.
+    if (res.error && res.error.code === 'PGRST202') await sb.rpc('widget_stat_add', { sid: r.data.id, kind });
   } catch (e) { /* tabel belum ada atau body rusak: abaikan */ }
   return empty();
 }
