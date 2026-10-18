@@ -207,7 +207,7 @@
       '#isengin-chat-btn span.l{font-family:' + N.head + ';font-size:14px;font-weight:400;letter-spacing:.02em;text-transform:uppercase}' +
       '#isengin-chat-btn:focus-visible,#isengin-chat-x:focus-visible,#isengin-chat-tipx:focus-visible{outline:3px dashed ' + N.navy + ';outline-offset:3px;box-shadow:4px 4px 0 ' + N.navy + '}' +
       '#isengin-chat-box{box-sizing:border-box;background:' + N.cream + ';border:' + B + ';border-radius:22px;box-shadow:6px 6px 0 ' + N.navy + '}' +
-      '#isengin-chat-x{box-sizing:border-box;top:17px;right:12px;width:34px;height:34px;background:' + N.red + ';color:#fff;border:' + B + ';box-shadow:2px 2px 0 ' + N.navy + ';font-size:13px;font-weight:800;line-height:1;padding:0;transition:transform .1s,box-shadow .1s}' +
+      '#isengin-chat-x{box-sizing:border-box;top:14.5px;right:12px;width:36px;height:36px;background:' + N.red + ';color:#fff;border:' + B + ';box-shadow:2px 2px 0 ' + N.navy + ';font-size:13px;font-weight:800;line-height:1;padding:0;transition:transform .1s,box-shadow .1s}' +
       '#isengin-chat-x:active{transform:translate(2px,2px);box-shadow:none}' +
       '#isengin-chat-ld{background:' + N.yel + ';gap:14px}' +
       '#isengin-chat-ld i{width:20px;height:20px;background:' + N.red + ';border:' + B + ';box-shadow:3px 3px 0 ' + N.navy + ';opacity:1;animation-name:isengin-neo-dot}' +
@@ -217,7 +217,7 @@
       '#isengin-chat-tip{background:' + N.cream + ';color:' + N.navy + ';border:' + B + ';border-radius:16px;box-shadow:4px 4px 0 ' + N.navy + ';font:600 14px/1.4 ' + N.body + ';padding:10px 34px 10px 14px}' +
       '#isengin-chat-tipx{top:5px;right:5px;color:' + N.navy + ';font-size:14px;font-weight:800}' +
       '@media (prefers-color-scheme:dark){#isengin-chat-ld{background:' + N.yel + '}}' +
-      '@media (max-width:480px){#isengin-chat-box{border:0;border-radius:0;box-shadow:none}#isengin-chat-x{top:17px;right:12px}}' +
+      '@media (max-width:480px){#isengin-chat-box{border:0;border-radius:0;box-shadow:none}#isengin-chat-x{top:14.5px;right:12px}}' +
       '@media (prefers-reduced-motion:reduce){#isengin-chat-btn,#isengin-chat-x{transition:none}#isengin-chat-ld i{animation:none}}';
   }
   // Font Bungee dan Plus Jakarta Sans untuk gaya Neo. Dimuat sekali per halaman; kalau gagal (diblokir), huruf cadangan sistem dipakai.
