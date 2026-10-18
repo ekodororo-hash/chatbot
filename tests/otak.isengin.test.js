@@ -140,7 +140,7 @@ const tests = [];
 const t = (name, fn) => tests.push([name, fn]);
 
 t('template bawaan: pengetahuan isengin.site lengkap, penanda, tanpa sisa EMAHAIRSHOP/Asisten Toko', async () => {
-  for (const s of ['INFO ISENGIN.SITE', 'PAKET GRATIS', 'PAKET PRO', 'DOMAIN KUSTOM', 'CENTANG', 'REFERRAL', 'cname.vercel-dns.com', '76.76.21.21', 'Midtrans', '{{PRO_BULAN}}', '{{PRO_TAHUN}}', '[[HUMAN]]', '[[LEAD:', '[[NAME:', '[[UNKNOWN:', '[[OFFTOPIC]]', 'https://isengin.site/daftar']) assert.ok(T.includes(s), s);
+  for (const s of ['INFO ISENGIN.SITE', 'PAKET GRATIS', 'PAKET PRO', 'DOMAIN KUSTOM', 'CENTANG', 'LENCANA VERIFIKASI', 'Sorotan link', 'Pengaman link', 'Link per tempat', 'maksimal 2 MB', 'https://isengin.site/fitur', 'REFERRAL', 'cname.vercel-dns.com', '76.76.21.21', 'Midtrans', '{{PRO_BULAN}}', '{{PRO_TAHUN}}', '[[HUMAN]]', '[[LEAD:', '[[NAME:', '[[UNKNOWN:', '[[OFFTOPIC]]', 'https://isengin.site/daftar']) assert.ok(T.includes(s), s);
   assert.ok(!/emahairshop|wa\.me|price-list|Asisten Toko/i.test(T), 'tidak ada sisa otak lain');
   assert.ok(!/Rp\s?\d/.test(T), 'harga tidak ditulis mati di template');
   assert.ok(!T.includes('${'));
