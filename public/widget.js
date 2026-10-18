@@ -200,7 +200,7 @@
   function neoCss(c, side, px) {
     var N = NEO, B = '3px solid ' + N.navy;
     return '' +
-      '#isengin-chat-btn{box-sizing:border-box;background:' + N.yel + ';color:' + N.navy + ';border:' + B + ';box-shadow:4px 4px 0 ' + N.navy + ';font-family:' + N.body + ';transition:transform .1s,box-shadow .1s,background .1s}' +
+      '#isengin-chat-btn{box-sizing:border-box;background:#fff;color:' + N.navy + ';border:' + B + ';box-shadow:4px 4px 0 ' + N.navy + ';font-family:' + N.body + ';transition:transform .1s,box-shadow .1s,background .1s}' +
       '#isengin-chat-btn:hover{background:' + N.cream + '}' +
       '#isengin-chat-btn:active{transform:translate(3px,3px);box-shadow:0 0 0 ' + N.navy + '}' +
       '#isengin-chat-btn.open{background:' + N.red + ';color:#fff}' +
