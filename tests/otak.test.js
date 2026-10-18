@@ -334,19 +334,24 @@ t('handleMessage toko owner: [[HUMAN]] menyerahkan ke admin dan memberi tahu', a
   const s = ownerShop();
   geminiCalls = []; alerts = [];
   geminiImpl = say('Baik, mohon tunggu sebentar, saya sambungkan ke tim. [[HUMAN]]');
-  const r = await chat(s, 'Saya mau bicara dengan admin');
+  const r0 = await chat(s, 'Saya mau bicara dengan admin');
+  assert.strictEqual(conv(r0).status, 'bot', 'dikonfirmasi dulu');
+  assert.deepStrictEqual(alerts, []);
+  const r = await chat(s, 'ya', r0);
   assert.strictEqual(conv(r).status, 'human');
   assert.strictEqual(conv(r).unanswered, true);
   assert.deepStrictEqual(alerts.map(a => a.reason), ['handoff']);
   const bots = r.messages.filter(m => m.role === 'bot');
-  assert.ok(bots.length === 1 && !bots[0].content.includes('[['));
+  assert.ok(bots.length === 2 && bots.every(b => !b.content.includes('[[')));
 });
 
 t('handleMessage toko owner: model lupa [[HUMAN]] tapi pengunjung minta admin -> tetap diserahkan (jaring pengaman portal)', async () => {
   const s = ownerShop();
   geminiCalls = []; alerts = [];
   geminiImpl = say('Baik, saya bantu ya.');
-  const r = await chat(s, 'Saya mau bicara dengan admin');
+  const r0 = await chat(s, 'Saya mau bicara dengan admin');
+  assert.strictEqual(conv(r0).status, 'bot');
+  const r = await chat(s, 'iya boleh', r0);
   assert.strictEqual(conv(r).status, 'human');
   assert.deepStrictEqual(alerts.map(a => a.reason), ['handoff']);
   // Pertanyaan biasa dengan balasan tanpa penanda: tidak diserahkan.
