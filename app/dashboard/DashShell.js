@@ -101,6 +101,9 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   const [openCount, setOpenCount] = useState(0);   // percakapan belum selesai yang masih dijawab AI (status bot)
   const [badges, setBadges] = useState({ unanswered: 0, orders: 0 });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [others, setOthers] = useState({});   // toko lain milik user ini -> { h: butuh admin (status human), o: chat aktif dijawab AI (status bot) }
+  const othersTotal = Object.values(others).reduce((a, b) => a + b.h, 0);
+  const othersActive = Object.values(others).reduce((a, b) => a + b.o, 0);
 
   const fail = useCallback((err) => {
     console.error(err);
@@ -163,11 +166,27 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
   useEffect(() => { refreshAll(); }, [refreshAll]);
   // Judul tab browser ikut menunjukkan jumlah percakapan butuh admin, supaya kelihatan walau tab sedang di belakang.
   useEffect(() => {
-    document.title = humanCount ? '(' + humanCount + ') Asisten Toko' : 'Asisten Toko';
+    const n = humanCount + othersTotal;
+    document.title = n ? '(' + n + ') Asisten Toko' : 'Asisten Toko';
     return () => { document.title = 'Asisten Toko'; };
-  }, [humanCount]);
+  }, [humanCount, othersTotal]);
   // Realtime: angka di menu ikut berubah begitu ada percakapan baru atau status berubah.
   useRealtime(sb, 'conversations', shopId ? 'shop_id=eq.' + shopId : '', refreshAll, 60000);
+
+  // Toko lain: kabari kalau ada percakapan yang butuh admin di toko selain yang sedang dibuka (RLS sudah membatasi ke toko milik/akses user ini).
+  const otherIds = useMemo(() => shops.filter((x) => x.id !== activeId).map((x) => x.id), [shops, activeId]);
+  const otherKey = otherIds.join(',');
+  const refreshOthers = useCallback(async () => {
+    if (!sb || !otherIds.length) { setOthers({}); return; }
+    const count = (id, status) => sb.from('conversations').select('id', { count: 'exact', head: true }).eq('shop_id', id).eq('status', status);
+    const rows = await Promise.all(otherIds.map((id) => Promise.all([count(id, 'human'), count(id, 'bot')])));
+    if (rows.some(([h, o]) => h.error || o.error)) return;   // spanduk bersifat tambahan: diam saja kalau gagal
+    const m = {};
+    otherIds.forEach((id, k) => { m[id] = { h: rows[k][0].count || 0, o: rows[k][1].count || 0 }; });
+    setOthers(m);
+  }, [sb, otherKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { refreshOthers(); }, [refreshOthers]);
+  useRealtime(sb, 'conversations', otherIds.length && otherIds.length <= 100 ? 'shop_id=in.(' + otherKey + ')' : '', refreshOthers, 60000);
 
   const onShopChange = useCallback((patch) => {
     setShops((list) => list.map((x) => (x.id === activeId ? { ...x, ...patch } : x)));
@@ -251,6 +270,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
           </button>
           <span className="brand">{shop ? shop.name : (<>Asisten<span>Toko</span></>)}</span>
           <span className="grow"></span>
+          {othersTotal > 0 ? <span className="mbar-other" title="Chat butuh admin di toko lain" aria-label={othersTotal + ' chat butuh admin di toko lain'}>{othersTotal + ' butuh admin di toko lain'}</span> : othersActive > 0 ? <span className="mbar-other calm" title="Chat aktif di toko lain" aria-label={othersActive + ' chat aktif di toko lain'}>{othersActive + ' aktif di toko lain'}</span> : null}
           {humanCount || openCount ? (
             <Link className={'mbar-notif' + (humanCount ? '' : ' calm')} href="/dashboard" title={humanCount ? 'Percakapan butuh admin' : 'Percakapan belum selesai'} aria-label={humanCount ? humanCount + ' percakapan butuh admin' : openCount + ' percakapan belum selesai'}>
               <Icon k="chat" />
@@ -266,7 +286,7 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
             <div className="shopbox">
               {shops.length > 1 ? (
                 <select aria-label="Pilih toko" value={shop.id} onChange={(e) => switchShop(e.target.value)}>
-                  {shops.map((x) => <option key={x.id} value={x.id}>{x.name + (user && x.owner_id !== user.id ? ' (admin)' : '')}</option>)}
+                  {shops.map((x) => <option key={x.id} value={x.id}>{x.name + (user && x.owner_id !== user.id ? ' (admin)' : '') + (others[x.id] && (others[x.id].h || others[x.id].o) ? ' • ' + [others[x.id].h ? others[x.id].h + ' butuh admin' : '', others[x.id].o ? others[x.id].o + ' aktif' : ''].filter(Boolean).join(' · ') : '')}</option>)}
                 </select>
               ) : <b>{shop.name}</b>}
               <small>{'/chat/' + shop.slug + (role !== 'owner' ? ' · admin' : '')}</small>
@@ -303,6 +323,18 @@ export default function DashShell({ supabaseUrl, supabaseAnonKey, error, childre
         <div className="app-main">
           <main className="wrap">
             {current && (showNav || waiting) && !adding && <h1 className="ptitle">{current[1]}</h1>}
+            {showNav && !adding && (othersTotal > 0 || othersActive > 0) && (
+              <div className="otherchat" role="status" aria-live="polite">
+                <span>{othersTotal > 0 ? 'Ada chat yang butuh admin di toko lain:' : 'Ada chat aktif di toko lain:'}</span>
+                <span className="oc-list">
+                  {shops.filter((x) => others[x.id] && (others[x.id].h || others[x.id].o)).map((x) => (
+                    <button key={x.id} type="button" className="btn sm" onClick={() => { switchShop(x.id); router.push('/dashboard'); }}>
+                      {x.name}{others[x.id].h ? <i title="Butuh admin">{others[x.id].h + ' butuh admin'}</i> : null}{others[x.id].o ? <i className="act" title="Chat aktif, dijawab asisten">{others[x.id].o + ' aktif'}</i> : null}
+                    </button>
+                  ))}
+                </span>
+              </div>
+            )}
             {showNav && role === 'owner' && sb && !adding && !(current && current[0] === '/dashboard/langganan') && <ExpiryBanner key={shop.id} sb={sb} shopId={shop.id} />}
             {body}
           </main>
