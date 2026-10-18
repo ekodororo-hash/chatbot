@@ -754,3 +754,12 @@ html{scrollbar-gutter:stable}
   .cv .msgs{padding:10px;max-height:60vh}
   .cv-acts .btn{flex:1 1 auto}
 }
+
+/* Spanduk: ada chat butuh admin di toko lain (dashboard banyak toko) */
+.otherchat{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--warnbg);border:1px solid var(--warn);color:var(--ink);border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:14px}
+.otherchat>span:first-child{flex:1 1 200px;font-weight:600}
+.otherchat .oc-list{display:flex;flex-wrap:wrap;gap:8px}
+.otherchat .btn i{font-style:normal;margin-left:8px;min-width:20px;padding:0 8px;border-radius:999px;background:#d93025;color:#fff;font-size:12px;font-weight:700;line-height:20px;display:inline-block;text-align:center}
+.mbar-other{font-size:12px;font-weight:700;background:#d93025;color:#fff;border-radius:999px;padding:3px 9px;margin-right:8px;white-space:nowrap}
+.otherchat .btn i.act{background:rgba(255,255,255,.9);color:var(--accent)}
+.mbar-other.calm{background:#d0e4e0;color:var(--ink)}
