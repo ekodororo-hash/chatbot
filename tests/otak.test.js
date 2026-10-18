@@ -345,6 +345,32 @@ t('handleMessage toko owner: [[HUMAN]] menyerahkan ke admin dan memberi tahu', a
   assert.ok(bots.length === 2 && bots.every(b => !b.content.includes('[[')));
 });
 
+t('handoff 8 bahasa: permintaan admin ditanya dulu dalam bahasa pelanggan, persetujuan dikenali, lalu diteruskan', async () => {
+  const cases = [
+    ['Italian', 'Vorrei parlare con l\'admin per favore', 'sì', /Vuoi che ti metta in contatto/],
+    ['Spanish', 'Quiero hablar con el administrador por favor', 'sí claro', /¿Quieres que te ponga en contacto/],
+    ['French', 'Je voudrais parler avec l\'admin s\'il vous plaît', 'oui', /Souhaitez-vous que je vous mette en relation/],
+    ['German', 'Ich möchte bitte mit dem Admin sprechen', 'ja gerne', /Soll ich Sie dafür mit dem Admin verbinden/],
+    ['Russian', 'Я хочу поговорить с админом пожалуйста', 'да конечно', /Соединить вас с админом/],
+    ['Arabic', 'أريد أن أتحدث مع المشرف من فضلك', 'نعم', /هل تريد أن أوصلك بالمشرف/],
+    ['English', 'I would like to talk to the admin please', 'yes please', /Would you like me to connect you/]
+  ];
+  for (const [lang, ask, yes, re] of cases) {
+    const s = ownerShop(); alerts = [];
+    geminiImpl = say('Of course. [[HUMAN]]');
+    const r0 = await chat(s, ask);
+    assert.strictEqual(conv(r0).status, 'bot', lang + ': belum diteruskan');
+    assert.ok(re.test(r0.messages.filter(m => m.role === 'bot').pop().content), lang + ': pertanyaan konfirmasi dalam bahasa pelanggan');
+    const r1 = await chat(s, yes, r0);
+    assert.strictEqual(conv(r1).status, 'human', lang + ': setelah setuju diteruskan');
+  }
+  // penolakan di bahasa lain tidak meneruskan
+  const s = ownerShop(); geminiImpl = say('Ok. [[HUMAN]]');
+  const r0 = await chat(s, 'Je voudrais parler avec l\'admin s\'il vous plaît');
+  const r1 = await chat(s, 'non merci', r0);
+  assert.strictEqual(conv(r1).status, 'bot');
+});
+
 t('handleMessage toko owner: model lupa [[HUMAN]] tapi pengunjung minta admin -> tetap diserahkan (jaring pengaman portal)', async () => {
   const s = ownerShop();
   geminiCalls = []; alerts = [];
