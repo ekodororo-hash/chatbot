@@ -551,9 +551,13 @@ const MODEL_HINTS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2
 
 // Otak EMAHAIRSHOP: aturan perilaku + info perusahaan yang dipakai asisten untuk toko milik email di ADMIN_EMAILS.
 // Teksnya hanya ada di server; halaman ini (khusus super admin) satu-satunya tempat melihat dan mengubahnya.
-function OtakCard() {
+// k = 'otak' (EMAHAIRSHOP, toko milik ADMIN_EMAILS) atau 'isengin' (toko isengin.site, env ISENGIN_BOT).
+function OtakCard({ k = 'otak' }) {
   const { data, act } = useAdmin();
-  const o = data.ai.otak;
+  const isg = k === 'isengin';
+  const o = isg ? data.ai.otakIsengin : data.ai.otak;
+  const A = isg ? { mode: 'set_otak_isengin_mode', save: 'save_otak_isengin', restore: 'restore_otak_isengin', reset: 'reset_otak_isengin' }
+    : { mode: 'set_otak_mode', save: 'save_otak', restore: 'restore_otak', reset: 'reset_otak' };
   const [text, setText] = useState(o ? o.text : '');
   const [busy, setBusy] = useState('');
   const serverText = o ? o.text : '';
@@ -569,17 +573,21 @@ function OtakCard() {
     <section className="card">
       <div className="chead">
         <div>
-          <h2>Otak EMAHAIRSHOP</h2>
-          <p className="hint">Aturan dan info perusahaan yang dipakai asisten untuk toko milik email di ADMIN_EMAILS. Toko lain tetap memakai data tokonya sendiri. Teks ini tidak pernah tampil di dashboard toko.</p>
+          <h2>{isg ? 'Otak isengin.site' : 'Otak EMAHAIRSHOP'}</h2>
+          <p className="hint">{isg
+            ? 'Aturan dan pengetahuan asisten untuk web isengin.site (toko yang slug-nya diisi di ISENGIN_BOT). Harga Pro ditulis sebagai {{PRO_BULAN}} dan {{PRO_TAHUN}}, diisi otomatis dari env ISENGIN_PRO_PRICE_MONTH dan ISENGIN_PRO_PRICE_YEAR. Otak ini terpisah dari otak EMAHAIRSHOP dan info situs Asisten Toko (WIDGET_BOT). Teks ini tidak pernah tampil di dashboard toko.'
+            : 'Aturan dan info perusahaan yang dipakai asisten untuk toko milik email di ADMIN_EMAILS. Toko lain tetap memakai data tokonya sendiri. Teks ini tidak pernah tampil di dashboard toko.'}</p>
         </div>
-        {!o.adminEmails ? <span className="tag w">ADMIN_EMAILS kosong</span>
-          : o.on ? <span className="tag a">Aktif</span> : <span className="tag w">Dimatikan</span>}
+        {isg ? (o.clash ? <span className="tag w">ISENGIN_BOT = WIDGET_BOT</span> : !o.botSet ? <span className="tag w">ISENGIN_BOT kosong</span> : o.on ? <span className="tag a">Aktif</span> : <span className="tag w">Dimatikan</span>)
+          : (!o.adminEmails ? <span className="tag w">ADMIN_EMAILS kosong</span> : o.on ? <span className="tag a">Aktif</span> : <span className="tag w">Dimatikan</span>)}
       </div>
-      {!o.adminEmails ? <p className="hint" role="alert">ADMIN_EMAILS belum diatur di Vercel, jadi otak ini belum dipakai di toko mana pun.</p> : null}
+      {isg && o.clash ? <p className="hint" role="alert">ISENGIN_BOT sama dengan WIDGET_BOT. Toko itu tetap memakai info situs Asisten Toko, jadi otak isengin belum dipakai. Isi ISENGIN_BOT dengan slug toko lain.</p> : null}
+      {isg && !o.clash && !o.botSet ? <p className="hint" role="alert">ISENGIN_BOT belum diatur di Vercel (isi dengan slug toko untuk isengin.site), jadi otak ini belum dipakai di toko mana pun.</p> : null}
+      {!isg && !o.adminEmails ? <p className="hint" role="alert">ADMIN_EMAILS belum diatur di Vercel, jadi otak ini belum dipakai di toko mana pun.</p> : null}
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--ink)', fontSize: 15, margin: '4px 0 12px' }}>
         <input type="checkbox" style={{ width: 'auto' }} checked={o.on} disabled={!!busy}
-          onChange={(e) => run('mode', { action: 'set_otak_mode', on: e.target.checked }, e.target.checked ? 'Otak diaktifkan.' : 'Otak dimatikan; toko kembali memakai data tokonya.')} />
-        Pakai otak ini (kalau mati, semua toko memakai data toko biasa)
+          onChange={(e) => run('mode', { action: A.mode, on: e.target.checked }, e.target.checked ? 'Otak diaktifkan.' : 'Otak dimatikan; toko kembali memakai data tokonya.')} />
+        {isg ? 'Pakai otak ini (kalau mati, toko isengin kembali memakai data tokonya sendiri)' : 'Pakai otak ini (kalau mati, semua toko memakai data toko biasa)'}
       </label>
       <div className="fgrid one">
         <label>
@@ -588,17 +596,17 @@ function OtakCard() {
             style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 13, lineHeight: 1.5, minHeight: 280 }} />
         </label>
       </div>
-      <p className="hint">Penanda internal ([[WA]], [[HUMAN]], [[URGENT]], [[FRAUD]], [[UNKNOWN]], [[LEAD]], [[NAME]], [[OFFTOPIC]]) diurai otomatis dan dibuang sebelum balasan dilihat pelanggan. Jangan menghapus aturannya kecuali kamu paham akibatnya. Perubahan berlaku dalam sekitar 15 detik.</p>
+      <p className="hint">Penanda internal ({isg ? '[[HUMAN]], [[LEAD]], [[NAME]], [[UNKNOWN]], [[OFFTOPIC]]' : '[[WA]], [[HUMAN]], [[URGENT]], [[FRAUD]], [[UNKNOWN]], [[LEAD]], [[NAME]], [[OFFTOPIC]]'}) diurai otomatis dan dibuang sebelum balasan dilihat pelanggan. Jangan menghapus aturannya kecuali kamu paham akibatnya. Perubahan berlaku dalam sekitar 15 detik.</p>
       <div className="row">
-        <button className="btn sm" type="button" disabled={!!busy || !dirty} onClick={() => run('save', { action: 'save_otak', text }, 'Teks otak disimpan.')}>
+        <button className="btn sm" type="button" disabled={!!busy || !dirty} onClick={() => run('save', { action: A.save, text }, 'Teks otak disimpan.')}>
           <Busy on={busy === 'save'} label="Menyimpan...">Simpan</Busy>
         </button>
         <button className="btn ghost sm" type="button" disabled={!!busy || !o.hasPrev}
-          onClick={() => { if (window.confirm('Kembalikan teks otak ke versi sebelum perubahan terakhir? Versi sekarang jadi cadangan.')) run('restore', { action: 'restore_otak' }, 'Versi sebelumnya dikembalikan.'); }}>
+          onClick={() => { if (window.confirm('Kembalikan teks otak ke versi sebelum perubahan terakhir? Versi sekarang jadi cadangan.')) run('restore', { action: A.restore }, 'Versi sebelumnya dikembalikan.'); }}>
           <Busy on={busy === 'restore'} label="Mengembalikan...">Batalkan perubahan terakhir</Busy>
         </button>
         <button className="btn ghost sm" type="button" disabled={!!busy || !o.custom}
-          onClick={() => { if (window.confirm('Buang teks buatan sendiri dan kembali ke teks bawaan (' + o.defaultLength + ' karakter)? Teks sekarang tersimpan sebagai cadangan.')) run('reset', { action: 'reset_otak' }, 'Kembali ke teks bawaan.'); }}>
+          onClick={() => { if (window.confirm('Buang teks buatan sendiri dan kembali ke teks bawaan (' + o.defaultLength + ' karakter)? Teks sekarang tersimpan sebagai cadangan.')) run('reset', { action: A.reset }, 'Kembali ke teks bawaan.'); }}>
           <Busy on={busy === 'reset'} label="Mengembalikan...">Kembalikan ke bawaan</Busy>
         </button>
       </div>
@@ -691,6 +699,7 @@ export function AiView() {
 
       <h2 className="sect">Otak asisten</h2>
       <OtakCard />
+      <OtakCard k="isengin" />
 
       <h2 className="sect">Key dan model per paket</h2>
       <datalist id="model-hints">{MODEL_HINTS.map((m) => <option key={m} value={m} />)}</datalist>

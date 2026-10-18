@@ -245,6 +245,26 @@ Asisten bisa memakai "otak" yang sama dengan asisten di portal emahairshop.com: 
 - **Sapaan:** otak mengira pengunjung sudah melihat sapaan pembuka. Samakan kolom Sapaan di dashboard > Asisten AI dengan sapaan portal (mis. "Halo, saya asisten AI EMAHAIRSHOP. Ada yang bisa saya bantu?").
 - **Tes:** `node tests/otak.test.js` (juga dijalankan `npm test`).
 
+## Otak isengin.site (otak ketiga)
+
+Ada **tiga otak terpisah**, dan satu toko hanya memakai satu:
+
+| Otak | Dipakai oleh | Pengetahuan dari |
+|---|---|---|
+| EMAHAIRSHOP (`lib/otak.js`) | toko milik email di `ADMIN_EMAILS` | teks otak EMAHAIRSHOP |
+| Info situs Asisten Toko (`lib/pengetahuan.js`) | toko widget situs, env `WIDGET_BOT` | data toko + info paket/fitur otomatis (pola lama, tidak berubah) |
+| **isengin.site** (`lib/otakIsengin.js`) | toko dengan slug di env `ISENGIN_BOT` | teks otak isengin |
+
+Otak isengin menjawab calon pengguna dan pengguna web isengin.site (link-in-bio): apa itu isengin, cara daftar dan memakai dashboard, Gratis vs Pro, harga, domain kustom, centang, referral, dan kendala umum. Tidak ada tombol WhatsApp, tautan price list, atau gaya portal.
+
+- **Pasang:** buat toko di dashboard Asisten Toko untuk isengin.site (nama, jam, sapaan, nada; produk/FAQ tidak dipakai), isi env `ISENGIN_BOT` dengan slug tokonya, Redeploy, lalu di Pasang daftarkan domain `isengin.site` dan tempel kode widgetnya di web isengin. `ISENGIN_BOT` tidak boleh sama dengan `WIDGET_BOT` (kalau sama, `WIDGET_BOT` menang dan kartu di `/admin/ai` memberi peringatan). Toko ISENGIN_BOT milik admin layanan tetap memakai otak ini, bukan otak EMAHAIRSHOP.
+- **Teks otak:** bawaan di `lib/otak.isengin.template.js` (ditulis dari kode proyek isengin-link: fitur, aturan Gratis/Pro, centang, referral, domain kustom). Admin bisa menggantinya di `/admin/ai` > Otak isengin.site, lengkap dengan saklar, "Batalkan perubahan terakhir", dan "Kembalikan ke bawaan".
+- **Harga Pro:** ditulis di teks sebagai `{{PRO_BULAN}}` dan `{{PRO_TAHUN}}`, diisi server dari env `ISENGIN_PRO_PRICE_MONTH` dan `ISENGIN_PRO_PRICE_YEAR` (bawaan 29000 dan 290000, sama dengan bawaan isengin-link). **Kalau harga Pro di isengin-link diubah, ubah dua env ini juga.** Fitur lain di teks otak perlu diperbarui manual kalau isengin-link berubah.
+- **Penanda:** `[[HUMAN]]` (serahkan ke admin + notifikasi), `[[LEAD: ...]]` (calon pembeli serius; kontak hanya dari pesan pengunjung, bukan karangan model), `[[NAME: ...]]`, `[[UNKNOWN: ...]]`, `[[OFFTOPIC]]`. Jaring pengaman "minta admin" lebih ketat daripada otak EMAHAIRSHOP supaya pertanyaan seperti "apakah admin yang menyetujui centang?" tidak salah dianggap permintaan bicara dengan admin.
+- **Bahasa:** sama dengan otak EMAHAIRSHOP (bahasa pesan terakhir dideteksi di server; balasan Indonesia untuk pengunjung berbahasa lain dicoba sekali lagi).
+- **Tanpa migrasi database.** Pengaturan disimpan di `app_settings` (`OTAK_ISENGIN_MODE`, `OTAK_ISENGIN_TEMPLATE`, `OTAK_ISENGIN_TEMPLATE_PREV`).
+- **Tes:** `node tests/otak.isengin.test.js` (juga dijalankan `npm test`).
+
 ## Catatan Gemini
 
 Model per paket diatur admin di menu **AI** (`/admin/ai`), bersama API key Gemini (tersimpan terenkripsi, tanpa deploy ulang). Tiap paket (Gratis, Starter, Bisnis) bisa punya sampai 3 API key sendiri. Key dipakai bergantian supaya beban terbagi, dan kalau satu key kena limit (429), ditolak, atau server Gemini error, bot otomatis mencoba key berikutnya. Paket tanpa key sendiri memakai key bawaan. Paket yang modelnya dikosongkan memakai `GEMINI_MODEL` (default `gemini-3.5-flash-lite`); toko tanpa langganan aktif memakai model paket Gratis. Nama model dan parameter yang didukung bisa berubah, jadi cek dokumentasi Google sebelum meluncur. Untuk model Gemini 3.x, `lib/gemini.js` sengaja tidak mengirim `temperature`, `top_p`, atau `top_k`.

@@ -6,6 +6,7 @@ import shops from '@/lib/shops';
 import settings from '@/lib/settings';
 import gemini from '@/lib/gemini';
 import otak from '@/lib/otak';
+import otakIsengin from '@/lib/otakIsengin';
 import adminLib from '@/lib/admin';
 import widgetConfig from '@/lib/widgetConfig';
 import widgetIcons from '@/lib/widgetIcons';
@@ -109,7 +110,9 @@ export async function GET(request) {
         providerList: Object.values(gemini.PROVIDERS).map((p) => ({ id: p.id, label: p.label, keyHint: p.keyHint, defaultModel: p.model })),
         defaultModel: gemini.DEFAULT_MODEL,
         // Otak EMAHAIRSHOP (lib/otak.js). Teks lengkap hanya dikirim ke super admin; tidak ada jalur lain ke browser.
-        otak: await otakInfo(allSettings)
+        otak: await otakInfo(allSettings),
+        // Otak isengin (lib/otakIsengin.js): untuk toko isengin.site (env ISENGIN_BOT). Sama: teks lengkap hanya ke super admin.
+        otakIsengin: otakIsenginInfo(allSettings)
       }
     });
   } catch (e) { return fail(e); }
@@ -126,6 +129,21 @@ async function otakInfo(allSettings) {
     defaultLength: otak.DEFAULT_TEMPLATE.length,
     max: otak.MAX_TEMPLATE,
     adminEmails: adminLib.adminEmails().length
+  };
+}
+
+// Ringkasan otak isengin untuk /admin/ai. botSet = env ISENGIN_BOT terisi dan tidak sama dengan WIDGET_BOT (tanpa itu otak ini belum dipakai di toko mana pun).
+function otakIsenginInfo(allSettings) {
+  const custom = String(allSettings.OTAK_ISENGIN_TEMPLATE || '').trim();
+  return {
+    on: String(allSettings.OTAK_ISENGIN_MODE || '').trim().toLowerCase() !== 'off',
+    custom: !!custom,
+    hasPrev: !!String(allSettings.OTAK_ISENGIN_TEMPLATE_PREV || '').trim(),
+    text: custom || otakIsengin.DEFAULT_TEMPLATE,
+    defaultLength: otakIsengin.DEFAULT_TEMPLATE.length,
+    max: otakIsengin.MAX_TEMPLATE,
+    botSet: !!otakIsengin.botSlug(),
+    clash: !!String(process.env.ISENGIN_BOT || '').trim() && String(process.env.ISENGIN_BOT || '').trim() === String(process.env.WIDGET_BOT || '').trim()
   };
 }
 
@@ -234,6 +252,29 @@ export async function POST(request) {
       }
       if (next === cur) return json({ ok: true, unchanged: true });
       await settings.save({ OTAK_TEMPLATE_PREV: cur, OTAK_TEMPLATE: next });
+      return json({ ok: true });
+    }
+    // Otak isengin: sama dengan otak EMAHAIRSHOP di atas (saklar, simpan, bawaan, batalkan), tetapi dengan pengaturan sendiri.
+    if (b.action === 'set_otak_isengin_mode') {
+      await settings.save({ OTAK_ISENGIN_MODE: b.on === false ? 'off' : '' });
+      return json({ ok: true });
+    }
+    if (b.action === 'save_otak_isengin' || b.action === 'reset_otak_isengin' || b.action === 'restore_otak_isengin') {
+      const all = await settings.getAll();
+      const cur = String(all.OTAK_ISENGIN_TEMPLATE || '').trim();
+      let next;
+      if (b.action === 'reset_otak_isengin') next = '';
+      else if (b.action === 'restore_otak_isengin') {
+        next = String(all.OTAK_ISENGIN_TEMPLATE_PREV || '').trim();
+        if (!next) return json({ error: 'Belum ada versi sebelumnya untuk dikembalikan.' }, 400);
+      } else {
+        next = String(b.text == null ? '' : b.text).replace(/\r\n/g, '\n').trim();
+        if (next.length < 200) return json({ error: 'Teks otak terlalu pendek (minimal 200 karakter). Untuk kembali ke bawaan, pakai tombol Kembalikan ke bawaan.' }, 400);
+        if (next.length > otakIsengin.MAX_TEMPLATE) return json({ error: 'Teks otak terlalu panjang (maksimal ' + otakIsengin.MAX_TEMPLATE + ' karakter).' }, 400);
+        if (next === otakIsengin.DEFAULT_TEMPLATE.trim()) next = '';   // sama dengan bawaan: ikut bawaan
+      }
+      if (next === cur) return json({ ok: true, unchanged: true });
+      await settings.save({ OTAK_ISENGIN_TEMPLATE_PREV: cur, OTAK_ISENGIN_TEMPLATE: next });
       return json({ ok: true });
     }
     if (b.action === 'test_ai') {
