@@ -5,6 +5,7 @@ import waNumber from '@/lib/waNumber';
 import widgetConfig from '@/lib/widgetConfig';
 import gayaPortal from '@/lib/gayaPortal';
 import gayaNeo from '@/lib/gayaNeo';
+import otakIsengin from '@/lib/otakIsengin';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,8 @@ export async function GET(request, context) {
   };
   // Toko layanan sendiri: balasan tampil seperti portal (tombol WhatsApp, ikon tautan). Toko lain tidak berubah.
   cfg.portal = await gayaPortal.aktif(supabase.getAdmin(), shop);
+  // Toko isengin.site: tautan di balasan bot bisa diklik (tanpa gaya portal lain). Toko biasa tetap teks polos.
+  cfg.rich = otakIsengin.isIsenginShop(shop) === true;
   // Toko isengin.site (env ISENGIN_BOT): tampilan Neo, sama dengan tema Neo di isengin-link. Toko lain tidak berubah.
   const neo = gayaNeo.forShop(shop) === 'neo';
   if (neo) cfg.gaya = 'neo';
